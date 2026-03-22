@@ -1,0 +1,101 @@
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+
+export const useGameStore = create(
+  persist(
+    (set) => ({
+      // プレイヤー基本情報
+      player: {
+        name: '',
+        weight: 0,
+        points: 0,
+        stamina: 0,
+        exploreLevel: 0,
+        trainingLevel: 0,
+      },
+
+      // 解禁フラグ
+      flags: {
+        introCompleted: false,
+        profileCompleted: false,
+        shopUnlocked: false,
+        climbingUnlocked: false,
+        maintenanceUnlocked: false,
+      },
+
+      // 各山の状態
+      mountains: {
+        yatsugatake: {
+          unlocked: true,
+          firstAccessed: false,
+          summitedCourses: [],
+          maintenanceLevel: 100,
+        },
+        takao: {
+          unlocked: true,
+          firstAccessed: false,
+          summitedCourses: [],
+          maintenanceLevel: 100,
+        },
+        hakone: {
+          unlocked: false,
+          firstAccessed: false,
+          summitedCourses: [],
+          maintenanceLevel: 100,
+        },
+      },
+
+      // 所持アイテム
+      inventory: [],
+
+      // アクション
+      addPoints: (amount) => set((state) => ({
+        player: { ...state.player, points: state.player.points + amount }
+      })),
+
+      addStamina: (amount) => set((state) => ({
+        player: { ...state.player, stamina: state.player.stamina + amount }
+      })),
+
+      setPlayerName: (name) => set((state) => ({
+        player: { ...state.player, name }
+      })),
+
+      setPlayerWeight: (weight) => set((state) => ({
+        player: { ...state.player, weight }
+      })),
+
+      completeIntro: () => set((state) => ({
+        flags: { ...state.flags, introCompleted: true }
+      })),
+
+      unlockShopping: () => set((state) => ({
+        flags: { ...state.flags, shopUnlocked: true }
+      })),
+
+      unlockClimbing: () => set((state) => ({
+        flags: { ...state.flags, climbingUnlocked: true }
+      })),
+
+      addItem: (item) => set((state) => ({
+        inventory: [...state.inventory, item]
+      })),
+
+      completeCourse: (mountainId, courseId) => set((state) => ({
+        mountains: {
+          ...state.mountains,
+          [mountainId]: {
+            ...state.mountains[mountainId],
+            summitedCourses: [
+              ...state.mountains[mountainId].summitedCourses,
+              courseId
+            ]
+          }
+        }
+      })),
+    }),
+    {
+      name: 'yama-app-storage',
+    }
+  )
+)
