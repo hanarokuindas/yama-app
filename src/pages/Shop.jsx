@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useGameStore } from '../stores/gameStore'
 import items from '../data/items.json'
+import Toast from '../components/Toast'
+
 
 const CATEGORIES = ['すべて', 'ウェア', 'シューズ', 'バッグ', '小物', '食料', '救急', '道具', '必需品']
 
@@ -40,6 +42,9 @@ export default function Shop() {
       background: 'linear-gradient(180deg, #2c1810 0%, #4a3728 100%)',
       paddingBottom: '70px',
     }}>
+
+      <Toast message={message} onClose={() => setMessage('')} />
+
 
       {/* ヘッダー */}
       <div style={{

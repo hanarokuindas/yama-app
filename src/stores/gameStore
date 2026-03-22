@@ -93,6 +93,27 @@ export const useGameStore = create(
           }
         }
       })),
+
+      maintainMountain: (mountainId, amount) => set((state) => ({
+        mountains: {
+          ...state.mountains,
+          [mountainId]: {
+            ...state.mountains[mountainId],
+            maintenanceLevel: Math.min(100, state.mountains[mountainId].maintenanceLevel + amount),
+            lastMaintained: new Date().toISOString(),
+          }
+        }
+      })),
+
+      degradeMountain: (mountainId, amount) => set((state) => ({
+        mountains: {
+          ...state.mountains,
+          [mountainId]: {
+            ...state.mountains[mountainId],
+            maintenanceLevel: Math.max(0, state.mountains[mountainId].maintenanceLevel - amount),
+          }
+        }
+      })),
     }),
     {
       name: 'yama-app-storage',
