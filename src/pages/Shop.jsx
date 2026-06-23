@@ -1,270 +1,230 @@
 import { useState } from 'react'
 import { useGameStore } from '../stores/gameStore'
-import items from '../data/items.json'
-import Toast from '../components/Toast'
+import itemsData from '../data/items.json'
 
-
-const CATEGORIES = ['すべて', 'ウェア', 'シューズ', 'バッグ', '小物', '食料', '救急', '道具', '必需品']
+const CATEGORIES = ['すべて', 'ウェア', 'シューズ', '小物', 'バッグ', '食料', '道具', '救急', '必需品']
 
 export default function Shop() {
-  const points = useGameStore((state) => state.player.points)
-  const inventory = useGameStore((state) => state.inventory)
-  const addItem = useGameStore((state) => state.addItem)
-  const addPoints = useGameStore((state) => state.addPoints)
-  const [selectedCategory, setSelectedCategory] = useState('すべて')
-  const [selectedItem, setSelectedItem] = useState(null)
-  const [showConfirm, setShowConfirm] = useState(false)
-  const [message, setMessage] = useState('')
+  const player = useGameStore((s) => s.player)
+  const inventory = useGameStore((s) => s.inventory)
+  const spendPoints = useGameStore((s) => s.spendPoints)
+  const addItem = useGameStore((s) => s.addItem)
 
-  const filteredItems = selectedCategory === 'すべて'
-    ? items
-    : items.filter(item => item.category === selectedCategory)
+  const [cat, setCat] = useState('すべて')
+  const [preview, setPreview] = useState(null)
+  const [bought, setBought] = useState(null)
 
-  const isOwned = (itemId) => inventory.some(i => i.id === itemId)
+  const ownedIds = new Set(inventory.map((i) => i.id))
 
-  const handleBuy = () => {
-    if (!selectedItem) return
-    if (points < selectedItem.price) {
-      setMessage('ポイントが足りないよ！')
-      setShowConfirm(false)
+  const filtered = cat === 'すべて' ? itemsData : itemsData.filter((i) => i.category === cat)
+
+  const handleBuy = (item) => {
+    if (item.price > 0 && !spendPoints(item.price)) {
+      alert('ポイントが足りません')
       return
     }
-    addPoints(-selectedItem.price)
-    addItem(selectedItem)
-    setMessage(`${selectedItem.name}を購入したよ！`)
-    setShowConfirm(false)
-    setSelectedItem(null)
+    addItem(item)
+    setBought(item.name)
+    setPreview(null)
+    setTimeout(() => setBought(null), 2000)
+  }
+
+  if (preview) {
+    const owned = ownedIds.has(preview.id)
+    return (
+      <div style={styles.container}>
+        <div style={styles.previewCard}>
+          <span style={{ fontSize: 56 }}>{preview.icon}</span>
+          <h3 style={styles.title}>{preview.name}</h3>
+          <span style={styles.catTag}>{preview.category}</span>
+          <div style={styles.adviceBox}>
+            <p style={{ color: '#ffd700', fontSize: 12, marginBottom: 4 }}>先輩のアドバイス</p>
+            <p style={{ color: '#ddd', fontSize: 14, lineHeight: 1.7 }}>{preview.advice}</p>
+          </div>
+          <p style={{ color: '#ffd700', fontSize: 22, fontWeight: 'bold' }}>
+            {preview.price === 0 ? '無料' : `${preview.price.toLocaleString()}pt`}
+          </p>
+          {owned ? (
+            <p style={{ color: '#27ae60', fontSize: 15 }}>✅ 購入済み</p>
+          ) : (
+            <button style={styles.primaryBtn} onClick={() => handleBuy(preview)}>購入する</button>
+          )}
+          <button style={styles.backBtn} onClick={() => setPreview(null)}>戻る</button>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(180deg, #2c1810 0%, #4a3728 100%)',
-      paddingBottom: '70px',
-    }}>
-
-      <Toast message={message} onClose={() => setMessage('')} />
-
-
-      {/* ヘッダー */}
-      <div style={{
-        padding: '16px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderBottom: '1px solid rgba(255,255,255,0.1)',
-      }}>
-        <h2 style={{ color: '#fff', fontSize: '20px' }}>🏪 登山ショップ</h2>
-        <span style={{ color: '#ffd700', fontSize: '16px', fontWeight: 'bold' }}>
-          ⭐ {points.toLocaleString()}
-        </span>
+    <div style={styles.container}>
+      <h2 style={styles.pageTitle}>登山ショップ</h2>
+      <div style={styles.pointsBar}>
+        <span style={{ color: '#fff', fontSize: 14 }}>⭐ 所持: {player.points.toLocaleString()}pt</span>
       </div>
 
-      {/* メッセージ */}
-      {message && (
-        <div style={{
-          backgroundColor: '#4a8f3f',
-          color: '#fff',
-          padding: '10px 16px',
-          textAlign: 'center',
-          fontSize: '14px',
-        }}>
-          {message}
-          <button
-            onClick={() => setMessage('')}
-            style={{
-              marginLeft: '12px',
-              background: 'none',
-              border: 'none',
-              color: '#fff',
-              cursor: 'pointer',
-              fontSize: '16px',
-            }}
-          >✕</button>
-        </div>
+      {bought && (
+        <div style={styles.toast}>✅ {bought} を購入しました！</div>
       )}
 
-      {/* カテゴリー */}
-      <div style={{
-        display: 'flex',
-        gap: '8px',
-        padding: '12px 16px',
-        overflowX: 'auto',
-      }}>
-        {CATEGORIES.map(cat => (
+      {/* カテゴリフィルター */}
+      <div style={styles.catRow}>
+        {CATEGORIES.map((c) => (
           <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            style={{
-              padding: '6px 14px',
-              borderRadius: '20px',
-              border: 'none',
-              backgroundColor: selectedCategory === cat ? '#4a8f3f' : 'rgba(255,255,255,0.15)',
-              color: '#fff',
-              fontSize: '12px',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
+            key={c}
+            style={{ ...styles.catBtn, background: cat === c ? '#27ae60' : 'rgba(255,255,255,0.1)' }}
+            onClick={() => setCat(c)}
           >
-            {cat}
+            {c}
           </button>
         ))}
       </div>
 
       {/* アイテム一覧 */}
-      <div style={{ padding: '0 16px' }}>
-        {filteredItems.map(item => (
-          <div
-            key={item.id}
-            onClick={() => {
-              setSelectedItem(item)
-              setShowConfirm(false)
-              setMessage('')
-            }}
-            style={{
-              backgroundColor: selectedItem?.id === item.id
-                ? 'rgba(74,143,63,0.3)'
-                : 'rgba(255,255,255,0.08)',
-              borderRadius: '12px',
-              padding: '12px',
-              marginBottom: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              cursor: 'pointer',
-              border: selectedItem?.id === item.id
-                ? '1px solid #4a8f3f'
-                : '1px solid rgba(255,255,255,0.1)',
-            }}
-          >
-            <span style={{ fontSize: '28px' }}>{item.icon}</span>
-            <div style={{ flex: 1 }}>
-              <p style={{ color: '#fff', fontSize: '14px', fontWeight: 'bold' }}>
-                {item.name}
-              </p>
-              <p style={{ color: '#aaa', fontSize: '12px' }}>{item.category}</p>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              {isOwned(item.id) ? (
-                <span style={{ color: '#4dff91', fontSize: '20px' }}>✓</span>
-              ) : (
-                <span style={{ color: '#ffd700', fontSize: '13px' }}>
-                  ⭐{item.price === 0 ? '無料' : item.price.toLocaleString()}
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
+      <div style={styles.itemGrid}>
+        {filtered.map((item) => {
+          const owned = ownedIds.has(item.id)
+          return (
+            <button key={item.id} style={styles.itemCard} onClick={() => setPreview(item)}>
+              <span style={{ fontSize: 32 }}>{item.icon}</span>
+              <span style={styles.itemName}>{item.name}</span>
+              <span style={styles.itemPrice}>
+                {item.price === 0 ? '無料' : `${item.price.toLocaleString()}pt`}
+              </span>
+              {owned && <span style={styles.ownedBadge}>済</span>}
+            </button>
+          )
+        })}
       </div>
-
-      {/* アイテム詳細・購入 */}
-      {selectedItem && (
-        <div style={{
-          position: 'fixed',
-          bottom: '65px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '100%',
-          maxWidth: '480px',
-          backgroundColor: '#2a1a0e',
-          borderTop: '1px solid rgba(255,255,255,0.2)',
-          padding: '16px',
-        }}>
-          <p style={{ color: '#fff', fontSize: '15px', fontWeight: 'bold', marginBottom: '8px' }}>
-            {selectedItem.icon} {selectedItem.name}
-          </p>
-          <p style={{ color: '#aaa', fontSize: '12px', marginBottom: '12px', lineHeight: '1.6' }}>
-            {selectedItem.advice}
-          </p>
-
-          {!showConfirm ? (
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => setSelectedItem(null)}
-                style={{
-                  flex: 1,
-                  padding: '10px',
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                  color: '#aaa',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                }}
-              >
-                閉じる
-              </button>
-              {!isOwned(selectedItem.id) && (
-                <button
-                  onClick={() => setShowConfirm(true)}
-                  style={{
-                    flex: 2,
-                    padding: '10px',
-                    backgroundColor: points >= selectedItem.price ? '#4a8f3f' : '#666',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  購入 ⭐{selectedItem.price === 0 ? '無料' : selectedItem.price.toLocaleString()}
-                </button>
-              )}
-              {isOwned(selectedItem.id) && (
-                <div style={{
-                  flex: 2,
-                  padding: '10px',
-                  backgroundColor: 'rgba(77,255,145,0.2)',
-                  color: '#4dff91',
-                  borderRadius: '8px',
-                  textAlign: 'center',
-                  fontSize: '14px',
-                }}>
-                  ✓ 購入済み
-                </div>
-              )}
-            </div>
-          ) : (
-            <div>
-              <p style={{ color: '#fff', fontSize: '14px', marginBottom: '12px', textAlign: 'center' }}>
-                購入してよろしいですか？
-              </p>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={() => setShowConfirm(false)}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                    color: '#aaa',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  いいえ
-                </button>
-                <button
-                  onClick={handleBuy}
-                  style={{
-                    flex: 2,
-                    padding: '10px',
-                    backgroundColor: '#4a8f3f',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  はい
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
     </div>
   )
+}
+
+const styles = {
+  container: {
+    minHeight: '100vh',
+    background: 'linear-gradient(180deg, #1a1a3e 0%, #2d3a5c 100%)',
+    paddingBottom: 80,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
+  pageTitle: { color: '#fff', fontSize: 22, padding: '16px 0 4px' },
+  pointsBar: {
+    background: 'rgba(0,0,0,0.3)',
+    padding: '6px 16px',
+    borderRadius: 20,
+    marginBottom: 12,
+  },
+  catRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 6,
+    padding: '0 12px',
+    marginBottom: 12,
+    justifyContent: 'center',
+  },
+  catBtn: {
+    padding: '4px 10px',
+    border: 'none',
+    borderRadius: 12,
+    color: '#fff',
+    fontSize: 12,
+    cursor: 'pointer',
+  },
+  itemGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr 1fr',
+    gap: 10,
+    width: 'calc(100% - 24px)',
+    maxWidth: 380,
+  },
+  itemCard: {
+    background: 'rgba(255,255,255,0.08)',
+    border: '1px solid rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    padding: '12px 8px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 6,
+    cursor: 'pointer',
+    position: 'relative',
+  },
+  itemName: { color: '#fff', fontSize: 11, textAlign: 'center', lineHeight: 1.3 },
+  itemPrice: { color: '#ffd700', fontSize: 12, fontWeight: 'bold' },
+  ownedBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    background: '#27ae60',
+    color: '#fff',
+    fontSize: 10,
+    padding: '1px 5px',
+    borderRadius: 8,
+  },
+  previewCard: {
+    margin: '32px 16px',
+    background: 'rgba(255,255,255,0.08)',
+    borderRadius: 20,
+    padding: '28px 24px',
+    width: 'calc(100% - 32px)',
+    maxWidth: 340,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 12,
+    backdropFilter: 'blur(8px)',
+    textAlign: 'center',
+  },
+  title: { color: '#fff', fontSize: 20, margin: 0 },
+  catTag: {
+    background: 'rgba(39,174,96,0.3)',
+    color: '#27ae60',
+    fontSize: 12,
+    padding: '2px 10px',
+    borderRadius: 10,
+    border: '1px solid #27ae60',
+  },
+  adviceBox: {
+    background: 'rgba(0,0,0,0.3)',
+    borderRadius: 10,
+    padding: '12px 14px',
+    width: '100%',
+    textAlign: 'left',
+    boxSizing: 'border-box',
+  },
+  primaryBtn: {
+    width: '100%',
+    padding: '12px 0',
+    background: '#27ae60',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 24,
+    fontSize: 16,
+    fontWeight: 'bold',
+    cursor: 'pointer',
+  },
+  backBtn: {
+    width: '100%',
+    padding: '10px 0',
+    background: 'rgba(255,255,255,0.08)',
+    color: '#aaa',
+    border: '1px solid rgba(255,255,255,0.2)',
+    borderRadius: 24,
+    fontSize: 14,
+    cursor: 'pointer',
+  },
+  toast: {
+    position: 'fixed',
+    bottom: 90,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    background: '#27ae60',
+    color: '#fff',
+    padding: '10px 20px',
+    borderRadius: 20,
+    fontSize: 14,
+    zIndex: 100,
+    boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
+  },
 }

@@ -5,9 +5,18 @@
 }
 
 body {
-  font-family: 'Noto Sans JP', sans-serif;
-  background-color: #f5f0e8;
+  font-family: 'Hiragino Kaku Gothic Pro', 'Noto Sans JP', 'Yu Gothic', sans-serif;
+  background-color: #1a2a1a;
   max-width: 480px;
   margin: 0 auto;
   min-height: 100vh;
+  color: #fff;
+}
+
+button {
+  font-family: inherit;
+}
+
+input {
+  font-family: inherit;
 }

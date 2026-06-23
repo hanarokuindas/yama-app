@@ -4,16 +4,20 @@ import ExploreGame from '../games/ExploreGame'
 
 export default function Explore() {
   const addPoints = useGameStore((state) => state.addPoints)
+  const addLegs = useGameStore((state) => state.addLegs)
   const [gameState, setGameState] = useState('idle') // idle / playing / clear / gameover
   const [finalScore, setFinalScore] = useState(0)
 
   const handleClear = (score) => {
     addPoints(score)
+    // 山探索は脚力UP
+    addLegs(Math.max(1, Math.floor(score / 200)))
     setFinalScore(score)
     setGameState('clear')
   }
 
   const handleGameOver = (score) => {
+    if (score > 0) addPoints(Math.floor(score / 2))
     setFinalScore(score)
     setGameState('gameover')
   }

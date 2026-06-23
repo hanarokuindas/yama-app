@@ -1,372 +1,340 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useGameStore } from '../stores/gameStore'
-import Toast from '../components/Toast'
-
-const MAINTENANCE_MENUS = [
-  {
-    id: 'patrol',
-    name: '巡回',
-    icon: '👀',
-    cost: 1000,
-    staminaCost: 10,
-    effect: 5,
-    time: '1時間',
-    description: '山の状態を確認するよ。手軽にできる基本の整備！',
-  },
-  {
-    id: 'trash',
-    name: 'ゴミ拾い',
-    icon: '🗑️',
-    cost: 500,
-    staminaCost: 15,
-    effect: 8,
-    time: '2時間',
-    description: 'ゴミを拾って山を綺麗に保とう！',
-  },
-  {
-    id: 'trail',
-    name: '登山道整備',
-    icon: '🛤️',
-    cost: 5000,
-    staminaCost: 30,
-    effect: 15,
-    time: '5時間',
-    description: '登山道を整えて安全に歩けるようにするよ！',
-  },
-  {
-    id: 'pruning',
-    name: '枝切り',
-    icon: '✂️',
-    cost: 3000,
-    staminaCost: 25,
-    effect: 12,
-    time: '3時間',
-    description: '伸びすぎた枝を切って日当たりをよくするよ！',
-  },
-  {
-    id: 'mowing',
-    name: '草刈り',
-    icon: '🌿',
-    cost: 2000,
-    staminaCost: 20,
-    effect: 10,
-    time: '3時間',
-    description: '草を刈って登山道を歩きやすくするよ！',
-  },
-  {
-    id: 'thinning',
-    name: '間伐',
-    icon: '🌲',
-    cost: 8000,
-    staminaCost: 40,
-    effect: 20,
-    time: '8時間',
-    description: '木を間引いて森を健全に保つよ。効果大！',
-  },
-  {
-    id: 'planting',
-    name: '植栽',
-    icon: '🌱',
-    cost: 10000,
-    staminaCost: 35,
-    effect: 25,
-    time: '6時間',
-    description: '新しい木や草を植えて山を豊かにするよ！',
-  },
-]
 
 const MOUNTAINS = [
-  { id: 'yatsugatake', name: '八ヶ岳連峰', icon: '🏔️' },
-  { id: 'takao', name: '高尾山', icon: '⛰️' },
-  { id: 'hakone', name: '箱根山', icon: '🌋' },
+  { id: 'takao', name: '高尾山', emoji: '🌲' },
+  { id: 'yatsugatake', name: '八ヶ岳連峰', emoji: '⛰️' },
+  { id: 'hakone', name: '箱根山', emoji: '🌋' },
 ]
 
-export default function Maintenance() {
-  const points = useGameStore((state) => state.player.points)
-  const stamina = useGameStore((state) => state.player.stamina)
-  const mountains = useGameStore((state) => state.mountains)
-  const addPoints = useGameStore((state) => state.addPoints)
-  const addStamina = useGameStore((state) => state.addStamina)
-  const maintainMountain = useGameStore((state) => state.maintainMountain)
-  const degradeMountain = useGameStore((state) => state.degradeMountain)
+// 整備アクティビティ定義
+const ACTIVITIES = [
+  { id: 'trash', name: 'ゴミ拾い', icon: '🗑️', cost: 1000, restore: 5, duration: 10, desc: '山道のゴミを拾って清潔に！' },
+  { id: 'branch', name: '枝切り', icon: '✂️', cost: 10000, restore: 10, duration: 30, desc: '危険な枝を除去！' },
+  { id: 'grass', name: '草刈り', icon: '🌾', cost: 10000, restore: 10, duration: 30, desc: '登山道の草を刈る！' },
+  { id: 'patrol', name: '巡回', icon: '👣', cost: 10000, restore: 8, duration: 20, desc: '山のパトロール！' },
+  { id: 'trail', name: '登山道整備', icon: '🛠️', cost: 20000, restore: 20, duration: 60, desc: '道の補修や整備！' },
+  { id: 'planting', name: '植栽', icon: '🌱', cost: 80000, restore: 40, duration: 120, desc: '木を植えて緑化！' },
+  { id: 'thinning', name: '間伐', icon: '🪵', cost: 100000, restore: 50, duration: 180, desc: '森を健康に保つ！' },
+]
 
-  const [selectedMountain, setSelectedMountain] = useState('takao')
-  const [selectedMenu, setSelectedMenu] = useState(null)
-  const [showConfirm, setShowConfirm] = useState(false)
+// 荒廃時は各コストが10倍
+function getCost(activity, maintenanceLevel) {
+  if (maintenanceLevel < 30) return activity.cost * 10
+  return activity.cost
+}
+
+function getRestore(activity, maintenanceLevel) {
+  if (maintenanceLevel < 30) return activity.restore * 0.5
+  return activity.restore
+}
+
+function MaintenanceBar({ level }) {
+  const color = level > 60 ? '#27ae60' : level > 30 ? '#f39c12' : '#e74c3c'
+  const label = level > 60 ? '良好' : level > 30 ? '要注意' : '荒廃中！'
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#fff', marginBottom: 4 }}>
+        <span>整備状態</span>
+        <span style={{ color }}>{label} {level}%</span>
+      </div>
+      <div style={{ height: 10, background: 'rgba(255,255,255,0.15)', borderRadius: 5 }}>
+        <div style={{ height: '100%', width: `${level}%`, background: color, borderRadius: 5, transition: 'width 0.5s' }} />
+      </div>
+    </div>
+  )
+}
+
+export default function Maintenance() {
+  const player = useGameStore((s) => s.player)
+  const mountains = useGameStore((s) => s.mountains)
+  const spendPoints = useGameStore((s) => s.spendPoints)
+  const maintainMountain = useGameStore((s) => s.maintainMountain)
+
+  const [selected, setSelected] = useState(null) // mountainId
+  const [working, setWorking] = useState(null)   // activityId
+  const [workTimer, setWorkTimer] = useState(0)
+  const [done, setDone] = useState(false)
   const [message, setMessage] = useState('')
 
-  useEffect(() => {
-    const checkDegradation = () => {
-      MOUNTAINS.forEach(m => {
-        const mountain = mountains[m.id]
-        if (!mountain) return
-        if (!mountain.lastMaintained) return
-        const lastMaintained = new Date(mountain.lastMaintained)
-        const now = new Date()
-        const hoursPassed = (now - lastMaintained) / (1000 * 60 * 60)
-        if (hoursPassed >= 24) {
-          degradeMountain(m.id, 5)
+  const mt = selected ? mountains[selected] : null
+  const level = mt?.maintenanceLevel ?? 100
+
+  const startWork = (activity) => {
+    const cost = getCost(activity, level)
+    if (!spendPoints(cost)) {
+      setMessage(`ポイントが足りません（必要: ${cost.toLocaleString()}pt）`)
+      setTimeout(() => setMessage(''), 2000)
+      return
+    }
+    setWorking(activity)
+    setWorkTimer(activity.duration)
+    setDone(false)
+
+    const id = setInterval(() => {
+      setWorkTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(id)
+          const restore = getRestore(activity, level)
+          maintainMountain(selected, restore)
+          setDone(true)
+          return 0
         }
+        return prev - 1
       })
-    }
-    checkDegradation()
-  }, [])
-
-  const handleMaintain = () => {
-    if (!selectedMenu) return
-    if (points < selectedMenu.cost) {
-      setMessage('ポイントが足りないよ！')
-      setShowConfirm(false)
-      return
-    }
-    if (stamina < selectedMenu.staminaCost) {
-      setMessage('体力が足りないよ！')
-      setShowConfirm(false)
-      return
-    }
-    addPoints(-selectedMenu.cost)
-    addStamina(-selectedMenu.staminaCost)
-    maintainMountain(selectedMountain, selectedMenu.effect)
-    setMessage(`${selectedMenu.name}を実施したよ！山の状態が回復したね！`)
-    setShowConfirm(false)
-    setSelectedMenu(null)
+    }, 1000)
   }
 
-  const getMaintenanceColor = (level) => {
-    if (level >= 70) return '#4dff91'
-    if (level >= 40) return '#ffd700'
-    return '#ff4444'
+  const handleBack = () => {
+    setWorking(null)
+    setDone(false)
+    setWorkTimer(0)
   }
 
-  const getMaintenanceLabel = (level) => {
-    if (level >= 70) return '良好'
-    if (level >= 40) return '要注意'
-    return '荒廃中'
-  }
-
-  return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(180deg, #1a2f1a 0%, #2d4a2d 100%)',
-      paddingBottom: '70px',
-    }}>
-
-      <Toast message={message} onClose={() => setMessage('')} />
-
-      {/* ヘッダー */}
-      <div style={{
-        padding: '16px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderBottom: '1px solid rgba(255,255,255,0.1)',
-      }}>
-        <h2 style={{ color: '#fff', fontSize: '20px' }}>🌿 山整備</h2>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <span style={{ color: '#ffd700', fontSize: '13px' }}>⭐{points.toLocaleString()}</span>
-          <span style={{ color: '#fff', fontSize: '13px' }}>💪{stamina}</span>
+  // 作業中
+  if (working) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <span style={{ fontSize: 52 }}>{working.icon}</span>
+          <h3 style={styles.title}>{working.name}</h3>
+          {!done ? (
+            <>
+              <p style={{ color: '#ccc', fontSize: 14 }}>作業中… {workTimer}秒</p>
+              <div style={styles.progressRing}>
+                <svg width={100} height={100} style={{ transform: 'rotate(-90deg)' }}>
+                  <circle cx={50} cy={50} r={42} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={8} />
+                  <circle
+                    cx={50} cy={50} r={42} fill="none"
+                    stroke="#27ae60" strokeWidth={8}
+                    strokeDasharray={`${2 * Math.PI * 42}`}
+                    strokeDashoffset={`${2 * Math.PI * 42 * (workTimer / working.duration)}`}
+                    style={{ transition: 'stroke-dashoffset 0.9s linear' }}
+                  />
+                </svg>
+                <span style={styles.ringLabel}>{workTimer}s</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <span style={{ fontSize: 40 }}>✅</span>
+              <p style={{ color: '#27ae60', fontSize: 16 }}>整備完了！整備レベルが回復しました</p>
+              <button style={styles.primaryBtn} onClick={handleBack}>戻る</button>
+            </>
+          )}
         </div>
       </div>
+    )
+  }
 
-      {/* 山の状態一覧 */}
-      <div style={{ padding: '16px' }}>
-        <p style={{ color: '#aaa', fontSize: '12px', marginBottom: '12px' }}>
-          山を選んで整備しよう！
-        </p>
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-          {MOUNTAINS.map(m => {
-            const mountain = mountains[m.id]
-            const level = mountain?.maintenanceLevel ?? 100
+  // アクティビティ選択
+  if (selected) {
+    const unlockedMt = mountains[selected]
+    if (!unlockedMt?.unlocked) {
+      return (
+        <div style={styles.container}>
+          <div style={styles.card}>
+            <p style={{ color: '#aaa' }}>この山はまだ解禁されていません</p>
+            <button style={styles.backBtn} onClick={() => setSelected(null)}>戻る</button>
+          </div>
+        </div>
+      )
+    }
+    const mInfo = MOUNTAINS.find((m) => m.id === selected)
+    return (
+      <div style={styles.container}>
+        <h2 style={styles.pageTitle}>{mInfo?.emoji} {mInfo?.name}</h2>
+        <div style={styles.mainCard}>
+          <MaintenanceBar level={level} />
+          {level < 30 && (
+            <div style={styles.alertBox}>
+              ⚠️ 山が荒廃しています！コストが10倍になります。早く整備して！
+            </div>
+          )}
+          <p style={{ color: '#aaa', fontSize: 13, margin: '8px 0' }}>
+            ⭐ {player.points.toLocaleString()}pt 所持
+          </p>
+        </div>
+        {message && <p style={{ color: '#e74c3c', fontSize: 14 }}>{message}</p>}
+        <div style={styles.activityList}>
+          {ACTIVITIES.map((a) => {
+            const cost = getCost(a, level)
+            const restore = getRestore(a, level)
+            const canAfford = player.points >= cost
             return (
-              <div
-                key={m.id}
-                onClick={() => setSelectedMountain(m.id)}
-                style={{
-                  flex: 1,
-                  backgroundColor: selectedMountain === m.id
-                    ? 'rgba(74,143,63,0.3)'
-                    : 'rgba(255,255,255,0.08)',
-                  borderRadius: '12px',
-                  padding: '12px 8px',
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  border: selectedMountain === m.id
-                    ? '1px solid #4a8f3f'
-                    : '1px solid rgba(255,255,255,0.1)',
-                }}
+              <button
+                key={a.id}
+                style={{ ...styles.actCard, opacity: canAfford ? 1 : 0.5 }}
+                onClick={() => canAfford && startWork(a)}
+                disabled={!canAfford}
               >
-                <p style={{ fontSize: '24px' }}>{m.icon}</p>
-                <p style={{ color: '#fff', fontSize: '11px', marginTop: '4px' }}>
-                  {m.name.length > 4 ? m.name.slice(0, 4) : m.name}
-                </p>
-                <p style={{
-                  color: getMaintenanceColor(level),
-                  fontSize: '11px',
-                  marginTop: '4px',
-                  fontWeight: 'bold',
-                }}>
-                  {getMaintenanceLabel(level)}
-                </p>
-                <div style={{
-                  width: '100%',
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                  borderRadius: '4px',
-                  height: '6px',
-                  marginTop: '6px',
-                  overflow: 'hidden',
-                }}>
-                  <div style={{
-                    width: `${level}%`,
-                    height: '100%',
-                    backgroundColor: getMaintenanceColor(level),
-                    borderRadius: '4px',
-                  }} />
+                <span style={styles.actIcon}>{a.icon}</span>
+                <div style={styles.actInfo}>
+                  <span style={styles.actName}>{a.name}</span>
+                  <span style={{ color: '#ccc', fontSize: 12 }}>{a.desc}</span>
                 </div>
-                <p style={{ color: '#aaa', fontSize: '10px', marginTop: '4px' }}>
-                  {level}%
-                </p>
-              </div>
+                <div style={styles.actMeta}>
+                  <span style={{ color: '#ffd700', fontSize: 13 }}>{cost.toLocaleString()}pt</span>
+                  <span style={{ color: '#27ae60', fontSize: 12 }}>+{restore}%</span>
+                </div>
+              </button>
             )
           })}
         </div>
-
-        {/* 整備メニュー */}
-        <p style={{ color: '#aaa', fontSize: '12px', marginBottom: '12px' }}>
-          整備メニューを選んでね
-        </p>
-        {MAINTENANCE_MENUS.map(menu => (
-          <div
-            key={menu.id}
-            onClick={() => {
-              setSelectedMenu(menu)
-              setShowConfirm(false)
-              setMessage('')
-            }}
-            style={{
-              backgroundColor: selectedMenu?.id === menu.id
-                ? 'rgba(74,143,63,0.3)'
-                : 'rgba(255,255,255,0.08)',
-              borderRadius: '12px',
-              padding: '12px',
-              marginBottom: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              cursor: 'pointer',
-              border: selectedMenu?.id === menu.id
-                ? '1px solid #4a8f3f'
-                : '1px solid rgba(255,255,255,0.1)',
-            }}
-          >
-            <span style={{ fontSize: '28px' }}>{menu.icon}</span>
-            <div style={{ flex: 1 }}>
-              <p style={{ color: '#fff', fontSize: '14px', fontWeight: 'bold' }}>
-                {menu.name}
-              </p>
-              <p style={{ color: '#aaa', fontSize: '11px', marginTop: '2px' }}>
-                ⭐{menu.cost.toLocaleString()} ／ 💪{menu.staminaCost} ／ ⏱{menu.time}
-              </p>
-            </div>
-            <span style={{ color: '#4dff91', fontSize: '13px', fontWeight: 'bold' }}>
-              +{menu.effect}%
-            </span>
-          </div>
-        ))}
+        <button style={styles.backBtn} onClick={() => setSelected(null)}>← 山選択へ</button>
       </div>
+    )
+  }
 
-      {/* 実施確認 */}
-      {selectedMenu && (
-        <div style={{
-          position: 'fixed',
-          bottom: '65px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '100%',
-          maxWidth: '480px',
-          backgroundColor: '#1a2f1a',
-          borderTop: '1px solid rgba(255,255,255,0.2)',
-          padding: '16px',
-        }}>
-          <p style={{ color: '#fff', fontSize: '15px', fontWeight: 'bold', marginBottom: '6px' }}>
-            {selectedMenu.icon} {selectedMenu.name}
-          </p>
-          <p style={{ color: '#aaa', fontSize: '12px', marginBottom: '12px' }}>
-            {selectedMenu.description}
-          </p>
-
-          {!showConfirm ? (
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => setSelectedMenu(null)}
-                style={{
-                  flex: 1,
-                  padding: '10px',
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                  color: '#aaa',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                }}
-              >
-                閉じる
-              </button>
-              <button
-                onClick={() => setShowConfirm(true)}
-                style={{
-                  flex: 2,
-                  padding: '10px',
-                  backgroundColor: '#4a8f3f',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                }}
-              >
-                実施する
-              </button>
-            </div>
-          ) : (
-            <div>
-              <p style={{ color: '#fff', fontSize: '14px', marginBottom: '12px', textAlign: 'center' }}>
-                実施してよろしいですか？
-              </p>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={() => setShowConfirm(false)}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                    color: '#aaa',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  いいえ
-                </button>
-                <button
-                  onClick={handleMaintain}
-                  style={{
-                    flex: 2,
-                    padding: '10px',
-                    backgroundColor: '#4a8f3f',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  はい
-                </button>
+  // 山選択
+  return (
+    <div style={styles.container}>
+      <h2 style={styles.pageTitle}>山整備</h2>
+      <p style={{ color: '#ccc', fontSize: 13, marginBottom: 12, textAlign: 'center', padding: '0 16px' }}>
+        山を整備して自然を守ろう。放置すると荒廃するよ！
+      </p>
+      <div style={styles.list}>
+        {MOUNTAINS.map((m) => {
+          const mt = mountains[m.id]
+          if (!mt?.unlocked) return null
+          const lv = mt.maintenanceLevel
+          const color = lv > 60 ? '#27ae60' : lv > 30 ? '#f39c12' : '#e74c3c'
+          return (
+            <button key={m.id} style={styles.mountCard} onClick={() => setSelected(m.id)}>
+              <span style={{ fontSize: 36 }}>{m.emoji}</span>
+              <div style={{ flex: 1 }}>
+                <div style={styles.mountName}>{m.name}</div>
+                <div style={{ height: 6, background: 'rgba(255,255,255,0.15)', borderRadius: 3, marginTop: 6 }}>
+                  <div style={{ height: '100%', width: `${lv}%`, background: color, borderRadius: 3 }} />
+                </div>
+                <div style={{ color, fontSize: 12, marginTop: 2 }}>整備 {lv}%</div>
               </div>
-            </div>
-          )}
-        </div>
-      )}
-
+              <span style={{ color: '#aaa', fontSize: 20 }}>›</span>
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
+}
+
+const styles = {
+  container: {
+    minHeight: '100vh',
+    background: 'linear-gradient(180deg, #1c3a1c 0%, #2d5016 100%)',
+    paddingBottom: 80,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
+  pageTitle: { color: '#fff', fontSize: 22, padding: '16px 0 8px' },
+  list: {
+    width: 'calc(100% - 32px)',
+    maxWidth: 360,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+  },
+  mountCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 16,
+    background: 'rgba(255,255,255,0.08)',
+    border: '1px solid rgba(255,255,255,0.2)',
+    borderRadius: 14,
+    padding: '14px 16px',
+    cursor: 'pointer',
+    textAlign: 'left',
+  },
+  mountName: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  mainCard: {
+    width: 'calc(100% - 32px)',
+    maxWidth: 360,
+    background: 'rgba(0,0,0,0.3)',
+    borderRadius: 12,
+    padding: '12px 16px',
+    marginBottom: 8,
+    boxSizing: 'border-box',
+  },
+  alertBox: {
+    background: 'rgba(231,76,60,0.2)',
+    border: '1px solid #e74c3c',
+    borderRadius: 8,
+    padding: '8px 12px',
+    color: '#e74c3c',
+    fontSize: 13,
+    marginTop: 8,
+  },
+  activityList: {
+    width: 'calc(100% - 32px)',
+    maxWidth: 360,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    marginBottom: 12,
+  },
+  actCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    background: 'rgba(255,255,255,0.07)',
+    border: '1px solid rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    padding: '12px 14px',
+    cursor: 'pointer',
+    textAlign: 'left',
+  },
+  actIcon: { fontSize: 28, flexShrink: 0 },
+  actInfo: { flex: 1, display: 'flex', flexDirection: 'column', gap: 2 },
+  actName: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
+  actMeta: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 },
+  card: {
+    margin: '32px 16px',
+    background: 'rgba(255,255,255,0.08)',
+    borderRadius: 20,
+    padding: '28px 24px',
+    width: 'calc(100% - 32px)',
+    maxWidth: 340,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 12,
+    backdropFilter: 'blur(8px)',
+    textAlign: 'center',
+  },
+  title: { color: '#fff', fontSize: 22, margin: 0 },
+  progressRing: { position: 'relative', width: 100, height: 100 },
+  ringLabel: {
+    position: 'absolute',
+    inset: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  primaryBtn: {
+    width: '100%',
+    padding: '12px 0',
+    background: '#27ae60',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 24,
+    fontSize: 16,
+    fontWeight: 'bold',
+    cursor: 'pointer',
+  },
+  backBtn: {
+    width: 'calc(100% - 32px)',
+    maxWidth: 360,
+    padding: '10px 0',
+    background: 'rgba(255,255,255,0.08)',
+    color: '#aaa',
+    border: '1px solid rgba(255,255,255,0.2)',
+    borderRadius: 24,
+    fontSize: 14,
+    cursor: 'pointer',
+    marginTop: 4,
+  },
 }

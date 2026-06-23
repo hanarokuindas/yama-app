@@ -1,108 +1,63 @@
 import { useState } from 'react'
 import { useGameStore } from '../stores/gameStore'
-import courses from '../data/courses.json'
-import characters from '../data/characters.json'
+import coursesData from '../data/courses.json'
+import charactersData from '../data/characters.json'
 
-const TABS = ['山神', '登頂記録', '所持アイテム']
+const TABS = ['山神', '登頂記録', '所持装備']
+
+const CHAR_EMOJIS = {
+  yatsugatake: '⛰️',
+  takao: '🌲',
+  hakone: '🌋',
+  senpai: '👤',
+}
 
 export default function Album() {
-  const inventory = useGameStore((state) => state.inventory)
-  const mountains = useGameStore((state) => state.mountains)
-  const [activeTab, setActiveTab] = useState('山神')
+  const inventory = useGameStore((s) => s.inventory)
+  const mountains = useGameStore((s) => s.mountains)
+  const album = useGameStore((s) => s.album)
+  const [tab, setTab] = useState('登頂記録')
 
-  const getSummitedCourses = () => {
-    const summited = Object.values(mountains).flatMap(m => m.summitedCourses)
-    return courses.filter(c => summited.includes(c.id))
-  }
+  const summitedCourseIds = new Set(
+    Object.values(mountains).flatMap((m) => m.summitedCourses)
+  )
+  const summitedCourses = coursesData.filter((c) => summitedCourseIds.has(c.id))
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(180deg, #1a1a3a 0%, #2a2a4a 100%)',
-      paddingBottom: '70px',
-    }}>
-
-      {/* ヘッダー */}
-      <div style={{
-        padding: '16px',
-        borderBottom: '1px solid rgba(255,255,255,0.1)',
-      }}>
-        <h2 style={{ color: '#fff', fontSize: '20px' }}>📷 アルバム</h2>
-      </div>
+    <div style={styles.container}>
+      <h2 style={styles.title}>アルバム</h2>
 
       {/* タブ */}
-      <div style={{
-        display: 'flex',
-        borderBottom: '1px solid rgba(255,255,255,0.1)',
-      }}>
-        {TABS.map(tab => (
+      <div style={styles.tabs}>
+        {TABS.map((t) => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            style={{
-              flex: 1,
-              padding: '12px',
-              backgroundColor: 'transparent',
-              border: 'none',
-              borderBottom: activeTab === tab ? '2px solid #4a8f3f' : '2px solid transparent',
-              color: activeTab === tab ? '#4dff91' : '#aaa',
-              fontSize: '13px',
-              cursor: 'pointer',
-            }}
+            key={t}
+            style={{ ...styles.tabBtn, borderBottom: tab === t ? '2px solid #27ae60' : '2px solid transparent', color: tab === t ? '#27ae60' : '#aaa' }}
+            onClick={() => setTab(t)}
           >
-            {tab}
+            {t}
           </button>
         ))}
       </div>
 
       {/* 山神タブ */}
-      {activeTab === '山神' && (
-        <div style={{ padding: '16px' }}>
-          {Object.values(characters).map(char => {
-            const mountain = mountains[char.id]
-            const isUnlocked = char.unlocked || mountain?.unlocked
+      {tab === '山神' && (
+        <div style={styles.list}>
+          {Object.values(charactersData).map((char) => {
+            const mt = mountains[char.id]
+            const unlocked = char.id === 'senpai' || mt?.unlocked
+            const accessed = char.id === 'senpai' || mt?.firstAccessed
             return (
-              <div
-                key={char.id}
-                style={{
-                  backgroundColor: isUnlocked
-                    ? 'rgba(255,255,255,0.08)'
-                    : 'rgba(255,255,255,0.03)',
-                  borderRadius: '12px',
-                  padding: '16px',
-                  marginBottom: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '16px',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  opacity: isUnlocked ? 1 : 0.4,
-                }}
-              >
-                {/* アイコン */}
-                <div style={{
-                  width: '56px',
-                  height: '56px',
-                  borderRadius: '50%',
-                  backgroundColor: isUnlocked ? '#4a8f3f' : '#444',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '28px',
-                  flexShrink: 0,
-                }}>
-                  {isUnlocked ? '🏔️' : '🔒'}
+              <div key={char.id} style={{ ...styles.charCard, opacity: unlocked ? 1 : 0.4 }}>
+                <div style={{ ...styles.charIcon, background: accessed ? '#27ae60' : '#555' }}>
+                  {accessed ? CHAR_EMOJIS[char.id] || '👤' : '🔒'}
                 </div>
-
                 <div style={{ flex: 1 }}>
-                  <p style={{ color: '#fff', fontSize: '16px', fontWeight: 'bold' }}>
-                    {isUnlocked ? char.name : '？？？'}
-                  </p>
-                  <p style={{ color: '#aaa', fontSize: '12px', marginTop: '4px' }}>
-                    {isUnlocked ? char.intro[0] : '未解禁'}
-                  </p>
-                  {isUnlocked && mountain && (
-                    <p style={{ color: '#4dff91', fontSize: '11px', marginTop: '4px' }}>
-                      登頂済：{mountain.summitedCourses.length}コース
+                  <p style={styles.charName}>{accessed ? char.name : '？？？'}</p>
+                  <p style={styles.charSub}>{accessed ? char.intro?.[0] : '未解禁'}</p>
+                  {mt && accessed && (
+                    <p style={{ color: '#27ae60', fontSize: 11, marginTop: 2 }}>
+                      登頂済：{mt.summitedCourses.length}コース
                     </p>
                   )}
                 </div>
@@ -113,84 +68,132 @@ export default function Album() {
       )}
 
       {/* 登頂記録タブ */}
-      {activeTab === '登頂記録' && (
-        <div style={{ padding: '16px' }}>
-          {getSummitedCourses().length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#aaa' }}>
-              <p style={{ fontSize: '40px', marginBottom: '12px' }}>🏔️</p>
+      {tab === '登頂記録' && (
+        <div style={styles.list}>
+          {album.length === 0 && (
+            <div style={styles.empty}>
+              <span style={{ fontSize: 48 }}>🏔️</span>
               <p>まだ登頂記録がないよ！</p>
-              <p style={{ fontSize: '12px', marginTop: '8px' }}>登山に挑戦してみよう！</p>
+              <p style={{ fontSize: 12, color: '#888' }}>登山に挑戦してみよう！</p>
             </div>
-          ) : (
-            getSummitedCourses().map(course => (
-              <div
-                key={course.id}
-                style={{
-                  backgroundColor: 'rgba(255,255,255,0.08)',
-                  borderRadius: '12px',
-                  padding: '14px',
-                  marginBottom: '12px',
-                  border: '1px solid rgba(74,143,63,0.3)',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <p style={{ color: '#aaa', fontSize: '11px' }}>{course.mountainName}</p>
-                  <p style={{ color: '#4dff91', fontSize: '11px' }}>✅ 登頂済</p>
-                </div>
-                <p style={{ color: '#fff', fontSize: '15px', fontWeight: 'bold', marginBottom: '6px' }}>
-                  {course.name}
-                </p>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  <span style={{ color: '#aaa', fontSize: '11px' }}>📏{course.distance}km</span>
-                  <span style={{ color: '#aaa', fontSize: '11px' }}>⏱{course.duration}</span>
-                  <span style={{ color: '#aaa', fontSize: '11px' }}>🔥{course.calories}kcal</span>
-                </div>
-              </div>
-            ))
           )}
+          {[...album].reverse().map((entry, i) => (
+            <div key={i} style={styles.albumCard}>
+              <div style={styles.albumTop}>
+                <span style={{ color: '#aaa', fontSize: 12 }}>{entry.mountainName}</span>
+                <span style={{ color: '#27ae60', fontSize: 12 }}>🏔️ 登頂済</span>
+              </div>
+              <p style={styles.courseName}>{entry.courseName}</p>
+              <p style={{ color: '#888', fontSize: 11 }}>{new Date(entry.date).toLocaleDateString('ja-JP')}</p>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* 所持アイテムタブ */}
-      {activeTab === '所持アイテム' && (
-        <div style={{ padding: '16px' }}>
+      {/* 所持装備タブ */}
+      {tab === '所持装備' && (
+        <div style={styles.list}>
           {inventory.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#aaa' }}>
-              <p style={{ fontSize: '40px', marginBottom: '12px' }}>🎒</p>
-              <p>アイテムがないよ！</p>
-              <p style={{ fontSize: '12px', marginTop: '8px' }}>登山ショップで装備を揃えよう！</p>
+            <div style={styles.empty}>
+              <span style={{ fontSize: 48 }}>🎒</span>
+              <p>まだ装備がないよ！</p>
+              <p style={{ fontSize: 12, color: '#888' }}>ショップで揃えよう！</p>
             </div>
           ) : (
-            inventory.map((item, index) => (
-              <div
-                key={index}
-                style={{
-                  backgroundColor: 'rgba(255,255,255,0.08)',
-                  borderRadius: '12px',
-                  padding: '12px',
-                  marginBottom: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                }}
-              >
-                <span style={{ fontSize: '28px' }}>{item.icon}</span>
+            inventory.map((item, i) => (
+              <div key={i} style={styles.itemRow}>
+                <span style={{ fontSize: 28 }}>{item.icon}</span>
                 <div style={{ flex: 1 }}>
-                  <p style={{ color: '#fff', fontSize: '14px', fontWeight: 'bold' }}>
-                    {item.name}
-                  </p>
-                  <p style={{ color: '#aaa', fontSize: '11px', marginTop: '2px' }}>
-                    {item.category}
-                  </p>
+                  <p style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>{item.name}</p>
+                  <p style={{ color: '#aaa', fontSize: 11 }}>{item.category}</p>
                 </div>
-                <span style={{ color: '#4dff91', fontSize: '16px' }}>✓</span>
+                <span style={{ color: '#27ae60' }}>✓</span>
               </div>
             ))
           )}
         </div>
       )}
-
     </div>
   )
+}
+
+const styles = {
+  container: {
+    minHeight: '100vh',
+    background: 'linear-gradient(180deg, #1a1a3a 0%, #2a2a4a 100%)',
+    paddingBottom: 80,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
+  title: { color: '#fff', fontSize: 22, padding: '16px 0 4px' },
+  tabs: {
+    display: 'flex',
+    width: '100%',
+    borderBottom: '1px solid rgba(255,255,255,0.1)',
+    marginBottom: 12,
+  },
+  tabBtn: {
+    flex: 1,
+    padding: '10px 4px',
+    background: 'none',
+    border: 'none',
+    fontSize: 13,
+    cursor: 'pointer',
+    transition: 'color 0.2s',
+  },
+  list: {
+    width: 'calc(100% - 32px)',
+    maxWidth: 380,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+  },
+  charCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 14,
+    background: 'rgba(255,255,255,0.07)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 14,
+    padding: '14px 16px',
+  },
+  charIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 24,
+    flexShrink: 0,
+  },
+  charName: { color: '#fff', fontSize: 16, fontWeight: 'bold', margin: 0 },
+  charSub: { color: '#aaa', fontSize: 12, margin: '2px 0 0' },
+  albumCard: {
+    background: 'rgba(255,255,255,0.07)',
+    border: '1px solid rgba(39,174,96,0.3)',
+    borderRadius: 12,
+    padding: '12px 14px',
+  },
+  albumTop: { display: 'flex', justifyContent: 'space-between', marginBottom: 4 },
+  courseName: { color: '#fff', fontSize: 15, fontWeight: 'bold', margin: 0 },
+  itemRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    background: 'rgba(255,255,255,0.07)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    padding: '10px 14px',
+  },
+  empty: {
+    textAlign: 'center',
+    padding: 40,
+    color: '#aaa',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 8,
+  },
 }

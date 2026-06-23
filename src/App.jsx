@@ -8,6 +8,7 @@ import Maintenance from './pages/Maintenance'
 import Album from './pages/Album'
 import Shop from './pages/Shop'
 import Menu from './pages/Menu'
+import AR from './pages/AR'
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
         <Route path="/album" element={<Album />} />
         <Route path="/shop" element={<Shop />} />
         <Route path="/menu" element={<Menu />} />
+        <Route path="/ar" element={<AR />} />
       </Routes>
       <BottomNav />
     </BrowserRouter>
