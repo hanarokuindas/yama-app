@@ -99,20 +99,21 @@ export default function Home() {
   const completeIntro = useGameStore((s) => s.completeIntro)
   const completeProfile = useGameStore((s) => s.completeProfile)
   const applyMountainDecay = useGameStore((s) => s.applyMountainDecay)
-  const [greeting, setGreeting] = useState('')
-  const [charName, setCharName] = useState('')
 
-  useEffect(() => {
-    applyMountainDecay()
-    // 解禁済みキャラからランダムに挨拶
+  // マウント時に1度だけ、解禁済みキャラからランダムに挨拶を決定
+  const [{ charName, greeting }] = useState(() => {
     const charIds = ['senpai', 'yatsugatake', 'takao', 'hakone'].filter((id) => {
       if (id === 'senpai') return true
       return mountains[id]?.firstAccessed
     })
     const id = charIds[Math.floor(Math.random() * charIds.length)]
-    setCharName(characters[id]?.shortName || '')
-    setGreeting(getRandomGreeting(id))
-  }, [])
+    return { charName: characters[id]?.shortName || '', greeting: getRandomGreeting(id) }
+  })
+
+  // 山の荒廃をマウント時に反映
+  useEffect(() => {
+    applyMountainDecay()
+  }, [applyMountainDecay])
 
   // ステータス計算
   const total = Math.floor((player.core + player.legs + player.arms) / 3)

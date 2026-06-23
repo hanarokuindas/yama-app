@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { useGameStore } from '../stores/gameStore'
 
 const MENUS = [
@@ -116,7 +116,6 @@ export default function Training() {
   const [phase, setPhase] = useState('list') // list / ready / doing / done / failed
   const [selected, setSelected] = useState(null)
   const [timeLeft, setTimeLeft] = useState(0)
-  const [skipped, setSkipped] = useState(false)
   const timerRef = useRef(null)
 
   const clearTimer = () => {
@@ -126,7 +125,6 @@ export default function Training() {
   const startTraining = (menu) => {
     setSelected(menu)
     setTimeLeft(menu.duration)
-    setSkipped(false)
     setPhase('ready')
   }
 
@@ -146,7 +144,6 @@ export default function Training() {
 
   const handleSkip = () => {
     clearTimer()
-    setSkipped(true)
     setPhase('failed')
   }
 

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useGameStore } from '../stores/gameStore'
-import coursesData from '../data/courses.json'
 import charactersData from '../data/characters.json'
 
 const TABS = ['山神', '登頂記録', '所持装備']
@@ -17,11 +16,6 @@ export default function Album() {
   const mountains = useGameStore((s) => s.mountains)
   const album = useGameStore((s) => s.album)
   const [tab, setTab] = useState('登頂記録')
-
-  const summitedCourseIds = new Set(
-    Object.values(mountains).flatMap((m) => m.summitedCourses)
-  )
-  const summitedCourses = coursesData.filter((c) => summitedCourseIds.has(c.id))
 
   return (
     <div style={styles.container}>

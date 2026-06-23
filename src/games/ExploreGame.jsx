@@ -33,7 +33,6 @@ export default function ExploreGame({ onClear, onGameOver }) {
     let timeLeft = 150
     let timerText
     let scoreText
-    let targetText
     let score = 0
     let film = []
     const filmCapacity = 6
@@ -62,7 +61,7 @@ export default function ExploreGame({ onClear, onGameOver }) {
 
       // 指定アイテム表示
       targetEmoji = bg.itemEmojis[Math.floor(Math.random() * bg.itemEmojis.length)]
-      targetText = this.add.text(180, 44, `探せ！ ${targetEmoji}`, {
+      this.add.text(180, 44, `探せ！ ${targetEmoji}`, {
         fontSize: '20px',
         fill: '#ffff00',
         fontStyle: 'bold',

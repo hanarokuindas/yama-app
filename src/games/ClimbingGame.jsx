@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 
 // ステージ定義
 const STAGE_TYPES = [
@@ -77,7 +77,7 @@ function generateItems(stage, count = 8) {
 // ──────────────────────────────────────────
 function StagePlay({ stage, player, onClear, onFail }) {
   const timeLimit = calcTimeLimit(stage, player)
-  const [items, setItems] = useState(() => generateItems(stage))
+  const [items] = useState(() => generateItems(stage))
   const [timeLeft, setTimeLeft] = useState(timeLimit)
   const [tapped, setTapped] = useState([])
   const [message, setMessage] = useState('')
@@ -184,7 +184,7 @@ export default function ClimbingGame({ course, player, onComplete }) {
   const currentStage = STAGE_TYPES.find((s) => s.key === currentStageKey)
 
   // ステージ間の体力チェック
-  const checkStamina = useCallback((completedIdx) => {
+  const checkStamina = (completedIdx) => {
     const progress = (completedIdx + 1) / stages.length
     const required = reqTotal * progress
     if (total < required * 0.5) return 'early_fail'
@@ -192,7 +192,7 @@ export default function ClimbingGame({ course, player, onComplete }) {
     const legsRatio = player.legs / Math.max(1, total)
     if (coreRatio < 0.2 || legsRatio < 0.2) return 'balance_fail'
     return null
-  }, [total, reqTotal, player])
+  }
 
   const handleStageClear = () => {
     const newCleared = [...cleared, currentStageKey]

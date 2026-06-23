@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useGameStore } from '../stores/gameStore'
 
 export default function Menu() {
-  const navigate = useNavigate()
   const player = useGameStore((s) => s.player)
   const setPlayerName = useGameStore((s) => s.setPlayerName)
   const setPlayerWeight = useGameStore((s) => s.setPlayerWeight)

@@ -22,16 +22,6 @@ const SOUVENIRS = [
   { id: 'hakone_yosegi', name: '箱根寄木細工', price: 800, mountainId: 'hakone', emoji: '🎁' },
 ]
 
-// ミニゲームの結果判定
-function calcResult(course, player) {
-  const total = Math.floor((player.core + player.legs + player.arms) / 3)
-  const req = course.requiredStamina * 5 // 簡易換算
-  if (total < req * 0.5) return 'early_fail'
-  if (total < req * 0.8) return 'mid_fail'
-  if (total < req && (player.core < req * 0.5 || player.legs < req * 0.5)) return 'balance_fail'
-  return 'success'
-}
-
 // ──────────────────────────────────────────
 // 装備チェック画面
 // ──────────────────────────────────────────
@@ -78,7 +68,6 @@ function EquipmentCheck({ course, onReady, onBack }) {
 // 温泉画面
 // ──────────────────────────────────────────
 function OnsenScreen({ onNext, onSkip }) {
-  const player = useGameStore((s) => s.player)
   const spendPoints = useGameStore((s) => s.spendPoints)
   const recover = useGameStore((s) => s.recover)
   const [used, setUsed] = useState(false)
@@ -122,7 +111,6 @@ function OnsenScreen({ onNext, onSkip }) {
 // お土産画面
 // ──────────────────────────────────────────
 function SouvenirScreen({ mountainId, onDone }) {
-  const player = useGameStore((s) => s.player)
   const addPoints = useGameStore((s) => s.addPoints)
   const spendPoints = useGameStore((s) => s.spendPoints)
   const [bought, setBought] = useState([])
