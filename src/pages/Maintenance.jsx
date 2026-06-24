@@ -143,7 +143,7 @@ export default function Maintenance() {
     const mInfo = MOUNTAINS.find((m) => m.id === selected)
     return (
       <div style={styles.container}>
-        <h2 style={styles.pageTitle}>{mInfo?.emoji} {mInfo?.name}</h2>
+        <h2 style={{ color: '#fff', fontSize: 20, fontWeight: 900, padding: '18px 0 8px' }}>{mInfo?.emoji} {mInfo?.name}</h2>
         <div style={styles.mainCard}>
           <MaintenanceBar level={level} />
           {level < 30 && (
@@ -189,7 +189,7 @@ export default function Maintenance() {
   // 山選択
   return (
     <div style={styles.container}>
-      <h2 style={styles.pageTitle}>山整備</h2>
+      <div style={styles.pageTitle}>MAINTENANCE</div>
       <p style={{ color: '#ccc', fontSize: 13, marginBottom: 12, textAlign: 'center', padding: '0 16px' }}>
         山を整備して自然を守ろう。放置すると荒廃するよ！
       </p>
@@ -221,13 +221,13 @@ export default function Maintenance() {
 const styles = {
   container: {
     minHeight: '100vh',
-    background: 'linear-gradient(180deg, #1c3a1c 0%, #2d5016 100%)',
+    background: 'linear-gradient(180deg, #0a0a1a 0%, #0d1a2a 50%, #0a1a12 100%)',
     paddingBottom: 80,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
   },
-  pageTitle: { color: '#fff', fontSize: 22, padding: '16px 0 8px' },
+  pageTitle: { color: '#f5c842', fontSize: 12, fontWeight: 700, letterSpacing: 3, padding: '18px 0 10px' },
   list: {
     width: 'calc(100% - 32px)',
     maxWidth: 360,

@@ -164,7 +164,7 @@ export default function Training() {
   if (phase === 'list') {
     return (
       <div style={styles.container}>
-        <h2 style={styles.title}>トレーニング</h2>
+        <div style={styles.title}>TRAINING</div>
         <div style={styles.statsRow}>
           <StatChip label="体幹" value={player.core} color="#e67e22" />
           <StatChip label="脚力" value={player.legs} color="#27ae60" />
@@ -278,8 +278,8 @@ export default function Training() {
 function StatChip({ label, value, color }) {
   return (
     <div style={{ textAlign: 'center', flex: 1 }}>
-      <div style={{ color, fontWeight: 'bold', fontSize: 18 }}>{value}</div>
-      <div style={{ color: '#aaa', fontSize: 12 }}>{label}</div>
+      <div style={{ color, fontWeight: 900, fontSize: 18 }}>{value}</div>
+      <div style={{ color: '#aab', fontSize: 12 }}>{label}</div>
     </div>
   )
 }
@@ -287,19 +287,20 @@ function StatChip({ label, value, color }) {
 const styles = {
   container: {
     minHeight: '100vh',
-    background: 'linear-gradient(180deg, #2c3e50 0%, #3a7d44 100%)',
+    background: 'linear-gradient(180deg, #0a0a1a 0%, #0d1a2a 50%, #0a1a12 100%)',
     paddingBottom: 80,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
   },
-  title: { color: '#fff', fontSize: 22, padding: '16px 0 8px' },
+  title: { color: '#f5c842', fontSize: 12, fontWeight: 700, letterSpacing: 3, padding: '18px 0 10px' },
   statsRow: {
     display: 'flex',
     width: 'calc(100% - 32px)',
     maxWidth: 360,
-    background: 'rgba(0,0,0,0.3)',
-    borderRadius: 12,
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 14,
     padding: '12px 0',
     marginBottom: 16,
   },
@@ -308,23 +309,24 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: 12,
-    background: 'rgba(255,255,255,0.1)',
-    border: '1px solid rgba(255,255,255,0.2)',
-    borderRadius: 12,
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 14,
     padding: '12px 16px',
     cursor: 'pointer',
     textAlign: 'left',
   },
   menuIcon: { fontSize: 28, flexShrink: 0 },
   menuInfo: { flex: 1, display: 'flex', flexDirection: 'column', gap: 2 },
-  menuName: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
+  menuName: { color: '#fff', fontSize: 15, fontWeight: 900 },
   menuMeta: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 },
-  statBadge: { color: '#fff', fontSize: 11, padding: '2px 6px', borderRadius: 10, fontWeight: 'bold' },
-  duration: { color: '#aaa', fontSize: 12 },
+  statBadge: { color: '#fff', fontSize: 11, padding: '2px 8px', borderRadius: 10, fontWeight: 700 },
+  duration: { color: '#aab', fontSize: 12 },
   trainingCard: {
     margin: '40px 16px',
-    background: 'rgba(255,255,255,0.1)',
-    borderRadius: 20,
+    background: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(245,200,66,0.2)',
+    borderRadius: 24,
     padding: 32,
     width: 'calc(100% - 32px)',
     maxWidth: 340,
@@ -333,50 +335,54 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     gap: 12,
-    backdropFilter: 'blur(8px)',
+    backdropFilter: 'blur(12px)',
+    boxShadow: '0 0 40px rgba(123,92,240,0.15)',
   },
-  trainTitle: { color: '#fff', fontSize: 22, margin: 0 },
-  trainDesc: { color: '#ddd', fontSize: 14, margin: 0 },
+  trainTitle: { color: '#fff', fontSize: 22, fontWeight: 900, margin: 0 },
+  trainDesc: { color: '#ccd', fontSize: 14, margin: 0 },
   tipBox: {
     background: 'rgba(0,0,0,0.3)',
     border: '1px solid',
-    borderRadius: 8,
+    borderRadius: 10,
     padding: 10,
     width: '100%',
     boxSizing: 'border-box',
     textAlign: 'left',
   },
-  tipInline: { color: '#ddd', fontSize: 13, fontStyle: 'italic' },
-  trainTime: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
+  tipInline: { color: '#ccd', fontSize: 13, fontStyle: 'italic' },
+  trainTime: { color: '#fff', fontSize: 20, fontWeight: 900 },
   startBtn: {
     width: '100%',
-    padding: '12px 0',
-    background: '#27ae60',
+    padding: '14px 0',
+    background: 'linear-gradient(135deg, #2ecc71, #1a8a47)',
     color: '#fff',
     border: 'none',
-    borderRadius: 24,
+    borderRadius: 30,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: 900,
     cursor: 'pointer',
+    boxShadow: '0 4px 16px rgba(46,204,113,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
   },
   backBtn: {
     width: '100%',
-    padding: '10px 0',
-    background: 'rgba(255,255,255,0.1)',
-    color: '#aaa',
+    padding: '11px 0',
+    background: 'rgba(255,255,255,0.08)',
+    color: '#aab',
     border: '1px solid rgba(255,255,255,0.2)',
-    borderRadius: 24,
+    borderRadius: 30,
     fontSize: 14,
+    fontWeight: 700,
     cursor: 'pointer',
   },
   giveupBtn: {
     width: '100%',
-    padding: '10px 0',
-    background: 'rgba(231,76,60,0.3)',
+    padding: '11px 0',
+    background: 'rgba(231,76,60,0.18)',
     color: '#e74c3c',
-    border: '1px solid #e74c3c',
-    borderRadius: 24,
+    border: '1px solid rgba(231,76,60,0.6)',
+    borderRadius: 30,
     fontSize: 14,
+    fontWeight: 700,
     cursor: 'pointer',
   },
   timerRing: { position: 'relative', width: 120, height: 120 },

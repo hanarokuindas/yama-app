@@ -63,7 +63,7 @@ export default function AR() {
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.title2}>AR撮影</h2>
+      <div style={styles.title2}>AR CAMERA</div>
 
       {!active && !photo && (
         <div style={styles.card}>
@@ -116,13 +116,13 @@ export default function AR() {
 const styles = {
   container: {
     minHeight: '100vh',
-    background: 'linear-gradient(180deg, #0d0d1a 0%, #1a2a3a 100%)',
+    background: 'linear-gradient(180deg, #0a0a1a 0%, #0d1a2a 50%, #0a1a12 100%)',
     paddingBottom: 80,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
   },
-  title2: { color: '#fff', fontSize: 22, padding: '16px 0 8px' },
+  title2: { color: '#f5c842', fontSize: 12, fontWeight: 700, letterSpacing: 3, padding: '18px 0 10px' },
   card: {
     margin: '32px 16px',
     background: 'rgba(255,255,255,0.07)',
