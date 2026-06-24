@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route } from 'react-router-dom'
+import { HashRouter, Routes, Route, useLocation } from 'react-router-dom'
 import BottomNav from './components/BottomNav'
 import PageTransition from './components/PageTransition'
 import Home from './pages/Home'
@@ -11,9 +11,11 @@ import Shop from './pages/Shop'
 import Menu from './pages/Menu'
 import AR from './pages/AR'
 
-function App() {
+function Inner() {
+  const location = useLocation()
+  const isHome = location.pathname === '/'
   return (
-    <HashRouter>
+    <>
       <PageTransition>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -27,7 +29,15 @@ function App() {
           <Route path="/ar" element={<AR />} />
         </Routes>
       </PageTransition>
-      <BottomNav />
+      {!isHome && <BottomNav />}
+    </>
+  )
+}
+
+function App() {
+  return (
+    <HashRouter>
+      <Inner />
     </HashRouter>
   )
 }

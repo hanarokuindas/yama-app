@@ -82,6 +82,33 @@ function ProfileScreen({ onComplete }) {
   )
 }
 
+/* メニューポップアップ */
+function MenuPopup({ onClose, navigate, needsMaintenance }) {
+  const menuItems = [
+    { label: 'ガイドブック', icon: '📖', action: null },
+    { label: 'マイプロフィール', icon: '👤', action: null },
+    { label: 'SNS', icon: '📲', action: null },
+    { label: '装備', icon: '🎒', path: '/shop' },
+    { label: '山探しえか', icon: '🗺️', action: null },
+    { label: 'サウンド', icon: '🔊', action: null },
+  ]
+  return (
+    <div style={s.popupOverlay} onClick={onClose}>
+      <div style={s.popup} onClick={(e) => e.stopPropagation()}>
+        <div style={s.popupTitle}>MENU</div>
+        {menuItems.map((item) => (
+          <button key={item.label} style={s.popupItem}
+            onClick={() => { if (item.path) { navigate(item.path); onClose() } else onClose() }}>
+            <span style={{ fontSize: 18, marginRight: 10 }}>{item.icon}</span>
+            <span style={{ color: '#fff', fontSize: 14, fontWeight: 700 }}>{item.label}</span>
+          </button>
+        ))}
+        <button style={s.popupClose} onClick={onClose}>✕ 閉じる</button>
+      </div>
+    </div>
+  )
+}
+
 export default function Home() {
   const navigate = useNavigate()
   const player = useGameStore((state) => state.player)
@@ -90,6 +117,7 @@ export default function Home() {
   const completeIntro = useGameStore((state) => state.completeIntro)
   const completeProfile = useGameStore((state) => state.completeProfile)
   const applyMountainDecay = useGameStore((state) => state.applyMountainDecay)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const [{ charName, greeting }] = useState(() => {
     const charIds = ['senpai', 'yatsugatake', 'takao', 'hakone'].filter((id) => {
@@ -105,7 +133,6 @@ export default function Home() {
   const total = Math.floor((player.core + player.legs + player.arms) / 3)
   const level = Math.floor(total / 50) + 1
 
-  // レベルアップ検知（前回レベルをstateで保持し、描画中に比較。Reactの派生stateパターン）
   const [levelUp, setLevelUp] = useState(null)
   const [prevLevel, setPrevLevel] = useState(level)
   if (level !== prevLevel) {
@@ -117,94 +144,79 @@ export default function Home() {
     (m) => m.unlocked && m.maintenanceLevel < 50
   )
 
-  const menuItems = [
-    { label: '登山', icon: '⛰️', path: '/climbing', color: '#3b82f6' },
-    { label: '山探索', icon: '🔍', path: '/explore', color: '#8b5cf6' },
-    { label: 'トレーニング', icon: '💪', path: '/training', color: '#f59e0b' },
-    { label: '山整備', icon: '🪚', path: '/maintenance', color: '#10b981', badge: needsMaintenance },
-    { label: 'ショップ', icon: '🛒', path: '/shop', color: '#ec4899' },
-    { label: 'AR撮影', icon: '📱', path: '/ar', color: '#06b6d4', locked: !flags.arUnlocked },
-  ]
-
   if (!flags.introCompleted) return <IntroScreen onComplete={completeIntro} />
   if (!flags.profileCompleted) return <ProfileScreen onComplete={completeProfile} />
 
   return (
     <div style={s.container}>
-      <div style={s.bgGlow1} />
-      <div style={s.bgGlow2} />
+      {/* 世界マップ全画面エリア */}
+      <div style={s.worldMap}>
+        {/* 背景レイヤー（将来的に背景画像に置き換え） */}
+        <div style={s.bgSky} />
+        <div style={s.bgMountainFar} />
+        <div style={s.bgMountainMid} />
+        <div style={s.bgGround} />
+        <div style={s.bgForestL} />
+        <div style={s.bgForestR} />
+        <div style={s.bgPath} />
 
-      {/* 上部ステータスバー */}
-      <div style={s.topBar}>
-        <div style={s.playerName}>
-          <span style={{ color: '#f5c842', fontSize: 10, fontWeight: 700 }}>PLAYER</span>
-          <span style={{ color: '#fff', fontSize: 15, fontWeight: 900, marginLeft: 6 }}>{player.name || 'やまびこ'}</span>
-        </div>
-        <div style={s.pointsBadge}>
-          <span style={{ fontSize: 14 }}>⭐</span>
-          <CountUp value={player.points} style={{ color: '#f5c842', fontWeight: 900, fontSize: 14 }} />
-          <span style={{ color: '#aab', fontSize: 11 }}>pt</span>
-        </div>
-      </div>
-
-      {/* タイトル */}
-      <div style={s.titleWrap}>
-        <div style={s.titleSub}>YAMA APP</div>
-        <h1 style={s.title}>山 ア プ リ</h1>
-      </div>
-
-      {/* キャラクターエリア */}
-      <div style={s.charArea}>
-        <div style={s.charFrame}>
-          <span style={{ fontSize: 36 }}>⛰️</span>
-        </div>
-        {greeting && (
-          <div style={s.speechBubble}>
-            <div style={s.charLabel}>{charName}</div>
-            <p style={s.speechText}>{greeting}</p>
-            <div style={s.bubbleTail} />
+        {/* 上部ステータス（右上） */}
+        <div style={s.statsOverlay}>
+          <div style={s.statRow}>
+            <span style={s.statIcon}>⭐</span>
+            <CountUp value={player.points} style={s.statVal} />
           </div>
-        )}
-      </div>
-
-      {/* ステータスカード */}
-      <div style={s.statsCard}>
-        <div style={s.statsHeader}>
-          <span style={s.statsTitle}>STATS</span>
-          <span style={{ color: '#f5c842', fontSize: 18, fontWeight: 900 }}>Lv.{level}</span>
+          <div style={s.statRow}>
+            <span style={s.statIcon}>💪</span>
+            <span style={s.statVal}><CountUp value={total} format={(n) => n} /></span>
+          </div>
         </div>
-        <GaugeBar label="体幹" value={player.core} color="#f59e0b" />
-        <GaugeBar label="脚力" value={player.legs} color="#10b981" />
-        <GaugeBar label="腕力" value={player.arms} color="#3b82f6" />
-        <div style={s.totalRow}>
-          <span style={{ color: '#aab', fontSize: 12 }}>総合体力</span>
-          <span style={{ color: '#fff', fontWeight: 900, fontSize: 16 }}>
-            <CountUp value={total} format={(n) => n} /><span style={{ color: '#aab', fontSize: 11, marginLeft: 2 }}>/ 500</span>
-          </span>
-        </div>
-      </div>
 
-      {/* メインメニュー */}
-      <div style={s.sectionLabel}>MENU</div>
-      <div style={s.menuGrid}>
-        {menuItems.map((item) => (
-          <button
-            key={item.label}
-            style={{ ...s.menuBtn, opacity: item.locked ? 0.45 : 1 }}
-            onClick={() => !item.locked && navigate(item.path)}
-            disabled={item.locked}
-          >
-            <div style={{ ...s.menuIconWrap, background: `${item.color}22`, border: `1px solid ${item.color}55` }}>
-              <span style={s.menuIcon}>{item.icon}</span>
+        {/* プレイヤー名（左上） */}
+        <div style={s.playerBadge}>
+          <span style={s.lvBadge}>Lv.{level}</span>
+          <span style={s.playerName}>{player.name || 'やまびこ'}</span>
+        </div>
+
+        {/* マップ上のナビゲーションホットスポット */}
+        <MapSpot top="22%" left="62%" label="登山" icon="⛰️" color="#3b82f6"
+          onClick={() => navigate('/climbing')} />
+        <MapSpot top="18%" left="30%" label="山探索" icon="🔍" color="#8b5cf6"
+          onClick={() => navigate('/explore')} />
+        <MapSpot top="55%" left="15%" label="トレーニング" icon="💪" color="#f59e0b"
+          onClick={() => navigate('/training')} />
+        <MapSpot top="48%" left="72%" label="山整備" icon="🪚" color="#10b981"
+          badge={needsMaintenance} onClick={() => navigate('/maintenance')} />
+        <MapSpot top="10%" left="75%" label="アルバム" icon="🖼️" color="#ec4899"
+          onClick={() => navigate('/shop')} />
+        <MapSpot top="30%" left="82%" label="AR撮影" icon="📱" color="#06b6d4"
+          locked={!flags.arUnlocked} onClick={() => !flags.arUnlocked || navigate('/ar')} />
+
+        {/* キャラクター + セリフ */}
+        <div style={s.charArea}>
+          {/* キャラ画像プレースホルダー（将来的にキャラ立ち絵に置き換え） */}
+          <div style={s.charFigure}>
+            <span style={{ fontSize: 52 }}>🧗</span>
+          </div>
+          {greeting && (
+            <div style={s.speechBubble}>
+              <div style={s.charLabel}>{charName}</div>
+              <p style={s.speechText}>{greeting}</p>
+              <div style={s.bubbleTailBottom} />
             </div>
-            <span style={s.menuLabel}>{item.label}</span>
-            {item.badge && <span style={s.badge}>!</span>}
-            {item.locked && <span style={s.lockTag}>🔒</span>}
-          </button>
-        ))}
+          )}
+        </div>
+
+        {/* メニューボタン（下部中央） */}
+        <button style={s.menuBtn} onClick={() => setMenuOpen(true)}>
+          <span style={{ fontSize: 18 }}>☰</span>
+          <span style={{ fontSize: 13, fontWeight: 700 }}>Menu</span>
+        </button>
       </div>
 
-      <div style={{ height: 80 }} />
+      {menuOpen && (
+        <MenuPopup onClose={() => setMenuOpen(false)} navigate={navigate} needsMaintenance={needsMaintenance} />
+      )}
 
       {levelUp && (
         <Celebration
@@ -218,131 +230,216 @@ export default function Home() {
   )
 }
 
-function GaugeBar({ label, value, color }) {
-  const max = 500
-  const pct = Math.min(100, Math.round((value / max) * 100))
+/* マップ上のスポットボタン */
+function MapSpot({ top, left, label, icon, color, badge, locked, onClick }) {
   return (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
-        <span style={{ color: '#ccd', fontWeight: 700 }}>{label}</span>
-        <span style={{ color: '#fff', fontWeight: 700 }}>
-          {value}<span style={{ color: '#667', fontSize: 10 }}>/500</span>
-        </span>
+    <button
+      style={{
+        ...s.spot,
+        top, left,
+        opacity: locked ? 0.4 : 1,
+        '--spot-color': color,
+      }}
+      onClick={onClick}
+    >
+      <div style={{ ...s.spotIcon, background: `${color}33`, border: `2px solid ${color}99`, boxShadow: `0 0 12px ${color}66` }}>
+        <span style={{ fontSize: 22 }}>{icon}</span>
       </div>
-      <div style={{ height: 10, background: 'rgba(255,255,255,0.08)', borderRadius: 99, overflow: 'hidden' }}>
-        <div style={{
-          height: '100%',
-          width: `${pct}%`,
-          background: `linear-gradient(90deg, ${color}, ${color}cc)`,
-          borderRadius: 99,
-          transition: 'width 0.6s cubic-bezier(.4,0,.2,1)',
-          boxShadow: `0 0 8px ${color}88`,
-        }} />
-      </div>
-    </div>
+      <span style={{ ...s.spotLabel, textShadow: '0 1px 4px #000, 0 0 8px #000' }}>{label}</span>
+      {badge && <span style={s.spotBadge}>!</span>}
+      {locked && <span style={{ position: 'absolute', top: -4, right: -4, fontSize: 14 }}>🔒</span>}
+    </button>
   )
 }
 
 const s = {
   container: {
-    minHeight: '100vh',
-    background: 'linear-gradient(180deg, #0a0a1a 0%, #0d1a2a 50%, #0a1a12 100%)',
-    display: 'flex', flexDirection: 'column', alignItems: 'center',
-    position: 'relative', overflow: 'hidden',
+    width: '100%',
+    height: '100vh',
+    overflow: 'hidden',
+    position: 'relative',
   },
-  bgGlow1: {
-    position: 'absolute', top: -80, right: -60, width: 260, height: 260,
-    background: 'radial-gradient(circle, rgba(123,92,240,0.18) 0%, transparent 70%)',
-    pointerEvents: 'none',
+
+  /* ---- 世界マップ ---- */
+  worldMap: {
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
   },
-  bgGlow2: {
-    position: 'absolute', top: 200, left: -80, width: 240, height: 240,
-    background: 'radial-gradient(circle, rgba(46,204,113,0.12) 0%, transparent 70%)',
-    pointerEvents: 'none',
+
+  /* 背景レイヤー（CSS山岳景色） */
+  bgSky: {
+    position: 'absolute', inset: 0,
+    background: 'linear-gradient(180deg, #0a1628 0%, #1a2d4a 40%, #2d4a2d 100%)',
   },
-  topBar: {
-    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '10px 16px', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)',
-    borderBottom: '1px solid rgba(255,255,255,0.06)', zIndex: 1,
+  bgMountainFar: {
+    position: 'absolute', bottom: '38%', left: 0, right: 0, height: '50%',
+    background: 'linear-gradient(180deg, transparent 0%, #1a3a2a 60%, #1a3a2a 100%)',
+    clipPath: 'polygon(0% 100%, 5% 55%, 12% 70%, 20% 35%, 28% 60%, 35% 20%, 45% 50%, 52% 30%, 60% 55%, 68% 15%, 75% 45%, 83% 25%, 90% 50%, 95% 40%, 100% 60%, 100% 100%)',
+    filter: 'blur(1px)',
   },
-  playerName: { display: 'flex', alignItems: 'center' },
-  pointsBadge: {
-    display: 'flex', alignItems: 'center', gap: 4,
-    background: 'rgba(245,200,66,0.12)', border: '1px solid rgba(245,200,66,0.3)',
-    borderRadius: 20, padding: '4px 10px',
+  bgMountainMid: {
+    position: 'absolute', bottom: '28%', left: 0, right: 0, height: '45%',
+    background: 'linear-gradient(180deg, #1a4a2a 0%, #2a5a3a 100%)',
+    clipPath: 'polygon(0% 100%, 8% 60%, 18% 75%, 30% 40%, 42% 65%, 50% 35%, 58% 55%, 68% 30%, 78% 55%, 88% 45%, 95% 60%, 100% 50%, 100% 100%)',
   },
-  titleWrap: { paddingTop: 16, paddingBottom: 4, textAlign: 'center', zIndex: 1 },
-  titleSub: { color: '#f5c842', fontSize: 10, fontWeight: 700, letterSpacing: 4, marginBottom: 2 },
-  title: {
-    color: '#fff', fontSize: 28, fontWeight: 900, letterSpacing: 10,
-    textShadow: '0 0 20px rgba(245,200,66,0.4), 0 2px 8px rgba(0,0,0,0.6)',
+  bgGround: {
+    position: 'absolute', bottom: 0, left: 0, right: 0, height: '32%',
+    background: 'linear-gradient(180deg, #2a5a1a 0%, #1a4010 50%, #0d2a08 100%)',
   },
-  charArea: {
-    display: 'flex', alignItems: 'flex-end', gap: 12,
-    padding: '12px 16px', width: '100%', maxWidth: 420, zIndex: 1,
+  bgForestL: {
+    position: 'absolute', bottom: '25%', left: '-5%', width: '35%', height: '30%',
+    background: 'radial-gradient(ellipse at bottom, #1a5a18 40%, transparent 75%)',
+    transform: 'scaleX(1.2)',
+    opacity: 0.85,
   },
-  charFrame: {
-    width: 80, height: 80, flexShrink: 0,
-    background: 'linear-gradient(135deg, rgba(123,92,240,0.3), rgba(46,204,113,0.2))',
-    border: '2px solid rgba(245,200,66,0.4)', borderRadius: '50%',
+  bgForestR: {
+    position: 'absolute', bottom: '22%', right: '-5%', width: '40%', height: '35%',
+    background: 'radial-gradient(ellipse at bottom, #1a5a18 40%, transparent 75%)',
+    transform: 'scaleX(1.2)',
+    opacity: 0.85,
+  },
+  bgPath: {
+    position: 'absolute', bottom: '25%', left: '30%', width: '40%', height: '20%',
+    background: 'linear-gradient(180deg, transparent, rgba(210,180,140,0.25) 60%, transparent)',
+    borderRadius: '0 0 50% 50%',
+    transform: 'rotate(-5deg)',
+  },
+
+  /* ---- ステータスオーバーレイ（右上） ---- */
+  statsOverlay: {
+    position: 'absolute', top: 12, right: 12,
+    display: 'flex', flexDirection: 'column', gap: 4,
+    background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)',
+    border: '1px solid rgba(245,200,66,0.3)',
+    borderRadius: 12, padding: '8px 12px',
+    zIndex: 10,
+  },
+  statRow: { display: 'flex', alignItems: 'center', gap: 6 },
+  statIcon: { fontSize: 14 },
+  statVal: { color: '#f5c842', fontWeight: 900, fontSize: 14 },
+
+  /* ---- プレイヤーバッジ（左上） ---- */
+  playerBadge: {
+    position: 'absolute', top: 12, left: 12,
+    display: 'flex', alignItems: 'center', gap: 6,
+    background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)',
+    border: '1px solid rgba(245,200,66,0.3)',
+    borderRadius: 20, padding: '6px 12px',
+    zIndex: 10,
+  },
+  lvBadge: {
+    background: 'linear-gradient(135deg, #f5c842, #e0a800)',
+    color: '#1a1000', fontWeight: 900, fontSize: 11,
+    borderRadius: 10, padding: '2px 7px',
+  },
+  playerName: { color: '#fff', fontWeight: 700, fontSize: 13 },
+
+  /* ---- マップスポット ---- */
+  spot: {
+    position: 'absolute',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+    background: 'none', border: 'none', cursor: 'pointer',
+    transform: 'translate(-50%, -50%)',
+    zIndex: 5,
+    padding: 0,
+    WebkitTapHighlightColor: 'transparent',
+  },
+  spotIcon: {
+    width: 52, height: 52, borderRadius: '50%',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    boxShadow: '0 0 20px rgba(245,200,66,0.2)',
+    backdropFilter: 'blur(4px)',
+    transition: 'transform 0.15s',
   },
-  speechBubble: {
-    flex: 1, background: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,255,255,0.14)',
-    borderRadius: 14, padding: '10px 14px', backdropFilter: 'blur(8px)', position: 'relative',
+  spotLabel: {
+    color: '#fff', fontSize: 11, fontWeight: 900,
+    whiteSpace: 'nowrap',
+    background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: 6,
   },
-  charLabel: { color: '#f5c842', fontSize: 11, fontWeight: 700, marginBottom: 4 },
-  speechText: { color: '#fff', fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' },
-  bubbleTail: {
-    position: 'absolute', left: -8, top: '50%', transform: 'translateY(-50%)',
-    width: 0, height: 0,
-    borderTop: '6px solid transparent', borderBottom: '6px solid transparent',
-    borderRight: '8px solid rgba(255,255,255,0.08)',
-  },
-  statsCard: {
-    width: 'calc(100% - 32px)', maxWidth: 420,
-    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 16, padding: '14px 16px', marginBottom: 16, zIndex: 1,
-  },
-  statsHeader: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12,
-  },
-  statsTitle: { color: '#f5c842', fontSize: 11, fontWeight: 700, letterSpacing: 2 },
-  totalRow: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.08)',
-  },
-  sectionLabel: {
-    color: '#f5c842', fontSize: 11, fontWeight: 700, letterSpacing: 3,
-    width: 'calc(100% - 32px)', maxWidth: 420, marginBottom: 10, zIndex: 1,
-  },
-  menuGrid: {
-    display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-    gap: 10, width: 'calc(100% - 32px)', maxWidth: 420, zIndex: 1,
-  },
-  menuBtn: {
-    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 16, padding: '14px 8px 12px',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-    cursor: 'pointer', position: 'relative', backdropFilter: 'blur(4px)',
-    transition: 'transform 0.1s, background 0.15s',
-  },
-  menuIconWrap: {
-    width: 52, height: 52, borderRadius: 14,
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-  },
-  menuIcon: { fontSize: 26 },
-  menuLabel: { color: '#dde', fontSize: 11, fontWeight: 700 },
-  badge: {
-    position: 'absolute', top: 6, right: 6,
+  spotBadge: {
+    position: 'absolute', top: -4, right: -4,
     background: '#e74c3c', color: '#fff', borderRadius: '50%',
     width: 18, height: 18, fontSize: 11, fontWeight: 900,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     boxShadow: '0 0 6px rgba(231,76,60,0.6)',
   },
-  lockTag: { position: 'absolute', top: 5, right: 5, fontSize: 13 },
+
+  /* ---- キャラクターエリア（下部中央） ---- */
+  charArea: {
+    position: 'absolute', bottom: '12%', left: '50%',
+    transform: 'translateX(-50%)',
+    display: 'flex', flexDirection: 'column', alignItems: 'center',
+    zIndex: 8,
+    width: '80%', maxWidth: 320,
+  },
+  charFigure: {
+    width: 80, height: 80,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.8))',
+    marginBottom: 4,
+  },
+  speechBubble: {
+    background: 'rgba(255,255,255,0.92)',
+    borderRadius: 14, padding: '10px 14px',
+    position: 'relative', width: '100%',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+  },
+  charLabel: { color: '#7b5cf0', fontSize: 11, fontWeight: 900, marginBottom: 3 },
+  speechText: { color: '#222', fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', margin: 0 },
+  bubbleTailBottom: {
+    position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
+    width: 0, height: 0,
+    borderLeft: '8px solid transparent', borderRight: '8px solid transparent',
+    borderBottom: '9px solid rgba(255,255,255,0.92)',
+  },
+
+  /* ---- メニューボタン（下部中央） ---- */
+  menuBtn: {
+    position: 'absolute', bottom: 20, left: '50%',
+    transform: 'translateX(-50%)',
+    display: 'flex', alignItems: 'center', gap: 6,
+    background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
+    border: '1px solid rgba(255,255,255,0.25)',
+    borderRadius: 24, padding: '10px 24px',
+    color: '#fff', cursor: 'pointer',
+    zIndex: 10,
+    boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
+  },
+
+  /* ---- メニューポップアップ ---- */
+  popupOverlay: {
+    position: 'fixed', inset: 0,
+    background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+    display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+    zIndex: 200,
+  },
+  popup: {
+    background: 'linear-gradient(180deg, #1a1a2e 0%, #0d0d1a 100%)',
+    border: '1px solid rgba(245,200,66,0.25)',
+    borderRadius: '24px 24px 0 0', padding: '20px 20px 36px',
+    width: '100%', maxWidth: 480,
+    animation: 'burst 0.3s cubic-bezier(.22,1,.36,1)',
+  },
+  popupTitle: {
+    color: '#f5c842', fontSize: 12, fontWeight: 700, letterSpacing: 3,
+    textAlign: 'center', marginBottom: 16,
+  },
+  popupItem: {
+    display: 'flex', alignItems: 'center',
+    width: '100%', background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: 12, padding: '13px 16px',
+    marginBottom: 8, cursor: 'pointer',
+  },
+  popupClose: {
+    display: 'block', width: '100%',
+    background: 'none', border: '1px solid rgba(255,255,255,0.15)',
+    borderRadius: 12, padding: '12px', marginTop: 8,
+    color: 'rgba(255,255,255,0.5)', fontSize: 13, cursor: 'pointer',
+  },
+
+  /* ---- オーバーレイ系（イントロ/プロフィール） ---- */
   overlay: {
     position: 'fixed', inset: 0,
     background: 'linear-gradient(180deg, #0a0a1a 0%, #0d1a2a 100%)',
