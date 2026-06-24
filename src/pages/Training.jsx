@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { useGameStore } from '../stores/gameStore'
+import { Confetti } from '../components/Celebration'
 
 const MENUS = [
   {
@@ -241,15 +242,16 @@ export default function Training() {
   if (phase === 'done') {
     return (
       <div style={styles.container}>
+        <Confetti count={36} />
         <div style={styles.trainingCard}>
-          <span style={{ fontSize: 56 }}>🎉</span>
+          <span style={{ fontSize: 56, display: 'inline-block', animation: 'popIn 0.5s ease' }}>🎉</span>
           <h3 style={styles.trainTitle}>完了！</h3>
           <p style={styles.trainDesc}>よくがんばった！</p>
-          <div style={styles.rewardBox}>
-            <p style={{ color: statColor[selected.stat], fontWeight: 'bold' }}>
+          <div style={{ ...styles.rewardBox, animation: 'popIn 0.5s 0.15s both' }}>
+            <p style={{ color: statColor[selected.stat], fontWeight: 900 }}>
               {selected.statLabel} +{selected.gain}
             </p>
-            <p style={{ color: '#ffd700' }}>⭐ +{selected.gain * 10}pt</p>
+            <p style={{ color: '#f5c842', fontWeight: 900 }}>⭐ +{selected.gain * 10}pt</p>
           </div>
           <button style={styles.startBtn} onClick={handleComplete}>OK</button>
         </div>

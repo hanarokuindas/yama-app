@@ -70,3 +70,57 @@ button, input {
 
 /* スクロールバー非表示 */
 ::-webkit-scrollbar { display: none; }
+
+/* ───────────── 演出アニメーション ───────────── */
+
+/* 画面遷移：フェード＋スライドアップ */
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-transition {
+  animation: pageIn 0.35s cubic-bezier(.22,1,.36,1);
+}
+
+/* 数字・バッジのポップ */
+@keyframes popIn {
+  0%   { transform: scale(0.4); opacity: 0; }
+  60%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* 報酬バースト（中央から拡大して消える） */
+@keyframes burst {
+  0%   { transform: scale(0.3); opacity: 0; }
+  25%  { transform: scale(1.1); opacity: 1; }
+  70%  { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.05); opacity: 0; }
+}
+
+/* 紙吹雪の落下 */
+@keyframes confettiFall {
+  0%   { transform: translateY(-20px) rotateZ(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotateZ(720deg); opacity: 0.9; }
+}
+
+/* 光のパルス（登頂・レベルアップの後光） */
+@keyframes glowPulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50%      { transform: scale(1.25); opacity: 0.3; }
+}
+
+/* コインが上に飛ぶ */
+@keyframes coinFly {
+  0%   { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-60px) scale(1.4); opacity: 0; }
+}
+
+/* 半透明オーバーレイのフェードイン */
+@keyframes overlayFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-transition { animation: none; }
+}

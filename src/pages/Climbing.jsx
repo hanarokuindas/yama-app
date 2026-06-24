@@ -4,6 +4,7 @@ import { useGameStore } from '../stores/gameStore'
 import coursesData from '../data/courses.json'
 import itemsData from '../data/items.json'
 import ClimbingGame from '../games/ClimbingGame'
+import { Confetti } from '../components/Celebration'
 
 const MOUNTAINS = [
   { id: 'takao', name: '高尾山', emoji: '🌲', color: '#27ae60' },
@@ -316,8 +317,9 @@ export default function Climbing() {
     }
     return (
       <div style={styles.container}>
+        {success && <Confetti count={50} />}
         <div style={styles.card}>
-          <span style={{ fontSize: 56 }}>{success ? '🎊' : '😓'}</span>
+          <span style={{ fontSize: 56, animation: success ? 'popIn 0.5s ease' : 'none', display: 'inline-block' }}>{success ? '🎊' : '😓'}</span>
           <h3 style={styles.cardTitle}>{success ? '登頂成功！' : '脱落…'}</h3>
           <p style={{ color: success ? '#2ecc71' : '#e74c3c', fontSize: 15, lineHeight: 1.6 }}>
             {messages[gameResult]}

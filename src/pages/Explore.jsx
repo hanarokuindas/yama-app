@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useGameStore } from '../stores/gameStore'
 import ExploreGame from '../games/ExploreGame'
+import { Confetti } from '../components/Celebration'
 
 export default function Explore() {
   const addPoints = useGameStore((state) => state.addPoints)
@@ -40,13 +41,16 @@ export default function Explore() {
       )}
 
       {gameState === 'clear' && (
-        <div style={styles.card}>
-          <span style={{ fontSize: 56 }}>🎉</span>
-          <h3 style={styles.cardTitle}>クリア！</h3>
-          <p style={styles.desc}>スコア: {finalScore}</p>
-          <p style={{ color: '#f5c842', fontWeight: 900, fontSize: 16 }}>⭐ +{finalScore} ポイント獲得！</p>
-          <button className="btn-primary" onClick={() => setGameState('idle')}>もう一度</button>
-        </div>
+        <>
+          <Confetti count={44} />
+          <div style={styles.card}>
+            <span style={{ fontSize: 56, display: 'inline-block', animation: 'popIn 0.5s ease' }}>🎉</span>
+            <h3 style={styles.cardTitle}>クリア！</h3>
+            <p style={styles.desc}>スコア: {finalScore}</p>
+            <p style={{ color: '#f5c842', fontWeight: 900, fontSize: 16, animation: 'popIn 0.5s 0.15s both' }}>⭐ +{finalScore} ポイント獲得！</p>
+            <button className="btn-primary" onClick={() => setGameState('idle')}>もう一度</button>
+          </div>
+        </>
       )}
 
       {gameState === 'gameover' && (

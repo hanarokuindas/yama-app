@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route } from 'react-router-dom'
 import BottomNav from './components/BottomNav'
+import PageTransition from './components/PageTransition'
 import Home from './pages/Home'
 import Explore from './pages/Explore'
 import Training from './pages/Training'
@@ -13,17 +14,19 @@ import AR from './pages/AR'
 function App() {
   return (
     <HashRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/explore" element={<Explore />} />
-        <Route path="/training" element={<Training />} />
-        <Route path="/climbing" element={<Climbing />} />
-        <Route path="/maintenance" element={<Maintenance />} />
-        <Route path="/album" element={<Album />} />
-        <Route path="/shop" element={<Shop />} />
-        <Route path="/menu" element={<Menu />} />
-        <Route path="/ar" element={<AR />} />
-      </Routes>
+      <PageTransition>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/explore" element={<Explore />} />
+          <Route path="/training" element={<Training />} />
+          <Route path="/climbing" element={<Climbing />} />
+          <Route path="/maintenance" element={<Maintenance />} />
+          <Route path="/album" element={<Album />} />
+          <Route path="/shop" element={<Shop />} />
+          <Route path="/menu" element={<Menu />} />
+          <Route path="/ar" element={<AR />} />
+        </Routes>
+      </PageTransition>
       <BottomNav />
     </HashRouter>
   )

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGameStore } from '../stores/gameStore'
 import characters from '../data/characters.json'
+import CountUp from '../components/CountUp'
+import { Celebration } from '../components/Celebration'
 
 function getTimeSlot() {
   const h = new Date().getHours()
@@ -103,6 +105,14 @@ export default function Home() {
   const total = Math.floor((player.core + player.legs + player.arms) / 3)
   const level = Math.floor(total / 50) + 1
 
+  // レベルアップ検知（前回レベルをstateで保持し、描画中に比較。Reactの派生stateパターン）
+  const [levelUp, setLevelUp] = useState(null)
+  const [prevLevel, setPrevLevel] = useState(level)
+  if (level !== prevLevel) {
+    setPrevLevel(level)
+    if (level > prevLevel) setLevelUp(level)
+  }
+
   const needsMaintenance = Object.values(mountains).some(
     (m) => m.unlocked && m.maintenanceLevel < 50
   )
@@ -132,7 +142,7 @@ export default function Home() {
         </div>
         <div style={s.pointsBadge}>
           <span style={{ fontSize: 14 }}>⭐</span>
-          <span style={{ color: '#f5c842', fontWeight: 900, fontSize: 14 }}>{player.points.toLocaleString()}</span>
+          <CountUp value={player.points} style={{ color: '#f5c842', fontWeight: 900, fontSize: 14 }} />
           <span style={{ color: '#aab', fontSize: 11 }}>pt</span>
         </div>
       </div>
@@ -169,7 +179,7 @@ export default function Home() {
         <div style={s.totalRow}>
           <span style={{ color: '#aab', fontSize: 12 }}>総合体力</span>
           <span style={{ color: '#fff', fontWeight: 900, fontSize: 16 }}>
-            {total}<span style={{ color: '#aab', fontSize: 11, marginLeft: 2 }}>/ 500</span>
+            <CountUp value={total} format={(n) => n} /><span style={{ color: '#aab', fontSize: 11, marginLeft: 2 }}>/ 500</span>
           </span>
         </div>
       </div>
@@ -195,6 +205,15 @@ export default function Home() {
       </div>
 
       <div style={{ height: 80 }} />
+
+      {levelUp && (
+        <Celebration
+          icon="🎉"
+          title={`Lv.${levelUp} に到達！`}
+          subtitle="体力がアップした！この調子で山に挑もう！"
+          onClose={() => setLevelUp(null)}
+        />
+      )}
     </div>
   )
 }
