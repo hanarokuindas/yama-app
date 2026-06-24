@@ -19,14 +19,14 @@ export default function Album() {
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.title}>アルバム</h2>
+      <div style={styles.title}>ALBUM</div>
 
       {/* タブ */}
       <div style={styles.tabs}>
         {TABS.map((t) => (
           <button
             key={t}
-            style={{ ...styles.tabBtn, borderBottom: tab === t ? '2px solid #27ae60' : '2px solid transparent', color: tab === t ? '#27ae60' : '#aaa' }}
+            style={{ ...styles.tabBtn, borderBottom: tab === t ? '2px solid #f5c842' : '2px solid transparent', color: tab === t ? '#f5c842' : '#667' }}
             onClick={() => setTab(t)}
           >
             {t}
@@ -114,13 +114,13 @@ export default function Album() {
 const styles = {
   container: {
     minHeight: '100vh',
-    background: 'linear-gradient(180deg, #1a1a3a 0%, #2a2a4a 100%)',
+    background: 'linear-gradient(180deg, #0a0a1a 0%, #0d1a2a 100%)',
     paddingBottom: 80,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
   },
-  title: { color: '#fff', fontSize: 22, padding: '16px 0 4px' },
+  title: { color: '#f5c842', fontSize: 12, fontWeight: 700, letterSpacing: 3, padding: '18px 0 10px' },
   tabs: {
     display: 'flex',
     width: '100%',

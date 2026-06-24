@@ -1,22 +1,72 @@
+:root {
+  --bg-base: #0d0d1a;
+  --bg-card: rgba(255, 255, 255, 0.06);
+  --bg-card-hover: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.12);
+  --gold: #f5c842;
+  --gold-light: #ffe98a;
+  --green: #2ecc71;
+  --green-dark: #1a8a47;
+  --accent: #7b5cf0;
+  --accent2: #a855f7;
+  --red: #e74c3c;
+  --text: #fff;
+  --text-sub: #aab;
+  --radius: 14px;
+  --nav-h: 64px;
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  font-family: 'Hiragino Kaku Gothic Pro', 'Noto Sans JP', 'Yu Gothic', sans-serif;
-  background-color: #1a2a1a;
+  font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Yu Gothic', sans-serif;
+  background: var(--bg-base);
   max-width: 480px;
   margin: 0 auto;
   min-height: 100vh;
+  color: var(--text);
+  overflow-x: hidden;
+}
+
+button, input {
+  font-family: inherit;
+}
+
+/* ソシャゲ共通ボタン */
+.btn-primary {
+  display: block;
+  width: 100%;
+  padding: 14px 0;
+  background: linear-gradient(135deg, #2ecc71, #1a8a47);
   color: #fff;
+  border: none;
+  border-radius: 30px;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 16px rgba(46,204,113,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
+  transition: transform 0.1s, box-shadow 0.1s;
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 8px rgba(46,204,113,0.3);
 }
 
-button {
-  font-family: inherit;
+/* 金縁カード */
+.card-gold {
+  background: linear-gradient(135deg, rgba(245,200,66,0.12), rgba(168,85,247,0.12));
+  border: 1px solid rgba(245,200,66,0.35);
+  border-radius: var(--radius);
+  backdrop-filter: blur(8px);
 }
 
-input {
-  font-family: inherit;
-}
+/* スクロールバー非表示 */
+::-webkit-scrollbar { display: none; }

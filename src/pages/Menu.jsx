@@ -31,7 +31,7 @@ export default function Menu() {
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.title}>メニュー</h2>
+      <div style={styles.title}>MENU</div>
 
       {/* プロフィールカード */}
       <div style={styles.profileCard}>
@@ -97,17 +97,18 @@ function Stat({ label, value, color }) {
 const styles = {
   container: {
     minHeight: '100vh',
-    background: 'linear-gradient(180deg, #1a2a3a 0%, #2a3a4a 100%)',
+    background: 'linear-gradient(180deg, #0a0a1a 0%, #0d1a2a 100%)',
     paddingBottom: 80,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
   },
-  title: { color: '#fff', fontSize: 22, padding: '16px 0 8px' },
+  title: { color: '#f5c842', fontSize: 12, fontWeight: 700, letterSpacing: 3, padding: '18px 0 10px' },
   profileCard: {
     width: 'calc(100% - 32px)',
     maxWidth: 380,
-    background: 'rgba(255,255,255,0.08)',
+    background: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(245,200,66,0.2)',
     borderRadius: 16,
     padding: '16px 20px',
     marginBottom: 16,
@@ -115,26 +116,27 @@ const styles = {
   },
   profileRow: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 },
   avatar: { fontSize: 40, flexShrink: 0 },
-  profileName: { color: '#fff', fontSize: 18, fontWeight: 'bold', margin: 0 },
-  profileSub: { color: '#aaa', fontSize: 13, margin: 0 },
+  profileName: { color: '#fff', fontSize: 18, fontWeight: 900, margin: 0 },
+  profileSub: { color: '#aab', fontSize: 13, margin: 0 },
   editBtn: {
     marginLeft: 'auto',
-    padding: '4px 12px',
-    background: 'rgba(255,255,255,0.1)',
-    color: '#aaa',
-    border: '1px solid rgba(255,255,255,0.2)',
-    borderRadius: 10,
+    padding: '5px 14px',
+    background: 'rgba(245,200,66,0.12)',
+    color: '#f5c842',
+    border: '1px solid rgba(245,200,66,0.3)',
+    borderRadius: 20,
     fontSize: 12,
+    fontWeight: 700,
     cursor: 'pointer',
   },
   statRow: { display: 'flex', marginBottom: 8 },
-  label: { display: 'block', color: '#aaa', fontSize: 12, marginBottom: 4, marginTop: 8 },
+  label: { display: 'block', color: '#aab', fontSize: 12, marginBottom: 4, marginTop: 8 },
   input: {
     width: '100%',
-    padding: '8px 10px',
-    background: 'rgba(255,255,255,0.1)',
-    border: '1px solid rgba(255,255,255,0.3)',
-    borderRadius: 8,
+    padding: '10px 12px',
+    background: 'rgba(255,255,255,0.08)',
+    border: '1px solid rgba(255,255,255,0.2)',
+    borderRadius: 10,
     color: '#fff',
     fontSize: 15,
     boxSizing: 'border-box',
@@ -142,13 +144,15 @@ const styles = {
   },
   saveBtn: {
     flex: 1,
-    padding: '10px 0',
-    background: '#27ae60',
+    padding: '12px 0',
+    background: 'linear-gradient(135deg, #2ecc71, #1a8a47)',
     color: '#fff',
     border: 'none',
-    borderRadius: 20,
+    borderRadius: 24,
     fontSize: 14,
+    fontWeight: 900,
     cursor: 'pointer',
+    boxShadow: '0 4px 12px rgba(46,204,113,0.3)',
   },
   linkList: {
     width: 'calc(100% - 32px)',
@@ -161,11 +165,11 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: 12,
-    background: 'rgba(255,255,255,0.07)',
+    background: 'rgba(255,255,255,0.05)',
     border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: '14px 16px',
     textDecoration: 'none',
   },
-  linkLabel: { color: '#fff', fontSize: 15, flex: 1 },
+  linkLabel: { color: '#fff', fontSize: 15, fontWeight: 700, flex: 1 },
 }
