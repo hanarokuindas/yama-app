@@ -7,6 +7,7 @@ import CountUp from '../components/CountUp'
 import { Celebration, Confetti } from '../components/Celebration'
 import WorldMap from '../components/WorldMap'
 import { senpaiPose } from '../assets/characters/senpai'
+import { takaoPose } from '../assets/characters/takao'
 import { sfx } from '../utils/sound'
 
 function getTimeSlot() {
@@ -238,7 +239,8 @@ export default function Home() {
       (id) => id === 'senpai' || mountains[id]?.firstAccessed
     )
     const id = ids[Math.floor(Math.random() * ids.length)]
-    const pose = senpaiPose.home[Math.floor(Math.random() * senpaiPose.home.length)]
+    const poseSet = id === 'takao' ? takaoPose.home : senpaiPose.home
+    const pose = poseSet[Math.floor(Math.random() * poseSet.length)]
     return { charName: characters[id]?.shortName || '', greeting: getGreeting(id), homePose: pose }
   })
 

@@ -6,6 +6,7 @@ import itemsData from '../data/items.json'
 import ClimbingGame from '../games/ClimbingGame'
 import { Confetti } from '../components/Celebration'
 import { sfx } from '../utils/sound'
+import { takaoPose } from '../assets/characters/takao'
 
 const MOUNTAINS = [
   { id: 'takao', name: '高尾山', emoji: '🌲', color: '#27ae60' },
@@ -114,7 +115,6 @@ function OnsenScreen({ onNext, onSkip }) {
 // ──────────────────────────────────────────
 function SouvenirScreen({ mountainId, onDone }) {
   const addPoints = useGameStore((s) => s.addPoints)
-  const recordMission = useGameStore((s) => s.recordMission)
   const spendPoints = useGameStore((s) => s.spendPoints)
   const [bought, setBought] = useState([])
 
@@ -241,7 +241,9 @@ export default function Climbing() {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          <span style={{ fontSize: 56 }}>{selectedMountain.emoji}</span>
+          {selectedMountain.id === 'takao'
+            ? <img src={takaoPose.intro[0]} alt="高尾" style={{ height: 220, animation: 'popIn 0.5s ease' }} draggable={false} />
+            : <span style={{ fontSize: 56 }}>{selectedMountain.emoji}</span>}
           <h3 style={styles.cardTitle}>{selectedMountain.name}</h3>
           <p style={{ color: '#ddd', lineHeight: 1.8, marginBottom: 20 }}>
             {`はじめまして！ ${selectedMountain.name}だよ。\nたくさん遊びに来てね！`}
