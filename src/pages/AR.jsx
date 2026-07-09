@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import GameIcon from '../components/GameIcon'
 import { useGameStore } from '../stores/gameStore'
 
 export default function AR() {
@@ -40,7 +41,7 @@ export default function AR() {
     ctx.strokeStyle = '#333'
     ctx.lineWidth = 3
     const lastEntry = album[album.length - 1]
-    const label = lastEntry ? `🏔️ ${lastEntry.mountainName} ${lastEntry.courseName}` : '🏔️ 山アプリ'
+    const label = lastEntry ? `▲ ${lastEntry.mountainName} ${lastEntry.courseName}` : '▲ 山アプリ'
     ctx.strokeText(label, 16, canvas.height - 30)
     ctx.fillText(label, 16, canvas.height - 30)
     setPhoto(canvas.toDataURL('image/jpeg', 0.9))
@@ -51,7 +52,7 @@ export default function AR() {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          <span style={{ fontSize: 56 }}>🔒</span>
+          <GameIcon name="lock" size={60} />
           <h3 style={styles.title}>AR撮影</h3>
           <p style={{ color: '#ccc', fontSize: 14, textAlign: 'center', lineHeight: 1.7 }}>
             最初の登頂成功後に解禁されます！{'\n'}山を登って解禁しよう！
@@ -67,7 +68,7 @@ export default function AR() {
 
       {!active && !photo && (
         <div style={styles.card}>
-          <span style={{ fontSize: 56 }}>📷</span>
+          <GameIcon name="camera" size={60} />
           <h3 style={styles.title}>山で写真を撮ろう！</h3>
           <p style={{ color: '#ccc', fontSize: 13, textAlign: 'center', lineHeight: 1.7 }}>
             カメラを起動して登頂スタンプ付きの写真を撮ろう。
@@ -88,12 +89,12 @@ export default function AR() {
           <div style={styles.arOverlay}>
             {album.length > 0 && (
               <div style={styles.arStamp}>
-                🏔️ {album[album.length - 1].mountainName} {album[album.length - 1].courseName}
+                ▲ {album[album.length - 1].mountainName} {album[album.length - 1].courseName}
               </div>
             )}
           </div>
           <div style={styles.camControls}>
-            <button style={styles.captureBtn} onClick={takePhoto}>📸 撮影</button>
+            <button style={styles.captureBtn} onClick={takePhoto}>● 撮影</button>
             <button style={styles.cancelBtn} onClick={stopCamera}>キャンセル</button>
           </div>
         </div>

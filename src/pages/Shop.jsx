@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import GameIcon from '../components/GameIcon'
 import { useGameStore } from '../stores/gameStore'
 import itemsData from '../data/items.json'
 
@@ -34,7 +35,7 @@ export default function Shop() {
     return (
       <div style={styles.container}>
         <div style={styles.previewCard}>
-          <span style={{ fontSize: 56 }}>{preview.icon}</span>
+          <GameIcon name={preview.icon} size={64} />
           <h3 style={styles.title}>{preview.name}</h3>
           <span style={styles.catTag}>{preview.category}</span>
           <div style={styles.adviceBox}>
@@ -45,7 +46,7 @@ export default function Shop() {
             {preview.price === 0 ? '無料' : `${preview.price.toLocaleString()}pt`}
           </p>
           {owned ? (
-            <p style={{ color: '#27ae60', fontSize: 15 }}>✅ 購入済み</p>
+            <p style={{ color: '#27ae60', fontSize: 15, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}><GameIcon name="check" size={18} /> 購入済み</p>
           ) : (
             <button style={styles.primaryBtn} onClick={() => handleBuy(preview)}>購入する</button>
           )}
@@ -59,11 +60,11 @@ export default function Shop() {
     <div style={styles.container}>
       <div style={styles.pageTitle}>SHOP</div>
       <div style={styles.pointsBar}>
-        <span style={{ color: '#fff', fontSize: 14 }}>⭐ 所持: {player.points.toLocaleString()}pt</span>
+        <span style={{ color: '#fff', fontSize: 14, display: 'flex', alignItems: 'center', gap: 5 }}><GameIcon name="star" size={16} /> 所持: {player.points.toLocaleString()}pt</span>
       </div>
 
       {bought && (
-        <div style={styles.toast}>✅ {bought} を購入しました！</div>
+        <div style={styles.toast}>{bought} を購入しました！</div>
       )}
 
       {/* カテゴリフィルター */}
@@ -85,7 +86,7 @@ export default function Shop() {
           const owned = ownedIds.has(item.id)
           return (
             <button key={item.id} style={styles.itemCard} onClick={() => setPreview(item)}>
-              <span style={{ fontSize: 32 }}>{item.icon}</span>
+              <GameIcon name={item.icon} size={34} />
               <span style={styles.itemName}>{item.name}</span>
               <span style={styles.itemPrice}>
                 {item.price === 0 ? '無料' : `${item.price.toLocaleString()}pt`}

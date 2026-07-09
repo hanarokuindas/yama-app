@@ -1,11 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
+import GameIcon from './GameIcon'
 
 const navItems = [
-  { to: '/', label: 'ホーム', icon: '🏠' },
-  { to: '/training', label: '鍛錬', icon: '💪' },
-  { to: '/climbing', label: '登山', icon: '⛰️' },
-  { to: '/explore', label: '探索', icon: '🔍' },
-  { to: '/menu', label: 'メニュー', icon: '☰' },
+  { to: '/', label: 'ホーム', icon: 'home' },
+  { to: '/training', label: '鍛錬', icon: 'muscle' },
+  { to: '/climbing', label: '登山', icon: 'mountain' },
+  { to: '/explore', label: '探索', icon: 'search' },
+  { to: '/menu', label: 'メニュー', icon: 'menu' },
 ]
 
 export default function BottomNav() {
@@ -19,7 +20,7 @@ export default function BottomNav() {
           <Link key={item.to} to={item.to} style={{ textDecoration: 'none', flex: 1 }}>
             <div style={{ ...styles.item, ...(isActive ? styles.itemActive : {}) }}>
               {isActive && <div style={styles.activeDot} />}
-              <span style={{ fontSize: 22, lineHeight: 1 }}>{item.icon}</span>
+              <GameIcon name={item.icon} size={24} style={{ color: isActive ? '#f5c842' : '#889' }} />
               <span style={{ ...styles.label, color: isActive ? '#f5c842' : '#667' }}>{item.label}</span>
             </div>
           </Link>

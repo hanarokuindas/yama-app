@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import GameIcon from '../components/GameIcon'
 import { useNavigate } from 'react-router-dom'
 import { useGameStore } from '../stores/gameStore'
 import coursesData from '../data/courses.json'
@@ -7,11 +8,12 @@ import ClimbingGame from '../games/ClimbingGame'
 import { Confetti } from '../components/Celebration'
 import { sfx } from '../utils/sound'
 import { takaoPose } from '../assets/characters/takao'
+import { senpaiPose } from '../assets/characters/senpai'
 
 const MOUNTAINS = [
-  { id: 'takao', name: '高尾山', emoji: '🌲', color: '#27ae60' },
-  { id: 'yatsugatake', name: '八ヶ岳連峰', emoji: '⛰️', color: '#7f8c8d' },
-  { id: 'hakone', name: '箱根山', emoji: '🌋', color: '#c0392b' },
+  { id: 'takao', name: '高尾山', emoji: 'forest', color: '#27ae60' },
+  { id: 'yatsugatake', name: '八ヶ岳連峰', emoji: 'mountain', color: '#7f8c8d' },
+  { id: 'hakone', name: '箱根山', emoji: 'volcano', color: '#c0392b' },
 ]
 
 // 温泉 300pt 回復
@@ -20,9 +22,9 @@ const ONSEN_RECOVER = 5
 
 // お土産一覧
 const SOUVENIRS = [
-  { id: 'takao_manju', name: '高尾まんじゅう', price: 200, mountainId: 'takao', emoji: '🍡' },
-  { id: 'yatsu_beer', name: '八ヶ岳地ビール', price: 500, mountainId: 'yatsugatake', emoji: '🍺' },
-  { id: 'hakone_yosegi', name: '箱根寄木細工', price: 800, mountainId: 'hakone', emoji: '🎁' },
+  { id: 'takao_manju', name: '高尾まんじゅう', price: 200, mountainId: 'takao', emoji: 'dango' },
+  { id: 'yatsu_beer', name: '八ヶ岳地ビール', price: 500, mountainId: 'yatsugatake', emoji: 'beer' },
+  { id: 'hakone_yosegi', name: '箱根寄木細工', price: 800, mountainId: 'hakone', emoji: 'gift' },
 ]
 
 // ──────────────────────────────────────────
@@ -44,8 +46,8 @@ function EquipmentCheck({ course, onReady, onBack }) {
           const ok = ownedIds.has(id)
           return (
             <div key={id} style={{ ...styles.equipRow, opacity: ok ? 1 : 0.6 }}>
-              <span>{item?.icon || '📦'} {item?.name || id}</span>
-              <span>{ok ? '✅' : '❌'}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><GameIcon name={item?.icon || 'box'} size={20} /> {item?.name || id}</span>
+              <GameIcon name={ok ? 'check' : 'cross'} size={20} />
             </div>
           )
         })}
@@ -88,7 +90,7 @@ function OnsenScreen({ course, onNext, onSkip }) {
 
   return (
     <div style={styles.card}>
-      <div style={{ fontSize: 56, marginBottom: 12 }}>♨️</div>
+      <div style={{ marginBottom: 12 }}><GameIcon name="onsen" size={64} /></div>
       <h3 style={styles.cardTitle}>お疲れさま！温泉へどうぞ</h3>
       {!used ? (
         <>
@@ -132,7 +134,7 @@ function SouvenirScreen({ mountainId, onDone }) {
 
   return (
     <div style={styles.card}>
-      <div style={{ fontSize: 48, marginBottom: 8 }}>🎁</div>
+      <div style={{ marginBottom: 8 }}><GameIcon name="gift" size={52} /></div>
       <h3 style={styles.cardTitle}>お土産コーナー</h3>
       <p style={{ color: '#ccc', fontSize: 13, marginBottom: 16 }}>
         買うと山神へのお供えになり、ご利益ボーナスがもらえるよ！
@@ -235,14 +237,14 @@ export default function Climbing() {
                 <span style={{ fontSize: 40 }}>{m.emoji}</span>
                 <div>
                   <div style={styles.mountainName}>{m.name}</div>
-                  {!unlocked && <div style={{ color: '#888', fontSize: 12 }}>🔒 未解禁</div>}
+                  {!unlocked && <div style={{ color: '#888', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}><GameIcon name="lock" size={14} /> 未解禁</div>}
                 </div>
                 {unlocked && <span style={{ color: m.color, fontSize: 20 }}>›</span>}
               </button>
             )
           })}
         </div>
-        <button style={styles.shopLink} onClick={() => navigate('/shop')}>🛒 登山ショップへ</button>
+        <button style={styles.shopLink} onClick={() => navigate('/shop')}>登山ショップへ ›</button>
       </div>
     )
   }
@@ -283,13 +285,13 @@ export default function Climbing() {
                 onClick={() => { setSelectedCourse(c); setPhase('equip') }}
               >
                 <div style={styles.courseHeader}>
-                  <span style={styles.courseName}>{c.name} {done ? '🏔️' : ''}</span>
+                  <span style={{ ...styles.courseName, display: 'flex', alignItems: 'center', gap: 5 }}>{c.name} {done && <GameIcon name="flagGoal" size={15} />}</span>
                   <span style={styles.diff}>{'★'.repeat(c.difficulty)}</span>
                 </div>
                 <div style={{ color: '#ccc', fontSize: 12 }}>{c.description}</div>
                 <div style={styles.courseFooter}>
                   <span style={{ color: '#aaa', fontSize: 12 }}>推奨体力: {reqTotal}</span>
-                  <span style={{ color: '#ffd700', fontSize: 12 }}>🏆 {c.reward}pt</span>
+                  <span style={{ color: '#ffd700', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}><GameIcon name="trophy" size={14} /> {c.reward}pt</span>
                 </div>
               </button>
             )
@@ -330,7 +332,7 @@ export default function Climbing() {
   if (phase === 'result') {
     const success = gameResult === 'success'
     const messages = {
-      success: `🏔️ 登頂成功！ +${selectedCourse.reward}pt`,
+      success: `登頂成功！ +${selectedCourse.reward}pt`,
       early_fail: '体力不足でここまでが限界だった…トレーニングを積もう！',
       mid_fail: 'もう一息だった！もっとトレーニングしてリベンジだ！',
       balance_fail: 'バランスが崩れて転倒！苦手なトレーニングを補強しよう！',
@@ -339,7 +341,7 @@ export default function Climbing() {
       <div style={styles.container}>
         {success && <Confetti count={50} />}
         <div style={styles.card}>
-          <span style={{ fontSize: 56, animation: success ? 'popIn 0.5s ease' : 'none', display: 'inline-block' }}>{success ? '🎊' : '😓'}</span>
+          {success ? <GameIcon name="trophy" size={64} style={{ animation: 'popIn 0.5s ease' }} /> : <img src={senpaiPose.think[2]} alt="先輩" style={{ height: 100 }} draggable={false} />}
           <h3 style={styles.cardTitle}>{success ? '登頂成功！' : '脱落…'}</h3>
           <p style={{ color: success ? '#2ecc71' : '#e74c3c', fontSize: 15, lineHeight: 1.6 }}>
             {messages[gameResult]}
@@ -351,11 +353,11 @@ export default function Climbing() {
           </p>
           {success && album.length === 1 && (
             <p style={{ color: '#f5c842', fontSize: 13, fontWeight: 700, animation: 'popIn 0.5s 0.3s both' }}>
-              📷 AR撮影が解禁されたよ！ホームから使ってみてね！
+              AR撮影が解禁されたよ！ホームから使ってみてね！
             </p>
           )}
           {success ? (
-            <button style={styles.primaryBtn} onClick={() => setPhase('onsen')}>♨️ 温泉へ</button>
+            <button style={styles.primaryBtn} onClick={() => setPhase('onsen')}>温泉へ ›</button>
           ) : (
             <button style={styles.primaryBtn} onClick={() => setPhase('mountain')}>ホームへ</button>
           )}
