@@ -296,7 +296,7 @@ export default function ClimbingGame({ course, player, onComplete }) {
           <h3 style={styles.title}>登頂成功！</h3>
           <p style={{ color: '#ffd700', fontSize: 16 }}>全{stages.length}ステージ完走！</p>
           <p style={{ color: '#2ecc71', fontSize: 20, fontWeight: 'bold' }}>+{course.reward}pt</p>
-          <button style={styles.primaryBtn} onClick={() => onComplete('success')}>結果へ</button>
+          <button style={styles.primaryBtn} onClick={() => onComplete('success', cleared.length)}>結果へ</button>
         </div>
       </div>
     )
@@ -317,7 +317,7 @@ export default function ClimbingGame({ course, player, onComplete }) {
           <p style={{ color: '#e74c3c', fontSize: 14, lineHeight: 1.6 }}>
             {msgs[failReason] || 'またチャレンジしてね！'}
           </p>
-          <button style={styles.primaryBtn} onClick={() => onComplete(failReason)}>戻る</button>
+          <button style={styles.primaryBtn} onClick={() => onComplete(failReason, cleared.length)}>戻る</button>
         </div>
       </div>
     )

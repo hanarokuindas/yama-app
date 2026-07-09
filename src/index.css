@@ -121,6 +121,36 @@ button, input {
   to   { opacity: 1; }
 }
 
+/* マップスポット点滅 */
+@keyframes spotPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.6), 0 0 12px rgba(255,255,255,0.3); }
+  50%       { box-shadow: 0 0 0 8px rgba(255,255,255,0), 0 0 20px rgba(255,255,255,0.5); }
+}
+
+/* 雲の流れ */
+@keyframes cloudDrift {
+  from { transform: translateX(-10%); }
+  to   { transform: translateX(10%); }
+}
+
+/* キャラ浮遊 */
+@keyframes charFloat {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+
+/* シャイン */
+@keyframes shine {
+  0%   { left: -60%; }
+  100% { left: 160%; }
+}
+
+/* スライドアップ（メニューポップアップ） */
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-transition { animation: none; }
 }

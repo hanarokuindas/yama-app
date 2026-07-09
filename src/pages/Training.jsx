@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react'
 import { useGameStore } from '../stores/gameStore'
 import { Confetti } from '../components/Celebration'
+import { sfx } from '../utils/sound'
+import { senpaiPose } from '../assets/characters/senpai'
 
 const MENUS = [
   {
@@ -113,6 +115,7 @@ export default function Training() {
   const addLegs = useGameStore((s) => s.addLegs)
   const addArms = useGameStore((s) => s.addArms)
   const addPoints = useGameStore((s) => s.addPoints)
+  const recordMission = useGameStore((s) => s.recordMission)
 
   const [phase, setPhase] = useState('list') // list / ready / doing / done / failed
   const [selected, setSelected] = useState(null)
@@ -135,6 +138,7 @@ export default function Training() {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timerRef.current)
+          sfx.clear()
           setPhase('done')
           return 0
         }
@@ -154,6 +158,8 @@ export default function Training() {
     else if (selected.stat === 'legs') addLegs(selected.gain)
     else if (selected.stat === 'arms') addArms(selected.gain)
     addPoints(selected.gain * 10)
+    recordMission('train')
+    sfx.coin()
     setPhase('list')
     setSelected(null)
   }
@@ -173,7 +179,7 @@ export default function Training() {
         </div>
         <div style={styles.menuList}>
           {MENUS.map((menu) => (
-            <button key={menu.id} style={styles.menuCard} onClick={() => startTraining(menu)}>
+            <button key={menu.id} style={styles.menuCard} onClick={() => { sfx.tap(); startTraining(menu) }}>
               <span style={styles.menuIcon}>{menu.icon}</span>
               <div style={styles.menuInfo}>
                 <span style={styles.menuName}>{menu.name}</span>
@@ -199,12 +205,15 @@ export default function Training() {
           <span style={{ fontSize: 56 }}>{selected.icon}</span>
           <h3 style={styles.trainTitle}>{selected.name}</h3>
           <p style={styles.trainDesc}>{selected.description}</p>
-          <div style={{ ...styles.tipBox, borderColor: statColor[selected.stat] }}>
-            <span style={{ color: statColor[selected.stat], fontWeight: 'bold', fontSize: 12 }}>先輩より</span>
-            <p style={{ color: '#fff', fontSize: 14, margin: '4px 0 0' }}>{selected.tips}</p>
+          <div style={{ ...styles.tipBox, borderColor: statColor[selected.stat], display: 'flex', gap: 10, alignItems: 'center' }}>
+            <img src={senpaiPose.training[0]} alt="先輩" style={{ height: 64, flexShrink: 0 }} draggable={false} />
+            <div>
+              <span style={{ color: statColor[selected.stat], fontWeight: 'bold', fontSize: 12 }}>先輩より</span>
+              <p style={{ color: '#fff', fontSize: 14, margin: '4px 0 0' }}>{selected.tips}</p>
+            </div>
           </div>
           <p style={styles.trainTime}>⏱ {formatTime(selected.duration)}</p>
-          <button style={styles.startBtn} onClick={beginCountdown}>スタート！</button>
+          <button style={styles.startBtn} onClick={() => { sfx.go(); beginCountdown() }}>スタート！</button>
           <button style={styles.backBtn} onClick={() => setPhase('list')}>戻る</button>
         </div>
       </div>
