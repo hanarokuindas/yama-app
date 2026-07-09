@@ -70,14 +70,16 @@ function EquipmentCheck({ course, onReady, onBack }) {
 // ──────────────────────────────────────────
 // 温泉画面
 // ──────────────────────────────────────────
-function OnsenScreen({ onNext, onSkip }) {
+function OnsenScreen({ course, onNext, onSkip }) {
   const spendPoints = useGameStore((s) => s.spendPoints)
   const recover = useGameStore((s) => s.recover)
   const [used, setUsed] = useState(false)
+  // 回復量はコースの必要総合体力 × 0.05（企画書p21）
+  const recoverAmount = course ? Math.max(ONSEN_RECOVER, Math.ceil(course.requiredStamina * 5 * 0.05)) : ONSEN_RECOVER
 
   const handleOnsen = () => {
     if (spendPoints(ONSEN_COST)) {
-      recover(ONSEN_RECOVER)
+      recover(recoverAmount)
       setUsed(true)
     } else {
       alert('ポイントが足りません')
@@ -101,7 +103,7 @@ function OnsenScreen({ onNext, onSkip }) {
       ) : (
         <>
           <p style={{ color: '#27ae60', fontSize: 16, marginBottom: 16 }}>
-            体力が回復した！（各ステータス +{ONSEN_RECOVER}）
+            体力が回復した！（各ステータス +{recoverAmount}）
           </p>
           <button style={styles.primaryBtn} onClick={onNext}>次へ</button>
         </>
@@ -170,6 +172,9 @@ export default function Climbing() {
   const unlockAR = useGameStore((s) => s.unlockAR)
   const addPoints = useGameStore((s) => s.addPoints)
   const recordMission = useGameStore((s) => s.recordMission)
+  const applyFatigue = useGameStore((s) => s.applyFatigue)
+  const album = useGameStore((s) => s.album)
+  const spendPointsPenalty = useGameStore((s) => s.spendPoints)
 
   const [phase, setPhase] = useState('mountain') // mountain / course / intro / equip / game / result / onsen / souvenir
   const [selectedMountain, setSelectedMountain] = useState(null)
@@ -188,17 +193,23 @@ export default function Climbing() {
     }
   }
 
-  const handleGameComplete = (result) => {
+  const handleGameComplete = (result, clearedStages = 0) => {
     setGameResult(result)
     recordMission('climb')
+    const reqTotal = selectedCourse.requiredStamina * 5
     if (result === 'success') {
       sfx.fanfare()
       completeCourse(selectedMountain.id, selectedCourse.id)
       addPoints(selectedCourse.reward)
       addAlbumEntry({ mountainId: selectedMountain.id, courseId: selectedCourse.id, courseName: selectedCourse.name, mountainName: selectedMountain.name })
       if (!flags.arUnlocked) unlockAR()
+      // 登頂による疲労: 必要総合体力 × 0.1（企画書p21）
+      applyFatigue(Math.ceil(reqTotal * 0.1))
     } else {
       sfx.miss()
+      // 脱落による疲労: 必要総合体力 × 0.02 × 進んだステージ数 + ポイントペナルティ（企画書p21,54）
+      applyFatigue(Math.ceil(reqTotal * 0.02 * Math.max(1, clearedStages)))
+      spendPointsPenalty(Math.min(Math.floor(selectedCourse.reward * 0.1), 500))
     }
     setPhase('result')
   }
@@ -333,6 +344,16 @@ export default function Climbing() {
           <p style={{ color: success ? '#2ecc71' : '#e74c3c', fontSize: 15, lineHeight: 1.6 }}>
             {messages[gameResult]}
           </p>
+          <p style={{ color: '#aab', fontSize: 12 }}>
+            {success
+              ? `疲労で総合体力が ${Math.ceil(selectedCourse.requiredStamina * 5 * 0.1)} 減少。温泉で回復しよう！`
+              : `疲労で体力が減少し、ポイントペナルティも発生…。`}
+          </p>
+          {success && album.length === 1 && (
+            <p style={{ color: '#f5c842', fontSize: 13, fontWeight: 700, animation: 'popIn 0.5s 0.3s both' }}>
+              📷 AR撮影が解禁されたよ！ホームから使ってみてね！
+            </p>
+          )}
           {success ? (
             <button style={styles.primaryBtn} onClick={() => setPhase('onsen')}>♨️ 温泉へ</button>
           ) : (
@@ -348,6 +369,7 @@ export default function Climbing() {
     return (
       <div style={styles.container}>
         <OnsenScreen
+          course={selectedCourse}
           onNext={() => setPhase('souvenir')}
           onSkip={() => setPhase('souvenir')}
         />

@@ -229,6 +229,7 @@ export default function Home() {
   const completeProfile = useGameStore((st) => st.completeProfile)
   const applyMountainDecay = useGameStore((st) => st.applyMountainDecay)
   const checkDailyLogin = useGameStore((st) => st.checkDailyLogin)
+  const unlockClimbing = useGameStore((st) => st.unlockClimbing)
   const daily = useGameStore((st) => st.daily)
   const [menuOpen, setMenuOpen] = useState(false)
   const [missionOpen, setMissionOpen] = useState(false)
@@ -263,6 +264,14 @@ export default function Home() {
   if (level !== prevLevel) {
     setPrevLevel(level)
     if (level > prevLevel) setLevelUp(level)
+  }
+
+  // 登山解禁: 総合体力20以上で1回限り解禁演出（企画書p25）
+  const CLIMB_UNLOCK_REQ = 20
+  const [climbUnlockShow, setClimbUnlockShow] = useState(false)
+  if (!flags.climbingUnlocked && total >= CLIMB_UNLOCK_REQ) {
+    unlockClimbing()
+    setClimbUnlockShow(true)
   }
 
   const needsMaintenance = Object.values(mountains).some(
@@ -311,7 +320,8 @@ export default function Home() {
       <MapSpot top="20%" left="28%" label="山探索" icon="🔍" color="#7c3aed"
         onClick={() => { sfx.confirm(); navigate('/explore') }} />
       <MapSpot top="14%" left="58%" label="登山" icon="⛰️" color="#1d4ed8"
-        onClick={() => { sfx.confirm(); navigate('/climbing') }} />
+        locked={!flags.climbingUnlocked}
+        onClick={() => { if (flags.climbingUnlocked) { sfx.confirm(); navigate('/climbing') } else sfx.miss() }} />
       <MapSpot top="32%" left="72%" label="アルバム" icon="🖼️" color="#db2777"
         onClick={() => { sfx.confirm(); navigate('/album') }} />
       <MapSpot top="50%" left="15%" label="トレーニング" icon="💪" color="#d97706"
@@ -347,6 +357,15 @@ export default function Home() {
       {loginBonus && (
         <LoginBonusModal streak={loginBonus.streak} bonus={loginBonus.bonus}
           onClose={() => setLoginBonus(null)} />
+      )}
+
+      {climbUnlockShow && (
+        <Celebration
+          icon="⛰️"
+          title="登山が解禁された！"
+          subtitle="装備を整えて、最初の山に挑戦しよう！"
+          onClose={() => setClimbUnlockShow(false)}
+        />
       )}
 
       {levelUp && (

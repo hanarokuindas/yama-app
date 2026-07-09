@@ -153,6 +153,16 @@ export const useGameStore = create(
         player: { ...state.player, arms: state.player.arms + amount }
       })),
 
+      // 疲労（登山による総合体力の減少。企画書p21: 登頂=必要値×0.1 / 脱落=×0.02×ステージ数）
+      applyFatigue: (amount) => set((state) => ({
+        player: {
+          ...state.player,
+          core: Math.max(0, state.player.core - amount),
+          legs: Math.max(0, state.player.legs - amount),
+          arms: Math.max(0, state.player.arms - amount),
+        }
+      })),
+
       // 温泉回復（総合体力の一定割合を各ステータスに加算）
       recover: (amount) => set((state) => ({
         player: {

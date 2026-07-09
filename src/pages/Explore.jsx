@@ -6,15 +6,12 @@ import { sfx } from '../utils/sound'
 
 export default function Explore() {
   const addPoints = useGameStore((state) => state.addPoints)
-  const addLegs = useGameStore((state) => state.addLegs)
   const recordMission = useGameStore((state) => state.recordMission)
   const [gameState, setGameState] = useState('idle') // idle / playing / clear / gameover
   const [finalScore, setFinalScore] = useState(0)
 
   const handleClear = (score) => {
     addPoints(score)
-    // 山探索は脚力UP
-    addLegs(Math.max(1, Math.floor(score / 200)))
     recordMission('explore')
     sfx.fanfare()
     setFinalScore(score)
@@ -36,7 +33,7 @@ export default function Explore() {
         <div style={styles.card}>
           <span style={{ fontSize: 56 }}>🔍</span>
           <h3 style={styles.cardTitle}>山探索</h3>
-          <p style={styles.desc}>アイテムを見つけてタップしよう！<br />脚力アップのチャンス！</p>
+          <p style={styles.desc}>アイテムを見つけてタップしよう！<br />ポイントを集めて登山に備えよう！</p>
           <button className="btn-primary" onClick={() => { sfx.go(); setGameState('playing') }}>はじめる</button>
         </div>
       )}
