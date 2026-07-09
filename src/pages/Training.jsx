@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import GameIcon from '../components/GameIcon'
 import { useGameStore } from '../stores/gameStore'
 import { Confetti } from '../components/Celebration'
 import { sfx } from '../utils/sound'
@@ -8,7 +9,7 @@ const MENUS = [
   {
     id: 'plank',
     name: 'プランク',
-    icon: '🧘',
+    icon: 'yoga',
     stat: 'core',
     statLabel: '体幹',
     color: '#e67e22',
@@ -20,7 +21,7 @@ const MENUS = [
   {
     id: 'situp',
     name: '腹筋',
-    icon: '🔥',
+    icon: 'fire',
     stat: 'core',
     statLabel: '体幹',
     color: '#e67e22',
@@ -32,7 +33,7 @@ const MENUS = [
   {
     id: 'squat',
     name: 'スクワット',
-    icon: '🏋️',
+    icon: 'lift',
     stat: 'legs',
     statLabel: '脚力',
     color: '#27ae60',
@@ -44,7 +45,7 @@ const MENUS = [
   {
     id: 'walk',
     name: 'ウォーキング',
-    icon: '🚶',
+    icon: 'walk',
     stat: 'legs',
     statLabel: '脚力',
     color: '#27ae60',
@@ -56,7 +57,7 @@ const MENUS = [
   {
     id: 'lunge',
     name: 'ランジ',
-    icon: '🦵',
+    icon: 'leg',
     stat: 'legs',
     statLabel: '脚力',
     color: '#27ae60',
@@ -68,7 +69,7 @@ const MENUS = [
   {
     id: 'pushup',
     name: '腕立て',
-    icon: '💪',
+    icon: 'muscle',
     stat: 'arms',
     statLabel: '腕力',
     color: '#2980b9',
@@ -80,7 +81,7 @@ const MENUS = [
   {
     id: 'stretch_neck',
     name: '首ストレッチ',
-    icon: '😤',
+    icon: 'breath',
     stat: 'core',
     statLabel: '体幹',
     color: '#e67e22',
@@ -92,7 +93,7 @@ const MENUS = [
   {
     id: 'stretch_leg',
     name: '腿裏ストレッチ',
-    icon: '🧘',
+    icon: 'yoga',
     stat: 'legs',
     statLabel: '脚力',
     color: '#27ae60',
@@ -180,7 +181,7 @@ export default function Training() {
         <div style={styles.menuList}>
           {MENUS.map((menu) => (
             <button key={menu.id} style={styles.menuCard} onClick={() => { sfx.tap(); startTraining(menu) }}>
-              <span style={styles.menuIcon}>{menu.icon}</span>
+              <GameIcon name={menu.icon} size={32} />
               <div style={styles.menuInfo}>
                 <span style={styles.menuName}>{menu.name}</span>
                 <span style={{ fontSize: 12, color: '#ccc' }}>{menu.description}</span>
@@ -202,7 +203,7 @@ export default function Training() {
     return (
       <div style={styles.container}>
         <div style={styles.trainingCard}>
-          <span style={{ fontSize: 56 }}>{selected.icon}</span>
+          <GameIcon name={selected.icon} size={60} />
           <h3 style={styles.trainTitle}>{selected.name}</h3>
           <p style={styles.trainDesc}>{selected.description}</p>
           <div style={{ ...styles.tipBox, borderColor: statColor[selected.stat], display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -224,7 +225,7 @@ export default function Training() {
     return (
       <div style={styles.container}>
         <div style={styles.trainingCard}>
-          <span style={{ fontSize: 56 }}>{selected.icon}</span>
+          <GameIcon name={selected.icon} size={60} />
           <h3 style={styles.trainTitle}>{selected.name}</h3>
           {/* タイマー円グラフ */}
           <div style={styles.timerRing}>
@@ -253,14 +254,14 @@ export default function Training() {
       <div style={styles.container}>
         <Confetti count={36} />
         <div style={styles.trainingCard}>
-          <span style={{ fontSize: 56, display: 'inline-block', animation: 'popIn 0.5s ease' }}>🎉</span>
+          <img src={senpaiPose.praise[0]} alt="先輩" style={{ height: 110, animation: 'popIn 0.5s ease' }} draggable={false} />
           <h3 style={styles.trainTitle}>完了！</h3>
           <p style={styles.trainDesc}>よくがんばった！</p>
           <div style={{ ...styles.rewardBox, animation: 'popIn 0.5s 0.15s both' }}>
             <p style={{ color: statColor[selected.stat], fontWeight: 900 }}>
               {selected.statLabel} +{selected.gain}
             </p>
-            <p style={{ color: '#f5c842', fontWeight: 900 }}>⭐ +{selected.gain * 10}pt</p>
+            <p style={{ color: '#f5c842', fontWeight: 900, display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'center' }}><GameIcon name="star" size={18} /> +{selected.gain * 10}pt</p>
           </div>
           <button style={styles.startBtn} onClick={handleComplete}>OK</button>
         </div>
@@ -272,7 +273,7 @@ export default function Training() {
     return (
       <div style={styles.container}>
         <div style={styles.trainingCard}>
-          <span style={{ fontSize: 56 }}>😅</span>
+          <img src={senpaiPose.think[2]} alt="先輩" style={{ height: 110 }} draggable={false} />
           <h3 style={styles.trainTitle}>途中でやめちゃった…</h3>
           <p style={styles.trainDesc}>次は最後まで頑張ってみよう！</p>
           <button style={styles.backBtn} onClick={() => { setPhase('list'); setSelected(null) }}>

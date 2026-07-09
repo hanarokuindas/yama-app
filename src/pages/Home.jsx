@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useGameStore } from '../stores/gameStore'
 import characters from '../data/characters.json'
 import { DAILY_MISSIONS } from '../data/missions'
+import GameIcon from '../components/GameIcon'
 import CountUp from '../components/CountUp'
 import { Celebration, Confetti } from '../components/Celebration'
 import WorldMap from '../components/WorldMap'
@@ -30,15 +31,15 @@ function getGreeting(charId) {
 function IntroScreen({ onComplete }) {
   const [step, setStep] = useState(0)
   const lines = [
-    { icon: '🌄', text: 'ようこそ、山の世界へ！' },
-    { icon: '⛰️', text: '山を登り、鍛え、整備して\n大自然と向き合おう。' },
-    { icon: '✨', text: 'まずは自己紹介してね！' },
+    { icon: 'sunrise', text: 'ようこそ、山の世界へ！' },
+    { icon: 'mountain', text: '山を登り、鍛え、整備して\n大自然と向き合おう。' },
+    { icon: 'sparkle', text: 'まずは自己紹介してね！' },
   ]
   const cur = lines[step]
   return (
     <div style={s.fullOverlay}>
       <div style={s.introCard}>
-        <div style={{ fontSize: 64, marginBottom: 20, animation: 'popIn 0.4s ease' }}>{cur.icon}</div>
+        <div style={{ marginBottom: 20, animation: 'popIn 0.4s ease' }}><GameIcon name={cur.icon} size={72} /></div>
         <p style={s.introText}>{cur.text}</p>
         <button className="btn-primary" style={{ marginTop: 32, maxWidth: 240 }}
           onClick={() => step < lines.length - 1 ? setStep(step + 1) : onComplete()}>
@@ -88,12 +89,12 @@ function ProfileScreen({ onComplete }) {
 /* ─────────────────────── メニューポップアップ ─────────────────────── */
 function MenuPopup({ onClose, navigate }) {
   const items = [
-    { label: 'ガイドブック', icon: '📖' },
-    { label: 'マイプロフィール', icon: '👤' },
-    { label: 'SNS', icon: '📲' },
-    { label: '装備・ショップ', icon: '🎒', path: '/shop' },
-    { label: 'サウンド', icon: '🔊' },
-    { label: '利用規約', icon: '📄' },
+    { label: 'ガイドブック', icon: 'book' },
+    { label: 'マイプロフィール', icon: 'user' },
+    { label: 'SNS', icon: 'phone' },
+    { label: '装備・ショップ', icon: 'backpack', path: '/shop' },
+    { label: 'サウンド', icon: 'sound' },
+    { label: '利用規約', icon: 'doc' },
   ]
   return (
     <div style={s.popupOverlay} onClick={onClose}>
@@ -104,7 +105,7 @@ function MenuPopup({ onClose, navigate }) {
           {items.map((item) => (
             <button key={item.label} style={s.popupItem}
               onClick={() => { if (item.path) { navigate(item.path) } onClose() }}>
-              <span style={{ fontSize: 24 }}>{item.icon}</span>
+              <GameIcon name={item.icon} size={28} />
               <span style={s.popupItemLabel}>{item.label}</span>
             </button>
           ))}
@@ -122,7 +123,7 @@ function LoginBonusModal({ streak, bonus, onClose }) {
       <Confetti count={30} />
       <div style={{ ...s.loginCard }} onClick={(e) => e.stopPropagation()}>
         <div style={s.loginRibbon}>デイリーログインボーナス</div>
-        <div style={{ fontSize: 56, margin: '14px 0 6px', animation: 'popIn 0.5s ease' }}>🎁</div>
+        <div style={{ margin: '14px 0 6px', animation: 'popIn 0.5s ease' }}><GameIcon name="gift" size={64} /></div>
         <div style={s.loginStreakRow}>
           {[1, 2, 3, 4, 5, 6, 7].map((d) => (
             <div key={d} style={{
@@ -134,7 +135,7 @@ function LoginBonusModal({ streak, bonus, onClose }) {
         </div>
         <p style={{ color: '#aab', fontSize: 12, margin: '10px 0 4px' }}>{streak}日目のログイン！</p>
         <p style={{ color: '#f5c842', fontSize: 26, fontWeight: 900, animation: 'popIn 0.5s 0.2s both' }}>
-          ⭐ +{bonus.toLocaleString()} pt
+          ★ +{bonus.toLocaleString()} pt
         </p>
         <button className="btn-primary" style={{ marginTop: 18 }}
           onClick={() => { sfx.coin(); onClose() }}>うけとる！</button>
@@ -161,13 +162,13 @@ function MissionPanel({ onClose }) {
           const claimed = daily.missionClaimed.includes(m.id)
           return (
             <div key={m.id} style={s.missionRow}>
-              <span style={{ fontSize: 26 }}>{m.icon}</span>
+              <GameIcon name={m.icon} size={30} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={s.missionLabel}>{m.label}</div>
                 <div style={s.missionBarBg}>
                   <div style={{ ...s.missionBarFill, width: `${(cur / m.goal) * 100}%` }} />
                 </div>
-                <div style={s.missionProgressText}>{cur}/{m.goal} 報酬 ⭐{m.reward}</div>
+                <div style={s.missionProgressText}>{cur}/{m.goal} 報酬 ★{m.reward}</div>
               </div>
               <button
                 style={{
@@ -207,9 +208,7 @@ function MapSpot({ top, left, label, icon, color, badge, locked, onClick, size =
         animation: locked ? 'none' : 'spotPulse 2.4s ease-in-out infinite',
         opacity: locked ? 0.45 : 1,
       }}>
-        <span style={{ fontSize: size === 'sm' ? 18 : 22, filter: locked ? 'grayscale(1)' : 'none' }}>
-          {locked ? '🔒' : icon}
-        </span>
+        <GameIcon name={locked ? 'lock' : icon} size={size === 'sm' ? 20 : 26} style={{ filter: locked ? 'grayscale(0.6)' : 'none' }} />
       </div>
       <div style={s.spotTag}>
         <span style={s.spotLabel}>{label}</span>
@@ -296,18 +295,18 @@ export default function Home() {
       {/* ══════════ 右上：ステータス ══════════ */}
       <div style={s.statsPanel}>
         <div style={s.statItem}>
-          <span style={s.statIcon}>❤️</span>
+          <GameIcon name="heart" size={16} />
           <CountUp value={player.points} style={s.statNum} />
         </div>
         <div style={s.statItem}>
-          <span style={s.statIcon}>💪</span>
+          <GameIcon name="muscle" size={16} />
           <span style={s.statNum}>{total}</span>
         </div>
       </div>
 
       {/* ══════════ ミッションボタン（左） ══════════ */}
       <button style={s.missionFab} onClick={() => { sfx.tap(); setMissionOpen(true) }}>
-        <span style={{ fontSize: 20 }}>📋</span>
+        <GameIcon name="clipboard" size={22} />
         <span style={{ fontSize: 9, fontWeight: 900, color: '#fff' }}>ミッション</span>
         {DAILY_MISSIONS.some((m) => {
           const today = new Date().toISOString().slice(0, 10)
@@ -317,18 +316,18 @@ export default function Home() {
       </button>
 
       {/* ══════════ マップホットスポット ══════════ */}
-      <MapSpot top="20%" left="28%" label="山探索" icon="🔍" color="#7c3aed"
+      <MapSpot top="20%" left="28%" label="山探索" icon="search" color="#7c3aed"
         onClick={() => { sfx.confirm(); navigate('/explore') }} />
-      <MapSpot top="14%" left="58%" label="登山" icon="⛰️" color="#1d4ed8"
+      <MapSpot top="14%" left="58%" label="登山" icon="mountain" color="#1d4ed8"
         locked={!flags.climbingUnlocked}
         onClick={() => { if (flags.climbingUnlocked) { sfx.confirm(); navigate('/climbing') } else sfx.miss() }} />
-      <MapSpot top="32%" left="72%" label="アルバム" icon="🖼️" color="#db2777"
+      <MapSpot top="32%" left="72%" label="アルバム" icon="picture" color="#db2777"
         onClick={() => { sfx.confirm(); navigate('/album') }} />
-      <MapSpot top="50%" left="15%" label="トレーニング" icon="💪" color="#d97706"
+      <MapSpot top="50%" left="15%" label="トレーニング" icon="muscle" color="#d97706"
         onClick={() => { sfx.confirm(); navigate('/training') }} />
-      <MapSpot top="56%" left="55%" label="山整備" icon="🪚" color="#059669"
+      <MapSpot top="56%" left="55%" label="山整備" icon="saw" color="#059669"
         badge={needsMaintenance} onClick={() => { sfx.confirm(); navigate('/maintenance') }} />
-      <MapSpot top="60%" left="80%" label="AR撮影" icon="📷" color="#0891b2"
+      <MapSpot top="60%" left="80%" label="AR撮影" icon="camera" color="#0891b2"
         locked={!flags.arUnlocked} size="sm"
         onClick={() => { if (flags.arUnlocked) { sfx.confirm(); navigate('/ar') } else sfx.miss() }} />
 
@@ -348,7 +347,7 @@ export default function Home() {
 
       {/* ══════════ Menuボタン ══════════ */}
       <button style={s.menuBtn} onClick={() => { sfx.tap(); setMenuOpen(true) }}>
-        <span style={{ fontSize: 16 }}>☰</span>
+        <GameIcon name="menu" size={18} style={{ color: '#fff' }} />
         <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: 1 }}>Menu</span>
       </button>
 
@@ -361,7 +360,7 @@ export default function Home() {
 
       {climbUnlockShow && (
         <Celebration
-          icon="⛰️"
+          icon={<GameIcon name="mountain" size={80} />}
           title="登山が解禁された！"
           subtitle="装備を整えて、最初の山に挑戦しよう！"
           onClose={() => setClimbUnlockShow(false)}
@@ -370,7 +369,7 @@ export default function Home() {
 
       {levelUp && (
         <Celebration
-          icon="🎉"
+          icon={<GameIcon name="trophy" size={80} />}
           title={`Lv.${levelUp} に到達！`}
           subtitle="体力がアップした！この調子で山に挑もう！"
           onClose={() => setLevelUp(null)}

@@ -1,21 +1,22 @@
 import { useState } from 'react'
+import GameIcon from '../components/GameIcon'
 import { useGameStore } from '../stores/gameStore'
 
 const MOUNTAINS = [
-  { id: 'takao', name: '高尾山', emoji: '🌲' },
-  { id: 'yatsugatake', name: '八ヶ岳連峰', emoji: '⛰️' },
-  { id: 'hakone', name: '箱根山', emoji: '🌋' },
+  { id: 'takao', name: '高尾山', emoji: 'forest' },
+  { id: 'yatsugatake', name: '八ヶ岳連峰', emoji: 'mountain' },
+  { id: 'hakone', name: '箱根山', emoji: 'volcano' },
 ]
 
 // 整備アクティビティ定義
 const ACTIVITIES = [
-  { id: 'trash', name: 'ゴミ拾い', icon: '🗑️', cost: 1000, restore: 5, duration: 10, desc: '山道のゴミを拾って清潔に！' },
-  { id: 'branch', name: '枝切り', icon: '✂️', cost: 10000, restore: 10, duration: 30, desc: '危険な枝を除去！' },
-  { id: 'grass', name: '草刈り', icon: '🌾', cost: 10000, restore: 10, duration: 30, desc: '登山道の草を刈る！' },
-  { id: 'patrol', name: '巡回', icon: '👣', cost: 10000, restore: 8, duration: 20, desc: '山のパトロール！' },
-  { id: 'trail', name: '登山道整備', icon: '🛠️', cost: 20000, restore: 20, duration: 60, desc: '道の補修や整備！' },
-  { id: 'planting', name: '植栽', icon: '🌱', cost: 80000, restore: 40, duration: 120, desc: '木を植えて緑化！' },
-  { id: 'thinning', name: '間伐', icon: '🪵', cost: 100000, restore: 50, duration: 180, desc: '森を健康に保つ！' },
+  { id: 'trash', name: 'ゴミ拾い', icon: 'trash', cost: 1000, restore: 5, duration: 10, desc: '山道のゴミを拾って清潔に！' },
+  { id: 'branch', name: '枝切り', icon: 'scissors', cost: 10000, restore: 10, duration: 30, desc: '危険な枝を除去！' },
+  { id: 'grass', name: '草刈り', icon: 'grass', cost: 10000, restore: 10, duration: 30, desc: '登山道の草を刈る！' },
+  { id: 'patrol', name: '巡回', icon: 'footsteps', cost: 10000, restore: 8, duration: 20, desc: '山のパトロール！' },
+  { id: 'trail', name: '登山道整備', icon: 'tools', cost: 20000, restore: 20, duration: 60, desc: '道の補修や整備！' },
+  { id: 'planting', name: '植栽', icon: 'sprout', cost: 80000, restore: 40, duration: 120, desc: '木を植えて緑化！' },
+  { id: 'thinning', name: '間伐', icon: 'log', cost: 100000, restore: 50, duration: 180, desc: '森を健康に保つ！' },
 ]
 
 // 荒廃時は各コストが10倍
@@ -96,7 +97,7 @@ export default function Maintenance() {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          <span style={{ fontSize: 52 }}>{working.icon}</span>
+          <GameIcon name={working.icon} size={56} />
           <h3 style={styles.title}>{working.name}</h3>
           {!done ? (
             <>
@@ -117,7 +118,7 @@ export default function Maintenance() {
             </>
           ) : (
             <>
-              <span style={{ fontSize: 40 }}>✅</span>
+              <GameIcon name="check" size={44} />
               <p style={{ color: '#27ae60', fontSize: 16 }}>整備完了！整備レベルが回復しました</p>
               <button style={styles.primaryBtn} onClick={handleBack}>戻る</button>
             </>
@@ -143,16 +144,16 @@ export default function Maintenance() {
     const mInfo = MOUNTAINS.find((m) => m.id === selected)
     return (
       <div style={styles.container}>
-        <h2 style={{ color: '#fff', fontSize: 20, fontWeight: 900, padding: '18px 0 8px' }}>{mInfo?.emoji} {mInfo?.name}</h2>
+        <h2 style={{ color: '#fff', fontSize: 20, fontWeight: 900, padding: '18px 0 8px' }}><GameIcon name={mInfo?.emoji} size={24} style={{ marginRight: 6 }} />{mInfo?.name}</h2>
         <div style={styles.mainCard}>
           <MaintenanceBar level={level} />
           {level < 30 && (
             <div style={styles.alertBox}>
-              ⚠️ 山が荒廃しています！コストが10倍になります。早く整備して！
+              山が荒廃しています！コストが10倍になります。早く整備して！
             </div>
           )}
           <p style={{ color: '#aaa', fontSize: 13, margin: '8px 0' }}>
-            ⭐ {player.points.toLocaleString()}pt 所持
+            ★ {player.points.toLocaleString()}pt 所持
           </p>
         </div>
         {message && <p style={{ color: '#e74c3c', fontSize: 14 }}>{message}</p>}
@@ -168,7 +169,7 @@ export default function Maintenance() {
                 onClick={() => canAfford && startWork(a)}
                 disabled={!canAfford}
               >
-                <span style={styles.actIcon}>{a.icon}</span>
+                <GameIcon name={a.icon} size={30} />
                 <div style={styles.actInfo}>
                   <span style={styles.actName}>{a.name}</span>
                   <span style={{ color: '#ccc', fontSize: 12 }}>{a.desc}</span>
@@ -201,7 +202,7 @@ export default function Maintenance() {
           const color = lv > 60 ? '#27ae60' : lv > 30 ? '#f39c12' : '#e74c3c'
           return (
             <button key={m.id} style={styles.mountCard} onClick={() => setSelected(m.id)}>
-              <span style={{ fontSize: 36 }}>{m.emoji}</span>
+              <GameIcon name={m.emoji} size={40} />
               <div style={{ flex: 1 }}>
                 <div style={styles.mountName}>{m.name}</div>
                 <div style={{ height: 6, background: 'rgba(255,255,255,0.15)', borderRadius: 3, marginTop: 6 }}>

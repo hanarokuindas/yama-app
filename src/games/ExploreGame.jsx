@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react'
 import Phaser from 'phaser'
+import { preloadIconImages } from '../utils/iconTexture.jsx'
 
-// 背景設定
+// 背景設定（itemsはGameIconのアイコン名）
 const BACKGROUNDS = [
-  { key: 'cave', color: '#1a1a2e', name: '岩場', itemEmojis: ['🪨', '💎', '⛏️', '🦇', '🔮', '🌑'] },
-  { key: 'forest', color: '#1a3a1a', name: '登山道', itemEmojis: ['🌿', '🍄', '🦋', '🐾', '🌸', '🐿️'] },
-  { key: 'meadow', color: '#2a4a1a', name: '草原', itemEmojis: ['🌼', '🦗', '🌺', '🍀', '🦎', '🌻'] },
+  { key: 'cave', color: '#1a1a2e', name: '岩場', itemEmojis: ['rock', 'gem', 'pickaxe', 'bat', 'orb', 'moon'] },
+  { key: 'forest', color: '#1a3a1a', name: '登山道', itemEmojis: ['herb', 'mushroom', 'butterfly', 'paw', 'blossom', 'squirrel'] },
+  { key: 'meadow', color: '#2a4a1a', name: '草原', itemEmojis: ['daisy', 'cricket', 'hibiscus', 'clover', 'lizard', 'sunflower'] },
 ]
 
 export default function ExploreGame({ onClear, onGameOver }) {
@@ -15,6 +16,8 @@ export default function ExploreGame({ onClear, onGameOver }) {
   useEffect(() => {
     // ランダムに背景を選択
     const bg = BACKGROUNDS[Math.floor(Math.random() * BACKGROUNDS.length)]
+    let destroyed = false
+    let iconImages = {}
 
     const config = {
       type: Phaser.AUTO,
@@ -28,7 +31,12 @@ export default function ExploreGame({ onClear, onGameOver }) {
       }
     }
 
-    phaserRef.current = new Phaser.Game(config)
+    // アイコンSVGをImage化してからゲーム開始
+    preloadIconImages(bg.itemEmojis, 48).then((imgs) => {
+      if (destroyed) return
+      iconImages = imgs
+      phaserRef.current = new Phaser.Game(config)
+    })
 
     let timeLeft = 150
     let timerText
@@ -40,6 +48,11 @@ export default function ExploreGame({ onClear, onGameOver }) {
     let targetEmoji = ''
 
     function create() {
+      // SVGアイコンをテクスチャ登録
+      Object.entries(iconImages).forEach(([n, img]) => {
+        if (!this.textures.exists(`icon_${n}`)) this.textures.addImage(`icon_${n}`, img)
+      })
+
       // 背景名表示
       this.add.text(180, 16, bg.name, {
         fontSize: '16px',
@@ -61,11 +74,12 @@ export default function ExploreGame({ onClear, onGameOver }) {
 
       // 指定アイテム表示
       targetEmoji = bg.itemEmojis[Math.floor(Math.random() * bg.itemEmojis.length)]
-      this.add.text(180, 44, `探せ！ ${targetEmoji}`, {
+      this.add.text(160, 44, '探せ！', {
         fontSize: '20px',
         fill: '#ffff00',
         fontStyle: 'bold',
       }).setOrigin(0.5, 0)
+      this.add.image(200, 56, `icon_${targetEmoji}`).setDisplaySize(30, 30)
 
       // フィルムスロット
       for (let i = 0; i < filmCapacity; i++) {
@@ -122,10 +136,9 @@ export default function ExploreGame({ onClear, onGameOver }) {
         const x = Phaser.Math.Between(30, 330)
         const y = Phaser.Math.Between(80, 430)
 
-        const item = this.add.text(x, y, emoji, {
-          fontSize: '36px',
-        })
-        .setInteractive()
+        const item = this.add.image(x, y, `icon_${emoji}`)
+          .setDisplaySize(40, 40)
+          .setInteractive()
         .on('pointerdown', () => {
           if (emoji === targetEmoji) {
             // 正解
@@ -133,7 +146,7 @@ export default function ExploreGame({ onClear, onGameOver }) {
             scoreText.setText(`スコア: ${score}`)
 
             // キラキラエフェクト
-            this.add.text(item.x, item.y, '✨+200', {
+            this.add.text(item.x, item.y, '+200', {
               fontSize: '16px',
               fill: '#ffff00',
             })
@@ -147,7 +160,7 @@ export default function ExploreGame({ onClear, onGameOver }) {
             scoreText.setText(`スコア: ${score}`)
 
             // ミスエフェクト
-            this.add.text(item.x, item.y, '❌-50', {
+            this.add.text(item.x, item.y, '-50', {
               fontSize: '16px',
               fill: '#ff4444',
             })
@@ -188,6 +201,7 @@ export default function ExploreGame({ onClear, onGameOver }) {
     function update() {}
 
     return () => {
+      destroyed = true
       if (phaserRef.current) {
         phaserRef.current.destroy(true)
       }

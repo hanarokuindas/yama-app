@@ -1,34 +1,36 @@
 import { useState, useEffect } from 'react'
+import GameIcon from '../components/GameIcon'
+import { senpaiPose } from '../assets/characters/senpai'
 
 // ステージ定義
 const STAGE_TYPES = [
   {
     key: 'rocky',
     name: '岩場',
-    emoji: '🪨',
+    emoji: 'rock',
     bg: 'linear-gradient(180deg, #2c2c54 0%, #40407a 100%)',
-    items: ['🪨', '💎', '⛏️', '🦇', '🔮'],
-    target: '💎',
+    items: ['rock', 'gem', 'pickaxe', 'bat', 'orb'],
+    target: 'gem',
     desc: '光る宝石を見つけてタップ！',
     statKey: 'arms', // 腕力が影響
   },
   {
     key: 'trail',
     name: '登山道',
-    emoji: '🌿',
+    emoji: 'herb',
     bg: 'linear-gradient(180deg, #1a3a1a 0%, #2d5a1b 100%)',
-    items: ['🌿', '🍄', '🦋', '🐾', '🌸'],
-    target: '🌸',
+    items: ['herb', 'mushroom', 'butterfly', 'paw', 'blossom'],
+    target: 'blossom',
     desc: '山の花を見つけてタップ！',
     statKey: 'legs', // 脚力が影響
   },
   {
     key: 'meadow',
     name: '草原',
-    emoji: '🌼',
+    emoji: 'daisy',
     bg: 'linear-gradient(180deg, #1a3a0a 0%, #3a6b1a 100%)',
-    items: ['🌼', '🦗', '🌺', '🍀', '🌻'],
-    target: '🌻',
+    items: ['daisy', 'cricket', 'hibiscus', 'clover', 'sunflower'],
+    target: 'sunflower',
     desc: 'ひまわりを見つけてタップ！',
     statKey: 'core', // 体幹が影響
   },
@@ -121,7 +123,7 @@ function StagePlay({ stage, player, onClear, onFail }) {
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       {/* ヘッダー */}
       <div style={stageStyles.header}>
-        <span style={{ color: '#fff', fontWeight: 'bold' }}>{stage.emoji} {stage.name}</span>
+        <span style={{ color: '#fff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 6 }}><GameIcon name={stage.emoji} size={20} /> {stage.name}</span>
         <span style={{ color: pct < 30 ? '#e74c3c' : '#fff', fontWeight: 'bold' }}>{timeLeft}秒</span>
       </div>
       {/* タイマーバー */}
@@ -130,7 +132,7 @@ function StagePlay({ stage, player, onClear, onFail }) {
       </div>
       {/* 指示 */}
       <div style={stageStyles.instr}>
-        <span style={{ fontSize: 28 }}>{stage.target}</span>
+        <GameIcon name={stage.target} size={32} />
         <span style={{ color: '#fff', fontSize: 14 }}>{stage.desc}</span>
         <span style={{ color: '#ffd700', fontSize: 13 }}>残り {targets.length}個</span>
       </div>
@@ -156,7 +158,7 @@ function StagePlay({ stage, player, onClear, onFail }) {
               }}
               disabled={done}
             >
-              {item.emoji}
+              <GameIcon name={item.emoji} size={36} />
             </button>
           )
         })}
@@ -229,15 +231,15 @@ export default function ClimbingGame({ course, player, onComplete }) {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          <span style={{ fontSize: 48 }}>⛰️</span>
+          <GameIcon name="mountain" size={52} />
           <h3 style={styles.title}>{course.mountainName}</h3>
           <p style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>{course.name}</p>
           <p style={{ color: '#ccc', fontSize: 14, lineHeight: 1.6 }}>{course.description}</p>
           <div style={styles.infoBox}>
-            <p style={styles.infoRow}>📏 {course.distance}km</p>
+            <p style={styles.infoRow}>距離 {course.distance}km</p>
             <p style={styles.infoRow}>⏱ {course.duration}</p>
-            <p style={styles.infoRow}>🔥 約{course.calories}kcal</p>
-            <p style={styles.infoRow}>📊 {stages.length}ステージ</p>
+            <p style={styles.infoRow}>消費 約{course.calories}kcal</p>
+            <p style={styles.infoRow}>全 {stages.length}ステージ</p>
           </div>
           <p style={{ color: '#ffd700', fontSize: 13 }}>あなたの総合体力: {total} / 推奨: {reqTotal}</p>
           <button style={styles.primaryBtn} onClick={() => setPhase('playing')}>
@@ -276,7 +278,7 @@ export default function ClimbingGame({ course, player, onComplete }) {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          <span style={{ fontSize: 40 }}>✅</span>
+          <GameIcon name="check" size={44} />
           <h3 style={styles.title}>{currentStage?.name} クリア！</h3>
           <p style={{ color: '#ccc', fontSize: 14 }}>次のエリア: {nextStage?.emoji} {nextStage?.name}</p>
           <p style={{ color: '#aaa', fontSize: 13 }}>
@@ -292,7 +294,7 @@ export default function ClimbingGame({ course, player, onComplete }) {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          <span style={{ fontSize: 56 }}>🏔️</span>
+          <GameIcon name="trophy" size={60} />
           <h3 style={styles.title}>登頂成功！</h3>
           <p style={{ color: '#ffd700', fontSize: 16 }}>全{stages.length}ステージ完走！</p>
           <p style={{ color: '#2ecc71', fontSize: 20, fontWeight: 'bold' }}>+{course.reward}pt</p>
@@ -312,7 +314,7 @@ export default function ClimbingGame({ course, player, onComplete }) {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          <span style={{ fontSize: 56 }}>😓</span>
+          <img src={senpaiPose.think[2]} alt="先輩" style={{ height: 100 }} draggable={false} />
           <h3 style={styles.title}>脱落…</h3>
           <p style={{ color: '#e74c3c', fontSize: 14, lineHeight: 1.6 }}>
             {msgs[failReason] || 'またチャレンジしてね！'}

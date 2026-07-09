@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import GameIcon from '../components/GameIcon'
 import { Link } from 'react-router-dom'
 import { useGameStore } from '../stores/gameStore'
 
@@ -20,13 +21,13 @@ export default function Menu() {
   }
 
   const menuLinks = [
-    { to: '/shop', icon: '🛒', label: '登山ショップ' },
-    { to: '/climbing', icon: '⛰️', label: '登山' },
-    { to: '/explore', icon: '🔍', label: '山探索' },
-    { to: '/training', icon: '💪', label: 'トレーニング' },
-    { to: '/maintenance', icon: '🪚', label: '山整備' },
-    { to: '/album', icon: '📷', label: 'アルバム' },
-    { to: '/ar', icon: '📱', label: 'AR撮影' },
+    { to: '/shop', icon: 'cart', label: '登山ショップ' },
+    { to: '/climbing', icon: 'mountain', label: '登山' },
+    { to: '/explore', icon: 'search', label: '山探索' },
+    { to: '/training', icon: 'muscle', label: 'トレーニング' },
+    { to: '/maintenance', icon: 'saw', label: '山整備' },
+    { to: '/album', icon: 'picture', label: 'アルバム' },
+    { to: '/ar', icon: 'camera', label: 'AR撮影' },
   ]
 
   return (
@@ -38,7 +39,7 @@ export default function Menu() {
         {!editing ? (
           <>
             <div style={styles.profileRow}>
-              <span style={styles.avatar}>🧗</span>
+              <GameIcon name="climber" size={40} />
               <div>
                 <p style={styles.profileName}>{player.name || 'プレイヤー'}</p>
                 <p style={styles.profileSub}>体重: {player.weight}kg</p>
@@ -54,7 +55,7 @@ export default function Menu() {
               <Stat label="総合" value={total} color="#9b59b6" />
             </div>
             <p style={{ color: '#ffd700', fontSize: 13, textAlign: 'center', marginTop: 4 }}>
-              ⭐ {player.points.toLocaleString()}pt 所持
+              ★ {player.points.toLocaleString()}pt 所持
             </p>
           </>
         ) : (
@@ -75,7 +76,7 @@ export default function Menu() {
       <div style={styles.linkList}>
         {menuLinks.map((item) => (
           <Link key={item.to} to={item.to} style={styles.linkItem}>
-            <span style={{ fontSize: 24 }}>{item.icon}</span>
+            <GameIcon name={item.icon} size={28} />
             <span style={styles.linkLabel}>{item.label}</span>
             <span style={{ color: '#aaa' }}>›</span>
           </Link>

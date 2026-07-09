@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import GameIcon from './GameIcon'
 
 const COLORS = ['#f5c842', '#2ecc71', '#3b82f6', '#a855f7', '#ec4899', '#ffe98a']
 
@@ -43,7 +44,7 @@ export function Confetti({ count = 40 }) {
 }
 
 // 中央に大きく出る祝福バナー（紙吹雪＋後光＋メッセージ）
-export function Celebration({ icon = '🎊', title, subtitle, onClose }) {
+export function Celebration({ icon = <GameIcon name="sparkle" size={72} />, title, subtitle, onClose }) {
   return (
     <div style={styles.overlay} onClick={onClose}>
       <Confetti />

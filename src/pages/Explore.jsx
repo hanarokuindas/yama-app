@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import GameIcon from '../components/GameIcon'
 import { useGameStore } from '../stores/gameStore'
 import ExploreGame from '../games/ExploreGame'
 import { Confetti } from '../components/Celebration'
 import { sfx } from '../utils/sound'
+import { senpaiPose } from '../assets/characters/senpai'
 
 export default function Explore() {
   const addPoints = useGameStore((state) => state.addPoints)
@@ -31,7 +33,7 @@ export default function Explore() {
 
       {gameState === 'idle' && (
         <div style={styles.card}>
-          <span style={{ fontSize: 56 }}>🔍</span>
+          <GameIcon name="search" size={60} />
           <h3 style={styles.cardTitle}>山探索</h3>
           <p style={styles.desc}>アイテムを見つけてタップしよう！<br />ポイントを集めて登山に備えよう！</p>
           <button className="btn-primary" onClick={() => { sfx.go(); setGameState('playing') }}>はじめる</button>
@@ -46,10 +48,10 @@ export default function Explore() {
         <>
           <Confetti count={44} />
           <div style={styles.card}>
-            <span style={{ fontSize: 56, display: 'inline-block', animation: 'popIn 0.5s ease' }}>🎉</span>
+            <GameIcon name="trophy" size={64} style={{ animation: 'popIn 0.5s ease' }} />
             <h3 style={styles.cardTitle}>クリア！</h3>
             <p style={styles.desc}>スコア: {finalScore}</p>
-            <p style={{ color: '#f5c842', fontWeight: 900, fontSize: 16, animation: 'popIn 0.5s 0.15s both' }}>⭐ +{finalScore} ポイント獲得！</p>
+            <p style={{ color: '#f5c842', fontWeight: 900, fontSize: 16, animation: 'popIn 0.5s 0.15s both', display: 'flex', alignItems: 'center', gap: 5 }}><GameIcon name="star" size={18} /> +{finalScore} ポイント獲得！</p>
             <button className="btn-primary" onClick={() => setGameState('idle')}>もう一度</button>
           </div>
         </>
@@ -57,7 +59,7 @@ export default function Explore() {
 
       {gameState === 'gameover' && (
         <div style={styles.card}>
-          <span style={{ fontSize: 56 }}>😢</span>
+          <img src={senpaiPose.think[2]} alt="先輩" style={{ height: 110 }} draggable={false} />
           <h3 style={styles.cardTitle}>ゲームオーバー</h3>
           <p style={styles.desc}>スコア: {finalScore}</p>
           <button className="btn-primary" onClick={() => setGameState('idle')}>もう一度</button>

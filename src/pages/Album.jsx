@@ -1,14 +1,15 @@
 import { useState } from 'react'
+import GameIcon from '../components/GameIcon'
 import { useGameStore } from '../stores/gameStore'
 import charactersData from '../data/characters.json'
 
 const TABS = ['山神', '登頂記録', '所持装備']
 
 const CHAR_EMOJIS = {
-  yatsugatake: '⛰️',
-  takao: '🌲',
-  hakone: '🌋',
-  senpai: '👤',
+  yatsugatake: 'mountain',
+  takao: 'forest',
+  hakone: 'volcano',
+  senpai: 'user',
 }
 
 export default function Album() {
@@ -44,7 +45,7 @@ export default function Album() {
             return (
               <div key={char.id} style={{ ...styles.charCard, opacity: unlocked ? 1 : 0.4 }}>
                 <div style={{ ...styles.charIcon, background: accessed ? '#27ae60' : '#555' }}>
-                  {accessed ? CHAR_EMOJIS[char.id] || '👤' : '🔒'}
+                  <GameIcon name={accessed ? CHAR_EMOJIS[char.id] || 'user' : 'lock'} size={34} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <p style={styles.charName}>{accessed ? char.name : '？？？'}</p>
@@ -66,7 +67,7 @@ export default function Album() {
         <div style={styles.list}>
           {album.length === 0 && (
             <div style={styles.empty}>
-              <span style={{ fontSize: 48 }}>🏔️</span>
+              <GameIcon name="mountain" size={52} />
               <p>まだ登頂記録がないよ！</p>
               <p style={{ fontSize: 12, color: '#888' }}>登山に挑戦してみよう！</p>
             </div>
@@ -75,7 +76,7 @@ export default function Album() {
             <div key={i} style={styles.albumCard}>
               <div style={styles.albumTop}>
                 <span style={{ color: '#aaa', fontSize: 12 }}>{entry.mountainName}</span>
-                <span style={{ color: '#27ae60', fontSize: 12 }}>🏔️ 登頂済</span>
+                <span style={{ color: '#27ae60', fontSize: 12 }}>登頂済</span>
               </div>
               <p style={styles.courseName}>{entry.courseName}</p>
               <p style={{ color: '#888', fontSize: 11 }}>{new Date(entry.date).toLocaleDateString('ja-JP')}</p>
@@ -89,7 +90,7 @@ export default function Album() {
         <div style={styles.list}>
           {inventory.length === 0 ? (
             <div style={styles.empty}>
-              <span style={{ fontSize: 48 }}>🎒</span>
+              <GameIcon name="backpack" size={52} />
               <p>まだ装備がないよ！</p>
               <p style={{ fontSize: 12, color: '#888' }}>ショップで揃えよう！</p>
             </div>
@@ -101,7 +102,7 @@ export default function Album() {
                   <p style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>{item.name}</p>
                   <p style={{ color: '#aaa', fontSize: 11 }}>{item.category}</p>
                 </div>
-                <span style={{ color: '#27ae60' }}>✓</span>
+                <GameIcon name="check" size={18} />
               </div>
             ))
           )}
