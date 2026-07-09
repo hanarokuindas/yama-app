@@ -6,7 +6,7 @@ import { DAILY_MISSIONS } from '../data/missions'
 import CountUp from '../components/CountUp'
 import { Celebration, Confetti } from '../components/Celebration'
 import WorldMap from '../components/WorldMap'
-import CharacterSprite from '../components/CharacterSprite'
+import { senpaiPose } from '../assets/characters/senpai'
 import { sfx } from '../utils/sound'
 
 function getTimeSlot() {
@@ -233,12 +233,13 @@ export default function Home() {
   const [missionOpen, setMissionOpen] = useState(false)
   const [loginBonus, setLoginBonus] = useState(null)
 
-  const [{ charName, greeting }] = useState(() => {
+  const [{ charName, greeting, homePose }] = useState(() => {
     const ids = ['senpai', 'yatsugatake', 'takao', 'hakone'].filter(
       (id) => id === 'senpai' || mountains[id]?.firstAccessed
     )
     const id = ids[Math.floor(Math.random() * ids.length)]
-    return { charName: characters[id]?.shortName || '', greeting: getGreeting(id) }
+    const pose = senpaiPose.home[Math.floor(Math.random() * senpaiPose.home.length)]
+    return { charName: characters[id]?.shortName || '', greeting: getGreeting(id), homePose: pose }
   })
 
   useEffect(() => { applyMountainDecay() }, [applyMountainDecay])
@@ -322,7 +323,7 @@ export default function Home() {
       {/* ══════════ キャラクター ══════════ */}
       <div style={s.charWrap}>
         <div style={{ animation: 'charFloat 3.4s ease-in-out infinite' }}>
-          <CharacterSprite size={104} />
+          <img src={homePose} alt="先輩" style={{ height: 170, display: 'block', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.35))' }} draggable={false} />
         </div>
         {greeting && (
           <div style={s.bubble}>

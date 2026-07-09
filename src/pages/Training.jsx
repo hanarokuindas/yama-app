@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useGameStore } from '../stores/gameStore'
 import { Confetti } from '../components/Celebration'
 import { sfx } from '../utils/sound'
+import { senpaiPose } from '../assets/characters/senpai'
 
 const MENUS = [
   {
@@ -204,9 +205,12 @@ export default function Training() {
           <span style={{ fontSize: 56 }}>{selected.icon}</span>
           <h3 style={styles.trainTitle}>{selected.name}</h3>
           <p style={styles.trainDesc}>{selected.description}</p>
-          <div style={{ ...styles.tipBox, borderColor: statColor[selected.stat] }}>
-            <span style={{ color: statColor[selected.stat], fontWeight: 'bold', fontSize: 12 }}>先輩より</span>
-            <p style={{ color: '#fff', fontSize: 14, margin: '4px 0 0' }}>{selected.tips}</p>
+          <div style={{ ...styles.tipBox, borderColor: statColor[selected.stat], display: 'flex', gap: 10, alignItems: 'center' }}>
+            <img src={senpaiPose.training[0]} alt="先輩" style={{ height: 64, flexShrink: 0 }} draggable={false} />
+            <div>
+              <span style={{ color: statColor[selected.stat], fontWeight: 'bold', fontSize: 12 }}>先輩より</span>
+              <p style={{ color: '#fff', fontSize: 14, margin: '4px 0 0' }}>{selected.tips}</p>
+            </div>
           </div>
           <p style={styles.trainTime}>⏱ {formatTime(selected.duration)}</p>
           <button style={styles.startBtn} onClick={() => { sfx.go(); beginCountdown() }}>スタート！</button>
