@@ -55,6 +55,15 @@ export const useGameStore = create(
       // 所持アイテム
       inventory: [],
 
+      // デイリー（ログインボーナス・ミッション）
+      daily: {
+        lastLoginDate: null, // 'YYYY-MM-DD'
+        streak: 0,
+        missionDate: null,
+        missionProgress: {}, // { train: 1, explore: 0, ... }
+        missionClaimed: [],  // ['train', ...]
+      },
+
       // アルバム（登頂写真）
       album: [],
 
@@ -62,6 +71,57 @@ export const useGameStore = create(
       getTotalStamina: () => {
         const { core, legs, arms } = get().player
         return Math.floor((core + legs + arms) / 3)
+      },
+
+      // --- デイリーログインボーナス ---
+      // 新しい日なら {streak, bonus} を返してポイント付与、同日ならnull
+      checkDailyLogin: () => {
+        const today = new Date().toISOString().slice(0, 10)
+        const d = get().daily
+        if (d.lastLoginDate === today) return null
+        const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+        const streak = d.lastLoginDate === yesterday ? Math.min(d.streak + 1, 7) : 1
+        const bonus = 300 + (streak - 1) * 200 // 300/500/700/…最大1500
+        set((state) => ({
+          player: { ...state.player, points: state.player.points + bonus },
+          daily: {
+            ...state.daily,
+            lastLoginDate: today,
+            streak,
+            // ミッションも日替わりリセット
+            missionDate: today,
+            missionProgress: {},
+            missionClaimed: [],
+          },
+        }))
+        return { streak, bonus }
+      },
+
+      // --- デイリーミッション ---
+      recordMission: (type) => set((state) => {
+        const today = new Date().toISOString().slice(0, 10)
+        const d = state.daily
+        const sameDay = d.missionDate === today
+        const progress = sameDay ? { ...d.missionProgress } : {}
+        progress[type] = (progress[type] || 0) + 1
+        return {
+          daily: {
+            ...d,
+            missionDate: today,
+            missionProgress: progress,
+            missionClaimed: sameDay ? d.missionClaimed : [],
+          },
+        }
+      }),
+
+      claimMission: (id, reward) => {
+        const d = get().daily
+        if (d.missionClaimed.includes(id)) return false
+        set((state) => ({
+          player: { ...state.player, points: state.player.points + reward },
+          daily: { ...state.daily, missionClaimed: [...state.daily.missionClaimed, id] },
+        }))
+        return true
       },
 
       // --- アクション ---

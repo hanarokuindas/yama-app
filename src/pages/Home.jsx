@@ -2,8 +2,12 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGameStore } from '../stores/gameStore'
 import characters from '../data/characters.json'
+import { DAILY_MISSIONS } from '../data/missions'
 import CountUp from '../components/CountUp'
-import { Celebration } from '../components/Celebration'
+import { Celebration, Confetti } from '../components/Celebration'
+import WorldMap from '../components/WorldMap'
+import CharacterSprite from '../components/CharacterSprite'
+import { sfx } from '../utils/sound'
 
 function getTimeSlot() {
   const h = new Date().getHours()
@@ -104,7 +108,83 @@ function MenuPopup({ onClose, navigate }) {
             </button>
           ))}
         </div>
-        <button style={s.popupCloseBtn} onClick={onClose}>✕　閉じる</button>
+        <button style={s.popupCloseBtn} onClick={onClose}>✕ 閉じる</button>
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────────────── ログインボーナス ─────────────────────── */
+function LoginBonusModal({ streak, bonus, onClose }) {
+  return (
+    <div style={{ ...s.popupOverlay, alignItems: 'center' }} onClick={() => { sfx.confirm(); onClose() }}>
+      <Confetti count={30} />
+      <div style={{ ...s.loginCard }} onClick={(e) => e.stopPropagation()}>
+        <div style={s.loginRibbon}>デイリーログインボーナス</div>
+        <div style={{ fontSize: 56, margin: '14px 0 6px', animation: 'popIn 0.5s ease' }}>🎁</div>
+        <div style={s.loginStreakRow}>
+          {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+            <div key={d} style={{
+              ...s.loginDay,
+              background: d <= streak ? 'linear-gradient(135deg,#f5c842,#e0a800)' : 'rgba(255,255,255,0.08)',
+              color: d <= streak ? '#1a0e00' : '#667',
+            }}>{d}</div>
+          ))}
+        </div>
+        <p style={{ color: '#aab', fontSize: 12, margin: '10px 0 4px' }}>{streak}日目のログイン！</p>
+        <p style={{ color: '#f5c842', fontSize: 26, fontWeight: 900, animation: 'popIn 0.5s 0.2s both' }}>
+          ⭐ +{bonus.toLocaleString()} pt
+        </p>
+        <button className="btn-primary" style={{ marginTop: 18 }}
+          onClick={() => { sfx.coin(); onClose() }}>うけとる！</button>
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────────────── デイリーミッション ─────────────────────── */
+function MissionPanel({ onClose }) {
+  const daily = useGameStore((st) => st.daily)
+  const claimMission = useGameStore((st) => st.claimMission)
+  const today = new Date().toISOString().slice(0, 10)
+  const progress = daily.missionDate === today ? daily.missionProgress : {}
+
+  return (
+    <div style={s.popupOverlay} onClick={onClose}>
+      <div style={s.popup} onClick={(e) => e.stopPropagation()}>
+        <div style={s.popupHandle} />
+        <div style={s.popupHeader}>DAILY MISSION</div>
+        {DAILY_MISSIONS.map((m) => {
+          const cur = Math.min(progress[m.id] || 0, m.goal)
+          const done = cur >= m.goal
+          const claimed = daily.missionClaimed.includes(m.id)
+          return (
+            <div key={m.id} style={s.missionRow}>
+              <span style={{ fontSize: 26 }}>{m.icon}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={s.missionLabel}>{m.label}</div>
+                <div style={s.missionBarBg}>
+                  <div style={{ ...s.missionBarFill, width: `${(cur / m.goal) * 100}%` }} />
+                </div>
+                <div style={s.missionProgressText}>{cur}/{m.goal} 報酬 ⭐{m.reward}</div>
+              </div>
+              <button
+                style={{
+                  ...s.missionBtn,
+                  background: claimed ? 'rgba(255,255,255,0.08)'
+                    : done ? 'linear-gradient(135deg,#f5c842,#e0a800)' : 'rgba(255,255,255,0.08)',
+                  color: claimed ? '#556' : done ? '#1a0e00' : '#667',
+                  cursor: done && !claimed ? 'pointer' : 'default',
+                }}
+                disabled={!done || claimed}
+                onClick={() => { if (claimMission(m.id, m.reward)) sfx.item() }}
+              >
+                {claimed ? '受取済' : done ? '受取る' : '未達成'}
+              </button>
+            </div>
+          )
+        })}
+        <button style={s.popupCloseBtn} onClick={() => { sfx.cancel(); onClose() }}>✕ 閉じる</button>
       </div>
     </div>
   )
@@ -147,7 +227,11 @@ export default function Home() {
   const completeIntro = useGameStore((st) => st.completeIntro)
   const completeProfile = useGameStore((st) => st.completeProfile)
   const applyMountainDecay = useGameStore((st) => st.applyMountainDecay)
+  const checkDailyLogin = useGameStore((st) => st.checkDailyLogin)
+  const daily = useGameStore((st) => st.daily)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [missionOpen, setMissionOpen] = useState(false)
+  const [loginBonus, setLoginBonus] = useState(null)
 
   const [{ charName, greeting }] = useState(() => {
     const ids = ['senpai', 'yatsugatake', 'takao', 'hakone'].filter(
@@ -158,6 +242,16 @@ export default function Home() {
   })
 
   useEffect(() => { applyMountainDecay() }, [applyMountainDecay])
+
+  const profileDone = flags.profileCompleted
+  useEffect(() => {
+    if (!profileDone) return
+    const t = setTimeout(() => {
+      const result = checkDailyLogin()
+      if (result) setLoginBonus(result)
+    }, 600)
+    return () => clearTimeout(t)
+  }, [profileDone, checkDailyLogin])
 
   const total = Math.floor((player.core + player.legs + player.arms) / 3)
   const level = Math.floor(total / 50) + 1
@@ -178,33 +272,8 @@ export default function Home() {
   return (
     <div style={s.root}>
 
-      {/* ══════════ 背景レイヤー（CSSワールドマップ） ══════════ */}
-      {/* 空 */}
-      <div style={s.sky} />
-      {/* 雲 */}
-      <div style={s.cloud1} />
-      <div style={s.cloud2} />
-      {/* 遠景の山（雪あり） */}
-      <div style={s.mtFar} />
-      <div style={s.mtFarPeak} />
-      {/* 中景の山 */}
-      <div style={s.mtMid} />
-      {/* 丘 - 後 */}
-      <div style={s.hillBack} />
-      {/* 森 */}
-      <div style={s.forestL} />
-      <div style={s.forestR} />
-      <div style={s.forestC} />
-      {/* 川 */}
-      <div style={s.river} />
-      {/* 丘 - 前 */}
-      <div style={s.hillFront} />
-      {/* 地面 */}
-      <div style={s.ground} />
-      {/* 道 */}
-      <div style={s.path} />
-      {/* 光の差し込み */}
-      <div style={s.sunRay} />
+      {/* ══════════ 背景（SVGワールドマップ） ══════════ */}
+      <WorldMap />
 
       {/* ══════════ 左上：プレイヤーバッジ ══════════ */}
       <div style={s.playerBadge}>
@@ -224,26 +293,36 @@ export default function Home() {
         </div>
       </div>
 
+      {/* ══════════ ミッションボタン（左） ══════════ */}
+      <button style={s.missionFab} onClick={() => { sfx.tap(); setMissionOpen(true) }}>
+        <span style={{ fontSize: 20 }}>📋</span>
+        <span style={{ fontSize: 9, fontWeight: 900, color: '#fff' }}>ミッション</span>
+        {DAILY_MISSIONS.some((m) => {
+          const today = new Date().toISOString().slice(0, 10)
+          const prog = daily.missionDate === today ? daily.missionProgress : {}
+          return (prog[m.id] || 0) >= m.goal && !daily.missionClaimed.includes(m.id)
+        }) && <span style={s.spotBadge}>!</span>}
+      </button>
+
       {/* ══════════ マップホットスポット ══════════ */}
       <MapSpot top="20%" left="28%" label="山探索" icon="🔍" color="#7c3aed"
-        onClick={() => navigate('/explore')} />
+        onClick={() => { sfx.confirm(); navigate('/explore') }} />
       <MapSpot top="14%" left="58%" label="登山" icon="⛰️" color="#1d4ed8"
-        onClick={() => navigate('/climbing')} />
+        onClick={() => { sfx.confirm(); navigate('/climbing') }} />
       <MapSpot top="32%" left="72%" label="アルバム" icon="🖼️" color="#db2777"
-        onClick={() => navigate('/shop')} />
+        onClick={() => { sfx.confirm(); navigate('/album') }} />
       <MapSpot top="50%" left="15%" label="トレーニング" icon="💪" color="#d97706"
-        onClick={() => navigate('/training')} />
+        onClick={() => { sfx.confirm(); navigate('/training') }} />
       <MapSpot top="56%" left="55%" label="山整備" icon="🪚" color="#059669"
-        badge={needsMaintenance} onClick={() => navigate('/maintenance')} />
+        badge={needsMaintenance} onClick={() => { sfx.confirm(); navigate('/maintenance') }} />
       <MapSpot top="60%" left="80%" label="AR撮影" icon="📷" color="#0891b2"
         locked={!flags.arUnlocked} size="sm"
-        onClick={() => !flags.arUnlocked || navigate('/ar')} />
+        onClick={() => { if (flags.arUnlocked) { sfx.confirm(); navigate('/ar') } else sfx.miss() }} />
 
       {/* ══════════ キャラクター ══════════ */}
       <div style={s.charWrap}>
-        {/* キャラ立ち絵プレースホルダー（画像追加後に <img> に置換） */}
-        <div style={s.charFigure}>
-          <span style={{ fontSize: 64, display: 'block', animation: 'charFloat 3s ease-in-out infinite' }}>🧗</span>
+        <div style={{ animation: 'charFloat 3.4s ease-in-out infinite' }}>
+          <CharacterSprite size={104} />
         </div>
         {greeting && (
           <div style={s.bubble}>
@@ -255,12 +334,17 @@ export default function Home() {
       </div>
 
       {/* ══════════ Menuボタン ══════════ */}
-      <button style={s.menuBtn} onClick={() => setMenuOpen(true)}>
+      <button style={s.menuBtn} onClick={() => { sfx.tap(); setMenuOpen(true) }}>
         <span style={{ fontSize: 16 }}>☰</span>
         <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: 1 }}>Menu</span>
       </button>
 
       {menuOpen && <MenuPopup onClose={() => setMenuOpen(false)} navigate={navigate} />}
+      {missionOpen && <MissionPanel onClose={() => setMissionOpen(false)} />}
+      {loginBonus && (
+        <LoginBonusModal streak={loginBonus.streak} bonus={loginBonus.bonus}
+          onClose={() => setLoginBonus(null)} />
+      )}
 
       {levelUp && (
         <Celebration
@@ -284,121 +368,6 @@ const s = {
     overflow: 'hidden',
     position: 'relative',
     userSelect: 'none',
-  },
-
-  /* ─── 空 ─── */
-  sky: {
-    position: 'absolute', inset: 0,
-    background: 'linear-gradient(180deg, #a8d8f0 0%, #c8e8f8 35%, #dff0e8 70%, #b8d8a0 100%)',
-  },
-
-  /* ─── 雲 ─── */
-  cloud1: {
-    position: 'absolute', top: '4%', left: '8%',
-    width: 120, height: 36,
-    background: 'rgba(255,255,255,0.85)',
-    borderRadius: 40,
-    boxShadow: '30px -8px 0 10px rgba(255,255,255,0.7), 60px 4px 0 6px rgba(255,255,255,0.65)',
-    animation: 'cloudDrift 18s ease-in-out infinite alternate',
-    filter: 'blur(2px)',
-  },
-  cloud2: {
-    position: 'absolute', top: '10%', right: '5%',
-    width: 90, height: 28,
-    background: 'rgba(255,255,255,0.75)',
-    borderRadius: 40,
-    boxShadow: '24px -6px 0 8px rgba(255,255,255,0.6)',
-    animation: 'cloudDrift 24s ease-in-out infinite alternate-reverse',
-    filter: 'blur(1.5px)',
-  },
-
-  /* ─── 遠景の山 ─── */
-  mtFar: {
-    position: 'absolute', bottom: '45%', left: 0, right: 0, height: '40%',
-    background: 'linear-gradient(180deg, transparent 0%, #9db8d0 50%, #7a9fb8 100%)',
-    clipPath: 'polygon(0% 100%, 10% 50%, 20% 75%, 32% 28%, 44% 58%, 55% 22%, 65% 52%, 76% 18%, 86% 45%, 93% 30%, 100% 55%, 100% 100%)',
-    opacity: 0.65,
-    filter: 'blur(2px)',
-  },
-  mtFarPeak: {
-    position: 'absolute', bottom: '52%', left: '52%',
-    width: 80, height: 60,
-    background: 'linear-gradient(180deg, #ffffff 0%, #e8f4ff 50%, #c8dff0 100%)',
-    clipPath: 'polygon(50% 0%, 10% 100%, 90% 100%)',
-    filter: 'blur(0.5px)',
-    opacity: 0.9,
-  },
-
-  /* ─── 中景の山 ─── */
-  mtMid: {
-    position: 'absolute', bottom: '38%', left: 0, right: 0, height: '38%',
-    background: 'linear-gradient(180deg, #5a8a4a 0%, #3d6b30 100%)',
-    clipPath: 'polygon(0% 100%, 8% 55%, 20% 72%, 33% 38%, 46% 62%, 56% 35%, 66% 55%, 76% 32%, 85% 52%, 92% 42%, 100% 58%, 100% 100%)',
-    filter: 'blur(0.5px)',
-  },
-
-  /* ─── 丘 後 ─── */
-  hillBack: {
-    position: 'absolute', bottom: '30%', left: 0, right: 0, height: '20%',
-    background: 'linear-gradient(180deg, #6aaa50 0%, #4a8838 100%)',
-    clipPath: 'ellipse(65% 60% at 40% 100%)',
-  },
-
-  /* ─── 森 ─── */
-  forestL: {
-    position: 'absolute', bottom: '25%', left: '-8%', width: '45%', height: '28%',
-    background: 'radial-gradient(ellipse 50% 80% at 50% 100%, #2d6e24 30%, #1a4d14 60%, transparent 80%)',
-    filter: 'blur(1px)',
-  },
-  forestR: {
-    position: 'absolute', bottom: '22%', right: '-10%', width: '50%', height: '32%',
-    background: 'radial-gradient(ellipse 50% 80% at 50% 100%, #2d6e24 25%, #1a4d14 55%, transparent 80%)',
-    filter: 'blur(1px)',
-  },
-  forestC: {
-    position: 'absolute', bottom: '30%', left: '30%', width: '40%', height: '20%',
-    background: 'radial-gradient(ellipse 55% 70% at 50% 100%, #3d7a30 35%, #1a4d14 70%, transparent 90%)',
-  },
-
-  /* ─── 川 ─── */
-  river: {
-    position: 'absolute', bottom: '20%', left: '20%',
-    width: '60%', height: '12%',
-    background: 'linear-gradient(160deg, rgba(80,160,220,0.7) 0%, rgba(100,180,240,0.5) 50%, rgba(80,160,220,0.6) 100%)',
-    borderRadius: '60% 40% 60% 40% / 40% 60% 40% 60%',
-    transform: 'rotate(-8deg)',
-    filter: 'blur(1px)',
-    boxShadow: 'inset 0 2px 8px rgba(255,255,255,0.4)',
-  },
-
-  /* ─── 丘 前 ─── */
-  hillFront: {
-    position: 'absolute', bottom: '12%', left: 0, right: 0, height: '22%',
-    background: 'linear-gradient(180deg, #7dc460 0%, #58a040 60%, #3d7a28 100%)',
-    clipPath: 'ellipse(70% 65% at 50% 100%)',
-  },
-
-  /* ─── 地面 ─── */
-  ground: {
-    position: 'absolute', bottom: 0, left: 0, right: 0, height: '16%',
-    background: 'linear-gradient(180deg, #68b84a 0%, #4a9030 50%, #2d6018 100%)',
-  },
-
-  /* ─── 道 ─── */
-  path: {
-    position: 'absolute', bottom: '10%', left: '35%',
-    width: '30%', height: '20%',
-    background: 'linear-gradient(180deg, rgba(200,170,120,0) 0%, rgba(200,170,120,0.4) 50%, rgba(200,170,120,0.2) 100%)',
-    borderRadius: '50% 50% 0 0',
-    transform: 'rotate(-3deg)',
-  },
-
-  /* ─── 光の差し込み ─── */
-  sunRay: {
-    position: 'absolute', top: 0, left: '55%',
-    width: '60%', height: '60%',
-    background: 'radial-gradient(ellipse at top, rgba(255,240,180,0.35) 0%, transparent 65%)',
-    pointerEvents: 'none',
   },
 
   /* ─── プレイヤーバッジ（左上） ─── */
@@ -527,6 +496,71 @@ const s = {
     boxShadow: '0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15)',
     backdropFilter: 'blur(8px)',
     WebkitTapHighlightColor: 'transparent',
+  },
+
+  /* ─── ミッションFAB（左側） ─── */
+  missionFab: {
+    position: 'absolute', top: 64, left: 12,
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+    background: 'linear-gradient(135deg, rgba(10,20,60,0.82), rgba(30,10,80,0.78))',
+    border: '1.5px solid rgba(245,200,66,0.5)',
+    borderRadius: 14, padding: '8px 10px',
+    cursor: 'pointer', zIndex: 20,
+    boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
+    backdropFilter: 'blur(8px)',
+    WebkitTapHighlightColor: 'transparent',
+  },
+
+  /* ─── ログインボーナス ─── */
+  loginCard: {
+    background: 'linear-gradient(180deg, #1e1e40 0%, #12122a 100%)',
+    border: '2px solid rgba(245,200,66,0.55)',
+    borderRadius: 24, padding: '0 24px 28px',
+    width: 'calc(100% - 56px)', maxWidth: 330,
+    textAlign: 'center',
+    boxShadow: '0 12px 60px rgba(0,0,0,0.7), 0 0 40px rgba(245,200,66,0.15)',
+    animation: 'popIn 0.45s cubic-bezier(.22,1,.36,1)',
+    margin: 'auto',
+    alignSelf: 'center',
+  },
+  loginRibbon: {
+    display: 'inline-block',
+    background: 'linear-gradient(135deg, #f5c842, #e0a800)',
+    color: '#1a0e00', fontSize: 13, fontWeight: 900, letterSpacing: 1,
+    borderRadius: '0 0 14px 14px', padding: '8px 22px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+  },
+  loginStreakRow: {
+    display: 'flex', justifyContent: 'center', gap: 6, marginTop: 8,
+  },
+  loginDay: {
+    width: 32, height: 32, borderRadius: 10,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 13, fontWeight: 900,
+    border: '1px solid rgba(255,255,255,0.1)',
+  },
+
+  /* ─── ミッション ─── */
+  missionRow: {
+    display: 'flex', alignItems: 'center', gap: 12,
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.09)',
+    borderRadius: 14, padding: '12px 14px', marginBottom: 10,
+  },
+  missionLabel: { color: '#fff', fontSize: 13, fontWeight: 700, marginBottom: 6 },
+  missionBarBg: {
+    height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 99, overflow: 'hidden',
+  },
+  missionBarFill: {
+    height: '100%', background: 'linear-gradient(90deg, #2ecc71, #7ee8a5)',
+    borderRadius: 99, transition: 'width 0.5s ease',
+    boxShadow: '0 0 6px rgba(46,204,113,0.7)',
+  },
+  missionProgressText: { color: '#889', fontSize: 10, marginTop: 4 },
+  missionBtn: {
+    border: 'none', borderRadius: 12,
+    padding: '9px 14px', fontSize: 12, fontWeight: 900,
+    flexShrink: 0, letterSpacing: 0.5,
   },
 
   /* ─── メニューポップアップ ─── */

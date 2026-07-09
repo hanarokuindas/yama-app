@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { useGameStore } from '../stores/gameStore'
 import ExploreGame from '../games/ExploreGame'
 import { Confetti } from '../components/Celebration'
+import { sfx } from '../utils/sound'
 
 export default function Explore() {
   const addPoints = useGameStore((state) => state.addPoints)
   const addLegs = useGameStore((state) => state.addLegs)
+  const recordMission = useGameStore((state) => state.recordMission)
   const [gameState, setGameState] = useState('idle') // idle / playing / clear / gameover
   const [finalScore, setFinalScore] = useState(0)
 
@@ -13,12 +15,15 @@ export default function Explore() {
     addPoints(score)
     // 山探索は脚力UP
     addLegs(Math.max(1, Math.floor(score / 200)))
+    recordMission('explore')
+    sfx.fanfare()
     setFinalScore(score)
     setGameState('clear')
   }
 
   const handleGameOver = (score) => {
     if (score > 0) addPoints(Math.floor(score / 2))
+    sfx.miss()
     setFinalScore(score)
     setGameState('gameover')
   }
@@ -32,7 +37,7 @@ export default function Explore() {
           <span style={{ fontSize: 56 }}>🔍</span>
           <h3 style={styles.cardTitle}>山探索</h3>
           <p style={styles.desc}>アイテムを見つけてタップしよう！<br />脚力アップのチャンス！</p>
-          <button className="btn-primary" onClick={() => setGameState('playing')}>はじめる</button>
+          <button className="btn-primary" onClick={() => { sfx.go(); setGameState('playing') }}>はじめる</button>
         </div>
       )}
 

@@ -5,6 +5,7 @@ import coursesData from '../data/courses.json'
 import itemsData from '../data/items.json'
 import ClimbingGame from '../games/ClimbingGame'
 import { Confetti } from '../components/Celebration'
+import { sfx } from '../utils/sound'
 
 const MOUNTAINS = [
   { id: 'takao', name: '高尾山', emoji: '🌲', color: '#27ae60' },
@@ -113,6 +114,7 @@ function OnsenScreen({ onNext, onSkip }) {
 // ──────────────────────────────────────────
 function SouvenirScreen({ mountainId, onDone }) {
   const addPoints = useGameStore((s) => s.addPoints)
+  const recordMission = useGameStore((s) => s.recordMission)
   const spendPoints = useGameStore((s) => s.spendPoints)
   const [bought, setBought] = useState([])
 
@@ -167,6 +169,7 @@ export default function Climbing() {
   const addAlbumEntry = useGameStore((s) => s.addAlbumEntry)
   const unlockAR = useGameStore((s) => s.unlockAR)
   const addPoints = useGameStore((s) => s.addPoints)
+  const recordMission = useGameStore((s) => s.recordMission)
 
   const [phase, setPhase] = useState('mountain') // mountain / course / intro / equip / game / result / onsen / souvenir
   const [selectedMountain, setSelectedMountain] = useState(null)
@@ -187,11 +190,15 @@ export default function Climbing() {
 
   const handleGameComplete = (result) => {
     setGameResult(result)
+    recordMission('climb')
     if (result === 'success') {
+      sfx.fanfare()
       completeCourse(selectedMountain.id, selectedCourse.id)
       addPoints(selectedCourse.reward)
       addAlbumEntry({ mountainId: selectedMountain.id, courseId: selectedCourse.id, courseName: selectedCourse.name, mountainName: selectedMountain.name })
       if (!flags.arUnlocked) unlockAR()
+    } else {
+      sfx.miss()
     }
     setPhase('result')
   }
