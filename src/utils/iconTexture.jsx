@@ -1,8 +1,11 @@
 /* GameIconのSVGをcanvas(Phaser)用のHTMLImageElementに変換する */
 import { renderToStaticMarkup } from 'react-dom/server'
-import GameIcon from '../components/GameIcon'
+import GameIcon, { iconImageUrl } from '../components/GameIcon'
 
 export function iconDataUri(name, size = 48) {
+  // 外部生成画像があればそのURLをそのまま使う
+  const override = iconImageUrl(name)
+  if (override) return override
   const svg = renderToStaticMarkup(<GameIcon name={name} size={size} />)
   return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)))
 }

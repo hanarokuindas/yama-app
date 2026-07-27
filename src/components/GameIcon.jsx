@@ -628,7 +628,29 @@ const ICONS = {
   ),
 }
 
+/* 外部生成画像による差し替え:
+   src/assets/icons/<name>.png または .webp を置くと自動的にSVGより優先して使われる */
+const IMAGE_OVERRIDES = {
+  ...import.meta.glob('../assets/icons/*.png', { eager: true, query: '?url', import: 'default' }),
+  ...import.meta.glob('../assets/icons/*.webp', { eager: true, query: '?url', import: 'default' }),
+}
+function overrideUrl(name) {
+  return IMAGE_OVERRIDES[`../assets/icons/${name}.png`] || IMAGE_OVERRIDES[`../assets/icons/${name}.webp`] || null
+}
+
+export function iconImageUrl(name) {
+  return overrideUrl(name)
+}
+
 export default function GameIcon({ name, size = 24, style }) {
+  const img = overrideUrl(name)
+  if (img) {
+    return (
+      <img src={img} width={size} height={size} alt=""
+        style={{ display: 'inline-block', verticalAlign: 'middle', flexShrink: 0, objectFit: 'contain', ...style }}
+        draggable={false} />
+    )
+  }
   const icon = ICONS[name]
   if (!icon) return null
   return (
