@@ -154,3 +154,9 @@ button, input {
 @media (prefers-reduced-motion: reduce) {
   .page-transition { animation: none; }
 }
+
+/* 横画面ヒントの回転アイコン */
+@keyframes rotateHint {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(90deg); }
+}

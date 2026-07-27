@@ -1,3 +1,5 @@
+import { iconImageUrl } from '../utils/iconAssets'
+
 /* ゲーム用SVGアイコンセット（絵文字の置き換え・フラットデザイン統一） */
 
 const ICONS = {
@@ -628,22 +630,8 @@ const ICONS = {
   ),
 }
 
-/* 外部生成画像による差し替え:
-   src/assets/icons/<name>.png または .webp を置くと自動的にSVGより優先して使われる */
-const IMAGE_OVERRIDES = {
-  ...import.meta.glob('../assets/icons/*.png', { eager: true, query: '?url', import: 'default' }),
-  ...import.meta.glob('../assets/icons/*.webp', { eager: true, query: '?url', import: 'default' }),
-}
-function overrideUrl(name) {
-  return IMAGE_OVERRIDES[`../assets/icons/${name}.png`] || IMAGE_OVERRIDES[`../assets/icons/${name}.webp`] || null
-}
-
-export function iconImageUrl(name) {
-  return overrideUrl(name)
-}
-
 export default function GameIcon({ name, size = 24, style }) {
-  const img = overrideUrl(name)
+  const img = iconImageUrl(name)
   if (img) {
     return (
       <img src={img} width={size} height={size} alt=""

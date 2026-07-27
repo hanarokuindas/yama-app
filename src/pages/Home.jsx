@@ -6,6 +6,7 @@ import { DAILY_MISSIONS } from '../data/missions'
 import GameIcon from '../components/GameIcon'
 import CountUp from '../components/CountUp'
 import { Celebration, Confetti } from '../components/Celebration'
+import LandscapeStage from '../components/LandscapeStage'
 import { BG } from '../assets/backgrounds'
 import { senpaiPose } from '../assets/characters/senpai'
 import { takaoPose } from '../assets/characters/takao'
@@ -281,6 +282,7 @@ export default function Home() {
   if (!flags.profileCompleted) return <ProfileScreen onComplete={completeProfile} />
 
   return (
+    <LandscapeStage>
     <div style={s.root}>
 
       {/* ══════════ 背景（ワールドマップ） ══════════ */}
@@ -316,25 +318,25 @@ export default function Home() {
       </button>
 
       {/* ══════════ マップホットスポット ══════════ */}
-      <MapSpot top="20%" left="28%" label="山探索" icon="search" color="#7c3aed"
+      <MapSpot top="30%" left="14%" label="山探索" icon="search" color="#7c3aed"
         onClick={() => { sfx.confirm(); navigate('/explore') }} />
-      <MapSpot top="14%" left="58%" label="登山" icon="mountain" color="#1d4ed8"
+      <MapSpot top="20%" left="38%" label="登山" icon="mountain" color="#1d4ed8"
         locked={!flags.climbingUnlocked}
         onClick={() => { if (flags.climbingUnlocked) { sfx.confirm(); navigate('/climbing') } else sfx.miss() }} />
-      <MapSpot top="32%" left="72%" label="アルバム" icon="picture" color="#db2777"
+      <MapSpot top="24%" left="63%" label="アルバム" icon="picture" color="#db2777"
         onClick={() => { sfx.confirm(); navigate('/album') }} />
-      <MapSpot top="50%" left="15%" label="トレーニング" icon="muscle" color="#d97706"
+      <MapSpot top="64%" left="24%" label="トレーニング" icon="muscle" color="#d97706"
         onClick={() => { sfx.confirm(); navigate('/training') }} />
-      <MapSpot top="56%" left="55%" label="山整備" icon="saw" color="#059669"
+      <MapSpot top="58%" left="72%" label="山整備" icon="saw" color="#059669"
         badge={needsMaintenance} onClick={() => { sfx.confirm(); navigate('/maintenance') }} />
-      <MapSpot top="60%" left="80%" label="AR撮影" icon="camera" color="#0891b2"
+      <MapSpot top="38%" left="87%" label="AR撮影" icon="camera" color="#0891b2"
         locked={!flags.arUnlocked} size="sm"
         onClick={() => { if (flags.arUnlocked) { sfx.confirm(); navigate('/ar') } else sfx.miss() }} />
 
       {/* ══════════ キャラクター ══════════ */}
       <div style={s.charWrap}>
-        <div style={{ animation: 'charFloat 3.4s ease-in-out infinite' }}>
-          <img src={homePose} alt="先輩" style={{ height: 170, display: 'block', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.35))' }} draggable={false} />
+        <div style={{ animation: 'charFloat 3.4s ease-in-out infinite', flexShrink: 0, height: '100%' }}>
+          <img src={homePose} alt={charName} style={s.charImg} draggable={false} />
         </div>
         {greeting && (
           <div style={s.bubble}>
@@ -376,6 +378,7 @@ export default function Home() {
         />
       )}
     </div>
+    </LandscapeStage>
   )
 }
 
@@ -385,7 +388,7 @@ export default function Home() {
 const s = {
   root: {
     width: '100%',
-    height: '100vh',
+    height: '100%',
     overflow: 'hidden',
     position: 'relative',
     userSelect: 'none',
@@ -393,7 +396,7 @@ const s = {
 
   /* ─── プレイヤーバッジ（左上） ─── */
   playerBadge: {
-    position: 'absolute', top: 12, left: 12,
+    position: 'absolute', top: 10, left: 12,
     display: 'flex', alignItems: 'center', gap: 6,
     background: 'linear-gradient(135deg, rgba(10,20,60,0.82), rgba(30,10,80,0.78))',
     border: '1.5px solid rgba(245,200,66,0.5)',
@@ -415,8 +418,8 @@ const s = {
 
   /* ─── ステータスパネル（右上） ─── */
   statsPanel: {
-    position: 'absolute', top: 12, right: 12,
-    display: 'flex', flexDirection: 'column', gap: 4,
+    position: 'absolute', top: 10, right: 12,
+    display: 'flex', flexDirection: 'row', gap: 14, alignItems: 'center',
     background: 'linear-gradient(135deg, rgba(10,20,60,0.82), rgba(30,10,80,0.78))',
     border: '1.5px solid rgba(245,200,66,0.5)',
     borderRadius: 16, padding: '8px 14px',
@@ -469,10 +472,16 @@ const s = {
 
   /* ─── キャラクター ─── */
   charWrap: {
-    position: 'absolute', bottom: '12%', left: '50%',
-    transform: 'translateX(-50%)',
-    display: 'flex', flexDirection: 'column', alignItems: 'center',
-    zIndex: 15, width: '78%', maxWidth: 300,
+    position: 'absolute', bottom: 12, left: 14,
+    height: '44%',
+    display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+    zIndex: 15, maxWidth: '60%',
+    pointerEvents: 'none', // 装飾要素。背後のマップスポットのタップを妨げない
+  },
+  charImg: {
+    height: '100%', width: 'auto',
+    display: 'block',
+    filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.35))',
   },
   charFigure: {
     width: 80, height: 80,
@@ -482,8 +491,9 @@ const s = {
   },
   bubble: {
     background: '#fff',
-    borderRadius: 16, padding: '10px 16px',
-    position: 'relative', width: '100%',
+    borderRadius: 16, padding: '9px 14px',
+    position: 'relative', minWidth: 150, alignSelf: 'flex-end',
+    marginBottom: 10,
     boxShadow: '0 4px 24px rgba(0,0,0,0.25), 0 1px 0 rgba(255,255,255,0.8)',
     border: '1.5px solid rgba(200,200,200,0.6)',
   },
@@ -496,23 +506,21 @@ const s = {
     whiteSpace: 'pre-wrap', margin: 0,
   },
   bubbleTail: {
-    position: 'absolute', top: -9, left: '50%',
-    transform: 'translateX(-50%)',
+    position: 'absolute', left: -9, bottom: 14,
     width: 0, height: 0,
-    borderLeft: '9px solid transparent',
-    borderRight: '9px solid transparent',
-    borderBottom: '10px solid #fff',
-    filter: 'drop-shadow(0 -2px 2px rgba(0,0,0,0.1))',
+    borderTop: '8px solid transparent',
+    borderBottom: '8px solid transparent',
+    borderRight: '10px solid #fff',
+    filter: 'drop-shadow(-2px 0 2px rgba(0,0,0,0.1))',
   },
 
   /* ─── Menuボタン ─── */
   menuBtn: {
-    position: 'absolute', bottom: 18, left: '50%',
-    transform: 'translateX(-50%)',
+    position: 'absolute', bottom: 14, right: 14,
     display: 'flex', alignItems: 'center', gap: 8,
     background: 'linear-gradient(135deg, rgba(10,20,60,0.9), rgba(30,10,80,0.88))',
     border: '1.5px solid rgba(245,200,66,0.45)',
-    borderRadius: 28, padding: '11px 32px',
+    borderRadius: 28, padding: '10px 26px',
     color: '#fff', cursor: 'pointer', zIndex: 20,
     boxShadow: '0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15)',
     backdropFilter: 'blur(8px)',
@@ -521,11 +529,11 @@ const s = {
 
   /* ─── ミッションFAB（左側） ─── */
   missionFab: {
-    position: 'absolute', top: 64, left: 12,
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+    position: 'absolute', top: 10, left: 172,
+    display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 5,
     background: 'linear-gradient(135deg, rgba(10,20,60,0.82), rgba(30,10,80,0.78))',
     border: '1.5px solid rgba(245,200,66,0.5)',
-    borderRadius: 14, padding: '8px 10px',
+    borderRadius: 20, padding: '7px 13px',
     cursor: 'pointer', zIndex: 20,
     boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
     backdropFilter: 'blur(8px)',
@@ -638,7 +646,7 @@ const s = {
     position: 'absolute', inset: 0,
     backgroundImage: `url(${BG.homeMap})`,
     backgroundSize: 'cover',
-    backgroundPosition: 'center top',
+    backgroundPosition: 'center 42%',
   },
   fullOverlay: {
     position: 'fixed', inset: 0,
