@@ -67,6 +67,10 @@ export const useGameStore = create(
       // アルバム（登頂写真）
       album: [],
 
+      // 図鑑（発見済みの標本ID）と山探索の進行度
+      discovered: [],
+      exploreLevel: 1,
+
       // --- 計算プロパティ（getter） ---
       getTotalStamina: () => {
         const { core, legs, arms } = get().player
@@ -236,6 +240,13 @@ export const useGameStore = create(
           }
         }
       })),
+
+      // 図鑑に登録（重複は無視）
+      discover: (id) => set((state) => (
+        state.discovered.includes(id) ? state : { discovered: [...state.discovered, id] }
+      )),
+
+      setExploreLevel: (lv) => set({ exploreLevel: lv }),
 
       addAlbumEntry: (entry) => set((state) => ({
         album: [...state.album, { ...entry, date: new Date().toISOString() }]
