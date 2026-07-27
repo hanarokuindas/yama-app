@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { BG } from '../assets/backgrounds'
 import GameIcon from '../components/GameIcon'
 import { Link } from 'react-router-dom'
 import { useGameStore } from '../stores/gameStore'
@@ -98,7 +99,10 @@ function Stat({ label, value, color }) {
 const styles = {
   container: {
     minHeight: '100vh',
-    background: 'linear-gradient(180deg, #0a0a1a 0%, #0d1a2a 100%)',
+    backgroundImage: `linear-gradient(rgba(8,10,24,0.74), rgba(8,10,24,0.86)), url(${BG.intro})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundAttachment: 'fixed',
     paddingBottom: 80,
     display: 'flex',
     flexDirection: 'column',

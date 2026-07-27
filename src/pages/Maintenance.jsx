@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { BG } from '../assets/backgrounds'
 import GameIcon from '../components/GameIcon'
 import { useGameStore } from '../stores/gameStore'
 
@@ -222,7 +223,10 @@ export default function Maintenance() {
 const styles = {
   container: {
     minHeight: '100vh',
-    background: 'linear-gradient(180deg, #0a0a1a 0%, #0d1a2a 50%, #0a1a12 100%)',
+    backgroundImage: `linear-gradient(rgba(8,10,24,0.72), rgba(8,10,24,0.82)), url(${BG.stage.trail})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundAttachment: 'fixed',
     paddingBottom: 80,
     display: 'flex',
     flexDirection: 'column',

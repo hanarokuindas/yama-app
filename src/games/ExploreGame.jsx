@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react'
 import Phaser from 'phaser'
 import { preloadIconImages } from '../utils/iconTexture.jsx'
+import { BG } from '../assets/backgrounds'
 
 // 背景設定（itemsはGameIconのアイコン名）
 const BACKGROUNDS = [
-  { key: 'cave', color: '#1a1a2e', name: '岩場', itemEmojis: ['rock', 'gem', 'pickaxe', 'bat', 'orb', 'moon'] },
-  { key: 'forest', color: '#1a3a1a', name: '登山道', itemEmojis: ['herb', 'mushroom', 'butterfly', 'paw', 'blossom', 'squirrel'] },
-  { key: 'meadow', color: '#2a4a1a', name: '草原', itemEmojis: ['daisy', 'cricket', 'hibiscus', 'clover', 'lizard', 'sunflower'] },
+  { key: 'cave', color: '#1a1a2e', bg: BG.stage.rocky, name: '岩場', itemEmojis: ['rock', 'gem', 'pickaxe', 'bat', 'orb', 'moon'] },
+  { key: 'forest', color: '#1a3a1a', bg: BG.stage.trail, name: '登山道', itemEmojis: ['herb', 'mushroom', 'butterfly', 'paw', 'blossom', 'squirrel'] },
+  { key: 'meadow', color: '#2a4a1a', bg: BG.stage.meadow, name: '草原', itemEmojis: ['daisy', 'cricket', 'hibiscus', 'clover', 'lizard', 'sunflower'] },
 ]
 
 export default function ExploreGame({ onClear, onGameOver }) {
@@ -18,6 +19,7 @@ export default function ExploreGame({ onClear, onGameOver }) {
     const bg = BACKGROUNDS[Math.floor(Math.random() * BACKGROUNDS.length)]
     let destroyed = false
     let iconImages = {}
+    let bgImage = null
 
     const config = {
       type: Phaser.AUTO,
@@ -32,9 +34,13 @@ export default function ExploreGame({ onClear, onGameOver }) {
     }
 
     // アイコンSVGをImage化してからゲーム開始
-    preloadIconImages(bg.itemEmojis, 48).then((imgs) => {
+    Promise.all([
+      preloadIconImages(bg.itemEmojis, 48),
+      new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = bg.bg }),
+    ]).then(([imgs, bgImg]) => {
       if (destroyed) return
       iconImages = imgs
+      bgImage = bgImg
       phaserRef.current = new Phaser.Game(config)
     })
 
@@ -48,6 +54,13 @@ export default function ExploreGame({ onClear, onGameOver }) {
     let targetEmoji = ''
 
     function create() {
+      // ステージ背景
+      if (bgImage) {
+        if (!this.textures.exists('stage_bg')) this.textures.addImage('stage_bg', bgImage)
+        this.add.image(180, 250, 'stage_bg').setDisplaySize(360, 500).setAlpha(0.85)
+        this.add.rectangle(180, 250, 360, 500, 0x000000, 0.25)
+      }
+
       // SVGアイコンをテクスチャ登録
       Object.entries(iconImages).forEach(([n, img]) => {
         if (!this.textures.exists(`icon_${n}`)) this.textures.addImage(`icon_${n}`, img)

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import GameIcon from '../components/GameIcon'
 import { senpaiPose } from '../assets/characters/senpai'
+import { BG } from '../assets/backgrounds'
 
 // ステージ定義
 const STAGE_TYPES = [
@@ -8,7 +9,7 @@ const STAGE_TYPES = [
     key: 'rocky',
     name: '岩場',
     emoji: 'rock',
-    bg: 'linear-gradient(180deg, #2c2c54 0%, #40407a 100%)',
+    bg: BG.stage.rocky,
     items: ['rock', 'gem', 'pickaxe', 'bat', 'orb'],
     target: 'gem',
     desc: '光る宝石を見つけてタップ！',
@@ -18,7 +19,7 @@ const STAGE_TYPES = [
     key: 'trail',
     name: '登山道',
     emoji: 'herb',
-    bg: 'linear-gradient(180deg, #1a3a1a 0%, #2d5a1b 100%)',
+    bg: BG.stage.trail,
     items: ['herb', 'mushroom', 'butterfly', 'paw', 'blossom'],
     target: 'blossom',
     desc: '山の花を見つけてタップ！',
@@ -28,7 +29,7 @@ const STAGE_TYPES = [
     key: 'meadow',
     name: '草原',
     emoji: 'daisy',
-    bg: 'linear-gradient(180deg, #1a3a0a 0%, #3a6b1a 100%)',
+    bg: BG.stage.meadow,
     items: ['daisy', 'cricket', 'hibiscus', 'clover', 'sunflower'],
     target: 'sunflower',
     desc: 'ひまわりを見つけてタップ！',
@@ -137,7 +138,7 @@ function StagePlay({ stage, player, onClear, onFail }) {
         <span style={{ color: '#ffd700', fontSize: 13 }}>残り {targets.length}個</span>
       </div>
       {/* ゲームフィールド */}
-      <div style={{ ...stageStyles.field, background: stage.bg }}>
+      <div style={{ ...stageStyles.field, backgroundImage: `linear-gradient(rgba(0,0,0,0.28), rgba(0,0,0,0.38)), url(${stage.bg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         {items.map((item) => {
           const done = tapped.includes(item.id)
           return (

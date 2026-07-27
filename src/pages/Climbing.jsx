@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { BG } from '../assets/backgrounds'
 import GameIcon from '../components/GameIcon'
 import { useNavigate } from 'react-router-dom'
 import { useGameStore } from '../stores/gameStore'
@@ -142,7 +143,7 @@ function SouvenirScreen({ mountainId, onDone }) {
       <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
         {souvenirs.map((s) => (
           <div key={s.id} style={styles.souvenirRow}>
-            <span style={{ fontSize: 24 }}>{s.emoji}</span>
+            <GameIcon name={s.emoji} size={26} />
             <span style={{ flex: 1, color: '#fff', fontSize: 14 }}>{s.name}</span>
             <span style={{ color: '#ffd700', fontSize: 13, marginRight: 8 }}>{s.price}pt</span>
             <button
@@ -369,7 +370,7 @@ export default function Climbing() {
   // ── 温泉 ──
   if (phase === 'onsen') {
     return (
-      <div style={styles.container}>
+      <div style={{ ...styles.container, backgroundImage: `linear-gradient(rgba(8,10,24,0.55), rgba(8,10,24,0.75)), url(${BG.onsen})` }}>
         <OnsenScreen
           course={selectedCourse}
           onNext={() => setPhase('souvenir')}
@@ -397,7 +398,10 @@ export default function Climbing() {
 const styles = {
   container: {
     minHeight: '100vh',
-    background: 'linear-gradient(180deg, #0a0a1a 0%, #0d1a2a 50%, #0a1a12 100%)',
+    backgroundImage: `linear-gradient(rgba(8,10,24,0.72), rgba(8,10,24,0.82)), url(${BG.homeMap})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundAttachment: 'fixed',
     paddingBottom: 80,
     display: 'flex',
     flexDirection: 'column',

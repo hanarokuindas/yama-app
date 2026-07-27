@@ -6,7 +6,7 @@ import { DAILY_MISSIONS } from '../data/missions'
 import GameIcon from '../components/GameIcon'
 import CountUp from '../components/CountUp'
 import { Celebration, Confetti } from '../components/Celebration'
-import WorldMap from '../components/WorldMap'
+import { BG } from '../assets/backgrounds'
 import { senpaiPose } from '../assets/characters/senpai'
 import { takaoPose } from '../assets/characters/takao'
 import { sfx } from '../utils/sound'
@@ -283,8 +283,8 @@ export default function Home() {
   return (
     <div style={s.root}>
 
-      {/* ══════════ 背景（SVGワールドマップ） ══════════ */}
-      <WorldMap />
+      {/* ══════════ 背景（ワールドマップ） ══════════ */}
+      <div style={s.worldMap} />
 
       {/* ══════════ 左上：プレイヤーバッジ ══════════ */}
       <div style={s.playerBadge}>
@@ -634,9 +634,17 @@ const s = {
   },
 
   /* ─── オーバーレイ（イントロ/プロフィール） ─── */
+  worldMap: {
+    position: 'absolute', inset: 0,
+    backgroundImage: `url(${BG.homeMap})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center top',
+  },
   fullOverlay: {
     position: 'fixed', inset: 0,
-    background: 'linear-gradient(160deg, #0f1628 0%, #1a0d28 50%, #0a1820 100%)',
+    backgroundImage: `linear-gradient(rgba(8,10,24,0.62), rgba(8,10,24,0.72)), url(${BG.intro})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
   },
   introCard: {
