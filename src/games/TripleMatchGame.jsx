@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import GameIcon from '../components/GameIcon'
+import Specimen from '../components/Specimen'
 import { BG } from '../assets/backgrounds'
 import { sfx } from '../utils/sound'
 import encyclopedia from '../data/encyclopedia.json'
@@ -234,7 +235,7 @@ export default function TripleMatchGame({ area, mountainId, level, onClear, onGa
             aria-label={p.sp.name}
           >
             <span style={st.pieceInner}>
-              <GameIcon name={p.sp.icon} size={46} />
+              <Specimen sp={p.sp} size={46} />
             </span>
           </button>
         ))}
@@ -272,7 +273,7 @@ export default function TripleMatchGame({ area, mountainId, level, onClear, onGa
               borderColor: danger && !t ? 'rgba(231,76,60,0.9)' : 'rgba(255,255,255,0.25)',
               background: t ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.35)',
             }}>
-              {t && <span style={{ animation: 'popIn 0.25s ease' }}><GameIcon name={t.sp.icon} size={34} /></span>}
+              {t && <span style={{ animation: 'popIn 0.25s ease' }}><Specimen sp={t.sp} size={34} /></span>}
             </div>
           )
         })}
@@ -284,7 +285,7 @@ export default function TripleMatchGame({ area, mountainId, level, onClear, onGa
           <div style={st.discCard}>
             <div style={st.discBadge}>図鑑に登録！</div>
             <div style={{ margin: '10px 0 4px', animation: 'popIn 0.45s ease' }}>
-              <GameIcon name={popup.icon} size={64} />
+              <Specimen sp={popup} size={64} />
             </div>
             <h3 style={st.discName}>{popup.name}</h3>
             {popup.reading && <p style={st.discReading}>{popup.reading}</p>}

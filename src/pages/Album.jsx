@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { BG } from '../assets/backgrounds'
 import GameIcon from '../components/GameIcon'
+import Specimen from '../components/Specimen'
 import { useGameStore } from '../stores/gameStore'
 import charactersData from '../data/characters.json'
 import encyclopedia from '../data/encyclopedia.json'
@@ -188,7 +189,7 @@ function Encyclopedia({ discovered, encArea, setEncArea, detail, setDetail }) {
               style={{ ...styles.encCell, opacity: found ? 1 : 0.5 }}
               onClick={() => { if (found) { sfx.tap(); setDetail(e) } else sfx.miss() }}>
               {found
-                ? <GameIcon name={e.icon} size={34} />
+                ? <Specimen sp={e} size={34} />
                 : <GameIcon name="lock" size={22} style={{ filter: 'grayscale(1)' }} />}
               <span style={styles.encCellName}>{found ? e.name : '???'}</span>
               {e.mountain && found && <span style={styles.encCellTag}>固有</span>}
@@ -201,7 +202,7 @@ function Encyclopedia({ discovered, encArea, setEncArea, detail, setDetail }) {
       {detail && (
         <button style={styles.encDetailOverlay} onClick={() => setDetail(null)}>
           <div style={styles.encDetailCard} onClick={(ev) => ev.stopPropagation()}>
-            <div style={{ margin: '4px 0 8px' }}><GameIcon name={detail.icon} size={68} /></div>
+            <div style={{ margin: '4px 0 8px' }}><Specimen sp={detail} size={68} style={{ margin: '0 auto' }} /></div>
             <h3 style={styles.encDetailName}>{detail.name}</h3>
             {detail.reading && <p style={styles.encDetailReading}>{detail.reading}</p>}
             <div style={styles.encDetailMeta}>

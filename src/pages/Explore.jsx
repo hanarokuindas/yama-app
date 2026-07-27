@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BG } from '../assets/backgrounds'
 import GameIcon from '../components/GameIcon'
+import Specimen from '../components/Specimen'
 import { useGameStore } from '../stores/gameStore'
 import TripleMatchGame from '../games/TripleMatchGame'
 import { buildStage } from '../games/stageConfig'
@@ -113,7 +114,7 @@ export default function Explore() {
             <div style={styles.foundStrip}>
               {result.found.slice(0, 8).map((sp) => (
                 <div key={sp.id} style={styles.foundChip} title={sp.name}>
-                  <GameIcon name={sp.icon} size={26} />
+                  <Specimen sp={sp} size={26} />
                 </div>
               ))}
             </div>
