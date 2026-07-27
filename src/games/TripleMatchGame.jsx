@@ -5,6 +5,8 @@ import { BG } from '../assets/backgrounds'
 import { sfx } from '../utils/sound'
 import encyclopedia from '../data/encyclopedia.json'
 import { buildStage } from './stageConfig'
+import { specimenSprite } from '../utils/specimenAssets'
+import { FX } from '../assets/fx'
 
 /*
  * 山探索：トリプルマッチ（Match 3D 系）
@@ -46,11 +48,13 @@ function pickSpecies(area, mountainId, kinds, rng) {
     const j = Math.floor(rng() * (i + 1))
     ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
   }
-  const usedIcons = new Set()
+  // 専用スプライトがある種は見た目が固有。無い種はアイコン流用なので重複を避ける
+  const usedLooks = new Set()
   const picked = []
   for (const sp of shuffled) {
-    if (usedIcons.has(sp.icon)) continue
-    usedIcons.add(sp.icon)
+    const look = specimenSprite(sp.id) ? `sprite:${sp.id}` : `icon:${sp.icon}`
+    if (usedLooks.has(look)) continue
+    usedLooks.add(look)
     picked.push(sp)
     if (picked.length >= kinds) break
   }
@@ -168,7 +172,7 @@ export default function TripleMatchGame({ area, mountainId, level, onClear, onGa
     setScore((s) => s + 10)
     setCombo(0)
     const id = piece.uid
-    setFlyers((f) => [...f, { id, x: piece.x, y: piece.y }])
+    setFlyers((f) => [...f, { id, x: piece.x, y: piece.y, kind: 'dust' }])
     setTimeout(() => setFlyers((f) => f.filter((x) => x.id !== id)), 700)
   }
 
@@ -241,7 +245,12 @@ export default function TripleMatchGame({ area, mountainId, level, onClear, onGa
         ))}
 
         {flyers.map((f) => (
-          <span key={f.id} style={{ ...st.flyer, left: `${f.x}%`, top: `${f.y}%` }}>+10</span>
+          <span key={f.id}>
+            {FX.dust && (
+              <img src={FX.dust} alt="" style={{ ...st.dust, left: `${f.x}%`, top: `${f.y}%` }} />
+            )}
+            <span style={{ ...st.flyer, left: `${f.x}%`, top: `${f.y}%` }}>+10</span>
+          </span>
         ))}
 
         {remaining === 0 && tray.length === 0 && (
@@ -270,8 +279,11 @@ export default function TripleMatchGame({ area, mountainId, level, onClear, onGa
           return (
             <div key={i} style={{
               ...st.slot,
-              borderColor: danger && !t ? 'rgba(231,76,60,0.9)' : 'rgba(255,255,255,0.25)',
-              background: t ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.35)',
+              ...(FX.traySlot
+                ? { backgroundImage: `url(${FX.traySlot})`, backgroundSize: '100% 100%', border: 'none',
+                    boxShadow: danger && !t ? '0 0 0 2px rgba(231,76,60,0.9)' : 'none' }
+                : { borderColor: danger && !t ? 'rgba(231,76,60,0.9)' : 'rgba(255,255,255,0.25)',
+                    background: t ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.35)' }),
             }}>
               {t && <span style={{ animation: 'popIn 0.25s ease' }}><Specimen sp={t.sp} size={34} /></span>}
             </div>
@@ -283,6 +295,7 @@ export default function TripleMatchGame({ area, mountainId, level, onClear, onGa
       {popup && (
         <button style={st.discOverlay} onClick={() => setPopup(null)}>
           <div style={st.discCard}>
+            {FX.sparkle && <img src={FX.sparkle} alt="" style={st.discSparkle} />}
             <div style={st.discBadge}>図鑑に登録！</div>
             <div style={{ margin: '10px 0 4px', animation: 'popIn 0.45s ease' }}>
               <Specimen sp={popup} size={64} />
@@ -343,6 +356,11 @@ const st = {
     display: 'block',
     filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.55))',
   },
+  dust: {
+    position: 'absolute', transform: 'translate(-50%,-50%)',
+    width: 74, height: 74, pointerEvents: 'none', zIndex: 190,
+    animation: 'dustPuff 0.65s ease-out forwards',
+  },
   flyer: {
     position: 'absolute', transform: 'translate(-50%,-50%)',
     color: '#f5c842', fontWeight: 900, fontSize: 15,
@@ -388,12 +406,19 @@ const st = {
     border: 'none', cursor: 'pointer', padding: 16,
   },
   discCard: {
+    position: 'relative',
     background: 'linear-gradient(180deg,#1e1e3c 0%,#12122a 100%)',
     border: '2px solid rgba(245,200,66,0.55)',
     borderRadius: 20, padding: '0 20px 20px',
     width: '100%', maxWidth: 300, textAlign: 'center',
     animation: 'popIn 0.4s cubic-bezier(.22,1,.36,1)',
     boxShadow: '0 10px 50px rgba(0,0,0,0.7)',
+  },
+  discSparkle: {
+    position: 'absolute', top: -34, left: '50%',
+    width: 150, height: 150, transform: 'translateX(-50%)',
+    pointerEvents: 'none', opacity: 0.85,
+    animation: 'glowPulse 1.8s ease-in-out infinite',
   },
   discBadge: {
     display: 'inline-block',
