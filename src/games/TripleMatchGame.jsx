@@ -40,14 +40,19 @@ function makeRng(seed) {
 /* 山＋エリアに対応する図鑑エントリを抽出。
    マッチングゲームなので、1ステージ内で見た目（アイコン）が重複しないように選ぶ。 */
 function pickSpecies(area, mountainId, kinds, rng) {
-  const pool = encyclopedia.filter(
-    (e) => e.area === area && (!e.mountain || e.mountain === mountainId)
-  )
-  const shuffled = [...pool]
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1))
-    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  const shuffle = (arr) => {
+    const a = [...arr]
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1))
+      ;[a[i], a[j]] = [a[j], a[i]]
+    }
+    return a
   }
+  const inArea = encyclopedia.filter((e) => e.area === area)
+  // 山を選んでいるときは、その山の固有種を先に並べて必ず出るようにする
+  const unique = mountainId ? shuffle(inArea.filter((e) => e.mountain === mountainId)) : []
+  const common = shuffle(inArea.filter((e) => !e.mountain))
+  const shuffled = [...unique, ...common]
   // 専用スプライトがある種は見た目が固有。無い種はアイコン流用なので重複を避ける
   const usedLooks = new Set()
   const picked = []
