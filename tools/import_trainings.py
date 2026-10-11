@@ -49,11 +49,18 @@ def norm(s):
 
 
 def split_points(text):
-    """「・」区切りや改行区切りの箇条を配列にする"""
+    """「・」区切りの箇条（制作上の注意点）を配列にする"""
     if not text:
         return []
     parts = re.split(r'[\n・]', str(text))
     return [p.strip() for p in parts if p.strip()]
+
+
+def split_lines(text):
+    """改行区切りの箇条（先輩コメント）を配列にする。文中の「膝・つま先」の・では切らない"""
+    if not text:
+        return []
+    return [line.strip().lstrip('・').strip() for line in str(text).split('\n') if line.strip().lstrip('・').strip()]
 
 
 def parse_name(raw):
@@ -115,7 +122,7 @@ def main():
     for row in comments.iter_rows(min_row=3):
         name, tips = row[6].value, row[7].value
         if name and tips:
-            tips_by_name[parse_name(name)[0]] = split_points(tips)
+            tips_by_name[parse_name(name)[0]] = split_lines(tips)
 
     out, group = [], norm(model['G2'].value)  # 最初の見出し（脚力）は表の見出し行にある
     for row in model.iter_rows(min_row=3):

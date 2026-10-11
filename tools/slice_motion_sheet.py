@@ -3,7 +3,7 @@
   python3 tools/slice_motion_sheet.py <シート画像> <種目ID> [--axis x|y] [--anchor center|front]
 
 - 白背景を透過にする（外周からつながる白と、体のすき間に閉じた白を抜く）
-- 生成画像に描かれてしまった細い床線を消す（体と重なる部分は残す）
+- 生成画像に描かれてしまった細い線（床線・コマの仕切り線）を消す（体と重なる部分は残す）
 - コマごとに「床に着いている部分」の中心をそろえて、同じ大きさの正方形キャンバスに置く
   （そろえないと再生したときに足が動いてガタつく）
 - src/assets/motions/<種目ID>/01.webp, 02.webp ... に保存する
@@ -66,8 +66,9 @@ def background_mask(rgb):
     return bg
 
 
-def remove_floor_lines(bg, min_ratio=0.5, thick=3, probe=5):
-    """横幅の半分以上続く細い線（床線）を背景にする。線の上に体が乗っている列は残す"""
+def remove_lines(bg, min_ratio=0.5, thick=3, probe=5):
+    """幅の半分以上続く細い横線（床線）を背景にする。線の上に体が乗っている列は残す。
+    bg を書き換え、消した行の位置を返す。縦線は転置した配列を渡す"""
     fg = ~bg
     h, w = fg.shape
     removed = []
@@ -79,7 +80,7 @@ def remove_floor_lines(bg, min_ratio=0.5, thick=3, probe=5):
         thin = row & bg[y - probe] & bg[y + probe]
         if thin.sum() < min_ratio * w:
             continue
-        for yy in range(y - thick, y + thick + 1):
+        for yy in range(max(0, y - thick), min(h, y + thick + 1)):
             bg[yy, thin] = True
         removed.append(y)
     return removed
@@ -106,12 +107,18 @@ def main():
 
     rgb = np.asarray(Image.open(args.sheet).convert('RGB')).astype(int)
     bg = background_mask(rgb)
-    lines = remove_floor_lines(bg)
-    if lines:
-        print('床線を除去 y =', sorted(set(lines)))
-    fg = ~bg
+    if remove_lines(bg):
+        print('横線（床線）を除去')
+    if remove_lines(bg.T):  # 転置ビューなので bg 自体が書き換わる
+        print('縦線（仕切り線）を除去')
     axis = 0 if args.axis == 'x' else 1
-    panels = segments(fg.any(axis=axis))
+    panels = segments((~bg).any(axis=axis))
+    # コマごとに描かれた短い床線も消す
+    for a, b in panels:
+        sub = bg[:, a:b + 1] if args.axis == 'x' else bg[a:b + 1, :]
+        if remove_lines(sub):
+            print(f'コマ {a}-{b} の床線を除去')
+    fg = ~bg
 
     frames = []
     for a, b in panels:
