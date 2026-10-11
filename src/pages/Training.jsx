@@ -5,6 +5,8 @@ import { Confetti } from '../components/Celebration'
 import { sfx } from '../utils/sound'
 import { senpaiPose } from '../assets/characters/senpai'
 import { BG } from '../assets/backgrounds'
+import MotionPlayer from '../components/MotionPlayer'
+import { MOTIONS } from '../data/motions'
 
 const MENUS = [
   {
@@ -207,8 +209,12 @@ export default function Training() {
     return (
       <div style={styles.container}>
         <div style={styles.trainingCard}>
-          <GameIcon name={selected.icon} size={60} />
           <h3 style={styles.trainTitle}>{selected.name}</h3>
+          {MOTIONS[selected.id] ? (
+            <MotionPlayer menuId={selected.id} focus={selected.stat} color={statColor[selected.stat]} size={210}>
+              <span style={styles.demoTag}>お手本</span>
+            </MotionPlayer>
+          ) : <GameIcon name={selected.icon} size={60} />}
           <p style={styles.trainDesc}>{selected.description}</p>
           <div style={{ ...styles.tipBox, borderColor: statColor[selected.stat], display: 'flex', gap: 10, alignItems: 'center' }}>
             <img src={senpaiPose.training[0]} alt="先輩" style={{ height: 64, flexShrink: 0 }} draggable={false} />
@@ -229,23 +235,17 @@ export default function Training() {
     return (
       <div style={styles.container}>
         <div style={styles.trainingCard}>
-          <GameIcon name={selected.icon} size={60} />
           <h3 style={styles.trainTitle}>{selected.name}</h3>
-          {/* タイマー円グラフ */}
-          <div style={styles.timerRing}>
-            <svg width={120} height={120} style={{ transform: 'rotate(-90deg)' }}>
-              <circle cx={60} cy={60} r={50} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={10} />
-              <circle
-                cx={60} cy={60} r={50} fill="none"
-                stroke={statColor[selected.stat]}
-                strokeWidth={10}
-                strokeDasharray={`${2 * Math.PI * 50}`}
-                strokeDashoffset={`${2 * Math.PI * 50 * (1 - pct / 100)}`}
-                style={{ transition: 'stroke-dashoffset 0.9s linear' }}
-              />
-            </svg>
-            <span style={styles.timerLabel}>{timeLeft}秒</span>
-          </div>
+          {MOTIONS[selected.id] ? (
+            <MotionPlayer menuId={selected.id} focus={selected.stat} color={statColor[selected.stat]} counting size={248}>
+              <TimerRing pct={pct} timeLeft={timeLeft} color={statColor[selected.stat]} mini />
+            </MotionPlayer>
+          ) : (
+            <>
+              <GameIcon name={selected.icon} size={60} />
+              <TimerRing pct={pct} timeLeft={timeLeft} color={statColor[selected.stat]} />
+            </>
+          )}
           <p style={styles.tipInline}>{selected.tips}</p>
           <button style={styles.giveupBtn} onClick={handleSkip}>やめる</button>
         </div>
@@ -289,6 +289,29 @@ export default function Training() {
   }
 
   return null
+}
+
+// 残り時間の円グラフ。mini はアニメのステージ右上に重ねる小さい版
+function TimerRing({ pct, timeLeft, color, mini = false }) {
+  const sz = mini ? 56 : 120
+  const r = mini ? 22 : 50
+  const w = mini ? 5 : 10
+  return (
+    <div style={mini ? styles.miniTimer : styles.timerRing}>
+      <svg width={sz} height={sz} style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={sz / 2} cy={sz / 2} r={r} fill={mini ? 'rgba(8,10,24,0.72)' : 'none'} stroke="rgba(255,255,255,0.15)" strokeWidth={w} />
+        <circle
+          cx={sz / 2} cy={sz / 2} r={r} fill="none"
+          stroke={color}
+          strokeWidth={w}
+          strokeDasharray={`${2 * Math.PI * r}`}
+          strokeDashoffset={`${2 * Math.PI * r * (1 - pct / 100)}`}
+          style={{ transition: 'stroke-dashoffset 0.9s linear' }}
+        />
+      </svg>
+      <span style={mini ? styles.miniTimerLabel : styles.timerLabel}>{mini ? formatTime(timeLeft) : `${timeLeft}秒`}</span>
+    </div>
+  )
 }
 
 function StatChip({ label, value, color }) {
@@ -405,6 +428,18 @@ const styles = {
     cursor: 'pointer',
   },
   timerRing: { position: 'relative', width: 120, height: 120 },
+  miniTimer: { position: 'absolute', top: 8, right: 8, width: 56, height: 56 },
+  miniTimerLabel: {
+    position: 'absolute', inset: 0,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    color: '#fff', fontSize: 12, fontWeight: 900,
+  },
+  demoTag: {
+    position: 'absolute', top: 10, left: 10,
+    background: 'rgba(8,10,24,0.72)', border: '1px solid rgba(255,255,255,0.2)',
+    borderRadius: 10, padding: '2px 9px',
+    color: '#dde', fontSize: 10.5, fontWeight: 900, letterSpacing: 1,
+  },
   timerLabel: {
     position: 'absolute',
     inset: 0,
