@@ -3,6 +3,7 @@
   python3 tools/slice_motion_sheet.py <シート画像> <種目ID> [--axis x|y]
 
 - 白背景を透過にする（外周からつながる白と、体のすき間に閉じた白を抜く）
+- 生成画像に描かれてしまった細い床線を消す（体と重なる部分は残す）
 - コマごとに「床に着いている部分」の中心をそろえて、同じ大きさの正方形キャンバスに置く
   （そろえないと再生したときに足が動いてガタつく）
 - src/assets/motions/<種目ID>/01.webp, 02.webp ... に保存する
@@ -64,6 +65,25 @@ def background_mask(rgb):
     return bg
 
 
+def remove_floor_lines(bg, min_ratio=0.5, thick=3, probe=5):
+    """横幅の半分以上続く細い線（床線）を背景にする。線の上に体が乗っている列は残す"""
+    fg = ~bg
+    h, w = fg.shape
+    removed = []
+    for y in range(probe, h - probe):
+        row = fg[y]
+        if row.sum() < min_ratio * w:
+            continue
+        # 上下 probe px が背景なら「細い線」とみなす列
+        thin = row & bg[y - probe] & bg[y + probe]
+        if thin.sum() < min_ratio * w:
+            continue
+        for yy in range(y - thick, y + thick + 1):
+            bg[yy, thin] = True
+        removed.append(y)
+    return removed
+
+
 def segments(occupied, gap=20):
     idx = np.nonzero(occupied)[0]
     segs, start, prev = [], idx[0], idx[0]
@@ -84,6 +104,9 @@ def main():
 
     rgb = np.asarray(Image.open(args.sheet).convert('RGB')).astype(int)
     bg = background_mask(rgb)
+    lines = remove_floor_lines(bg)
+    if lines:
+        print('床線を除去 y =', sorted(set(lines)))
     fg = ~bg
     axis = 0 if args.axis == 'x' else 1
     panels = segments(fg.any(axis=axis))
