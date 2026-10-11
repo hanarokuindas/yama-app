@@ -7,9 +7,10 @@ import GameIcon from '../components/GameIcon'
 import CountUp from '../components/CountUp'
 import { Celebration, Confetti } from '../components/Celebration'
 import { BG } from '../assets/backgrounds'
-import { senpaiPose } from '../assets/characters/senpai'
+import { senpaiPose, senpaiMini } from '../assets/characters/senpai'
 import { takaoPose } from '../assets/characters/takao'
 import { sfx } from '../utils/sound'
+import IntroStory from '../components/IntroStory'
 
 function getTimeSlot() {
   const h = new Date().getHours()
@@ -27,43 +28,19 @@ function getGreeting(charId) {
   return lines[Math.floor(Math.random() * lines.length)] || ''
 }
 
-/* ─────────────────────── イントロ ─────────────────────── */
-function IntroScreen({ onComplete }) {
-  const [step, setStep] = useState(0)
-  const lines = [
-    { icon: 'sunrise', text: 'ようこそ、山の世界へ！' },
-    { icon: 'mountain', text: '山を登り、鍛え、整備して\n大自然と向き合おう。' },
-    { icon: 'sparkle', text: 'まずは自己紹介してね！' },
-  ]
-  const cur = lines[step]
-  return (
-    <div style={s.fullOverlay}>
-      <div style={s.introCard}>
-        <div style={{ marginBottom: 20, animation: 'popIn 0.4s ease' }}><GameIcon name={cur.icon} size={72} /></div>
-        <p style={s.introText}>{cur.text}</p>
-        <button className="btn-primary" style={{ marginTop: 32, maxWidth: 240 }}
-          onClick={() => step < lines.length - 1 ? setStep(step + 1) : onComplete()}>
-          {step < lines.length - 1 ? '次へ ›' : 'はじめる！'}
-        </button>
-        <div style={s.dots}>
-          {lines.map((_, i) => <div key={i} style={{ ...s.dot, background: i === step ? '#f5c842' : 'rgba(255,255,255,0.25)' }} />)}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 /* ─────────────────────── プロフィール設定 ─────────────────────── */
 function ProfileScreen({ onComplete }) {
   const setPlayerName = useGameStore((s) => s.setPlayerName)
   const setPlayerWeight = useGameStore((s) => s.setPlayerWeight)
   const [name, setName] = useState('')
   const [weight, setWeight] = useState('')
+  const [error, setError] = useState('')
 
   const handleSubmit = () => {
-    if (!name.trim()) return alert('名前を入力してください')
+    if (!name.trim()) { sfx.miss(); return setError('ニックネームを入れてね') }
     const w = parseFloat(weight)
-    if (isNaN(w) || w <= 0) return alert('体重を入力してください')
+    if (isNaN(w) || w <= 0) { sfx.miss(); return setError('体重を数字で入れてね') }
+    sfx.confirm()
     setPlayerName(name.trim())
     setPlayerWeight(w)
     onComplete()
@@ -72,15 +49,18 @@ function ProfileScreen({ onComplete }) {
   return (
     <div style={s.fullOverlay}>
       <div style={s.introCard}>
-        <div style={s.profileBadge}>PROFILE SETUP</div>
-        <h2 style={s.profileTitle}>プロフィール設定</h2>
+        <img src={senpaiMini.glassesSmile} alt="先輩" style={s.profileFace} draggable={false} />
+        <div style={s.profileBadge}>PROFILE</div>
+        <h2 style={s.profileTitle}>キミのことを教えてね</h2>
         <label style={s.formLabel}>ニックネーム</label>
         <input style={s.formInput} placeholder="例：やまびこ" value={name}
-          onChange={(e) => setName(e.target.value)} maxLength={12} />
+          onChange={(e) => { setName(e.target.value); setError('') }} maxLength={12} />
         <label style={s.formLabel}>体重 (kg)</label>
-        <input style={s.formInput} type="number" placeholder="例：65" value={weight}
-          onChange={(e) => setWeight(e.target.value)} />
-        <button className="btn-primary" style={{ marginTop: 28 }} onClick={handleSubmit}>決定！</button>
+        <input style={s.formInput} type="number" inputMode="decimal" placeholder="例：65" value={weight}
+          onChange={(e) => { setWeight(e.target.value); setError('') }} />
+        <p style={s.formNote}>あとからメニューで変更できるよ</p>
+        {error && <p style={s.formError}>{error}</p>}
+        <button className="btn-primary" style={{ marginTop: 18 }} onClick={handleSubmit}>決定！</button>
       </div>
     </div>
   )
@@ -163,12 +143,13 @@ function MissionPanel({ onClose }) {
 }
 
 /* ─────────────────────── マップスポット ─────────────────────── */
-function MapSpot({ top, left, label, icon, color, badge, locked, onClick, size = 'md' }) {
+function MapSpot({ top, left, label, icon, color, badge, locked, onClick, size = 'md', tut }) {
   const sz = size === 'sm' ? 42 : 52
   return (
     <button
       style={{ ...s.spot, top, left }}
       onClick={onClick}
+      data-tut={tut}
     >
       <div style={{
         ...s.spotRing,
@@ -200,6 +181,9 @@ export default function Home() {
   const checkDailyLogin = useGameStore((st) => st.checkDailyLogin)
   const unlockClimbing = useGameStore((st) => st.unlockClimbing)
   const daily = useGameStore((st) => st.daily)
+  const tutorialActive = useGameStore((st) => st.tutorial !== null)
+  const climbTutorialSeen = useGameStore((st) => !!st.tutorialSeen.climb)
+  const startTutorial = useGameStore((st) => st.startTutorial)
   const [missionOpen, setMissionOpen] = useState(false)
   const [loginBonus, setLoginBonus] = useState(null)
 
@@ -215,15 +199,16 @@ export default function Home() {
 
   useEffect(() => { applyMountainDecay() }, [applyMountainDecay])
 
+  // ログインボーナスはチュートリアルが終わってから出す
   const profileDone = flags.profileCompleted
   useEffect(() => {
-    if (!profileDone) return
+    if (!profileDone || tutorialActive) return
     const t = setTimeout(() => {
       const result = checkDailyLogin()
       if (result) setLoginBonus(result)
     }, 600)
     return () => clearTimeout(t)
-  }, [profileDone, checkDailyLogin])
+  }, [profileDone, tutorialActive, checkDailyLogin])
 
   const total = Math.floor((player.core + player.legs + player.arms) / 3)
   const level = Math.floor(total / 50) + 1
@@ -246,7 +231,7 @@ export default function Home() {
     (m) => m.unlocked && m.maintenanceLevel < 50
   )
 
-  if (!flags.introCompleted) return <IntroScreen onComplete={completeIntro} />
+  if (!flags.introCompleted) return <IntroStory returning={flags.profileCompleted} onComplete={completeIntro} />
   if (!flags.profileCompleted) return <ProfileScreen onComplete={completeProfile} />
 
   return (
@@ -262,7 +247,7 @@ export default function Home() {
       </div>
 
       {/* ══════════ 右上：ステータス ══════════ */}
-      <div style={s.statsPanel}>
+      <div style={s.statsPanel} data-tut="home-stats">
         <div style={s.statItem}>
           <GameIcon name="heart" size={16} />
           <CountUp value={player.points} style={s.statNum} />
@@ -285,14 +270,14 @@ export default function Home() {
       </button>
 
       {/* ══════════ マップホットスポット ══════════ */}
-      <MapSpot top="17%" left="62%" label="登山" icon="mountain" color="#1d4ed8"
+      <MapSpot top="17%" left="62%" label="登山" icon="mountain" color="#1d4ed8" tut="spot-climb"
         locked={!flags.climbingUnlocked}
         onClick={() => { if (flags.climbingUnlocked) { sfx.confirm(); navigate('/climbing') } else sfx.miss() }} />
       <MapSpot top="27%" left="25%" label="山探索" icon="search" color="#7c3aed"
         onClick={() => { sfx.confirm(); navigate('/explore') }} />
       <MapSpot top="38%" left="76%" label="アルバム" icon="picture" color="#db2777"
         onClick={() => { sfx.confirm(); navigate('/album') }} />
-      <MapSpot top="45%" left="18%" label="トレーニング" icon="muscle" color="#d97706"
+      <MapSpot top="45%" left="18%" label="トレーニング" icon="muscle" color="#d97706" tut="spot-training"
         onClick={() => { sfx.confirm(); navigate('/training') }} />
       <MapSpot top="54%" left="58%" label="山整備" icon="saw" color="#059669"
         badge={needsMaintenance} onClick={() => { sfx.confirm(); navigate('/maintenance') }} />
@@ -325,7 +310,10 @@ export default function Home() {
           icon={<GameIcon name="mountain" size={80} />}
           title="登山が解禁された！"
           subtitle="装備を整えて、最初の山に挑戦しよう！"
-          onClose={() => setClimbUnlockShow(false)}
+          onClose={() => {
+            setClimbUnlockShow(false)
+            if (!climbTutorialSeen && !tutorialActive) startTutorial('climb')
+          }}
         />
       )}
 
@@ -608,8 +596,9 @@ const s = {
     backdropFilter: 'blur(16px)',
     boxShadow: '0 8px 48px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
   },
-  introText: {
-    color: '#fff', fontSize: 19, lineHeight: 1.85, whiteSpace: 'pre-wrap', fontWeight: 700,
+  profileFace: {
+    height: 96, width: 'auto', display: 'block', margin: '-78px auto 6px',
+    filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.45))',
   },
   profileBadge: {
     display: 'inline-block',
@@ -630,6 +619,6 @@ const s = {
     border: '1px solid rgba(255,255,255,0.2)',
     borderRadius: 12, color: '#fff', fontSize: 16, outline: 'none',
   },
-  dots: { display: 'flex', justifyContent: 'center', gap: 8, marginTop: 24 },
-  dot: { width: 8, height: 8, borderRadius: '50%', transition: 'background 0.3s' },
+  formNote: { color: '#8a90a8', fontSize: 11, textAlign: 'left', margin: '8px 0 0' },
+  formError: { color: '#ff8a80', fontSize: 12.5, fontWeight: 700, margin: '10px 0 0' },
 }

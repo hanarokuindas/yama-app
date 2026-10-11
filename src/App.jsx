@@ -11,6 +11,7 @@ import Shop from './pages/Shop'
 import Menu from './pages/Menu'
 import Guide from './pages/Guide'
 import AR from './pages/AR'
+import TutorialOverlay from './components/TutorialOverlay'
 
 function Inner() {
   return (
@@ -30,6 +31,7 @@ function Inner() {
         </Routes>
       </PageTransition>
       <BottomNav />
+      <TutorialOverlay />
     </>
   )
 }

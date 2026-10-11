@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { BG } from '../assets/backgrounds'
 import GameIcon from '../components/GameIcon'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useGameStore } from '../stores/gameStore'
+import { sfx } from '../utils/sound'
 
 export default function Menu() {
   const player = useGameStore((s) => s.player)
   const setPlayerName = useGameStore((s) => s.setPlayerName)
   const setPlayerWeight = useGameStore((s) => s.setPlayerWeight)
+  const replayTutorial = useGameStore((s) => s.replayTutorial)
+  const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(player.name)
   const [weight, setWeight] = useState(player.weight)
@@ -83,6 +86,12 @@ export default function Menu() {
             <span style={{ color: '#aaa' }}>›</span>
           </Link>
         ))}
+        <button style={{ ...styles.linkItem, ...styles.linkButton }}
+          onClick={() => { sfx.confirm(); replayTutorial(); navigate('/') }}>
+          <GameIcon name="sparkle" size={28} />
+          <span style={styles.linkLabel}>チュートリアルをもう一度見る</span>
+          <span style={{ color: '#aaa' }}>›</span>
+        </button>
       </div>
     </div>
   )
@@ -178,4 +187,5 @@ const styles = {
     textDecoration: 'none',
   },
   linkLabel: { color: '#fff', fontSize: 15, fontWeight: 700, flex: 1 },
+  linkButton: { width: '100%', cursor: 'pointer', textAlign: 'left', font: 'inherit' },
 }

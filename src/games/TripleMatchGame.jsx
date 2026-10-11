@@ -122,13 +122,18 @@ export default function TripleMatchGame({ area, mountainId, level, onClear, onGa
   useEffect(() => {
     const id = setInterval(() => {
       setTimeLeft((t) => {
-        if (t <= 1) { clearInterval(id); finish(false); return 0 }
+        if (t <= 1) { clearInterval(id); return 0 }
         if (t <= 11) sfx.tick()
         return t - 1
       })
     }, 1000)
     return () => clearInterval(id)
-  }, [finish])
+  }, [])
+
+  // 時間切れ。state の更新関数の中で親を更新しないよう、ここで判定する
+  useEffect(() => {
+    if (timeLeft === 0) finish(false)
+  }, [timeLeft, finish])
 
   /* ── トレイ判定（3つそろう / 埋まる） ── */
   useEffect(() => {

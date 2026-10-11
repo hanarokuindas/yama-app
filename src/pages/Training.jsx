@@ -118,6 +118,7 @@ export default function Training() {
   const addArms = useGameStore((s) => s.addArms)
   const addPoints = useGameStore((s) => s.addPoints)
   const recordMission = useGameStore((s) => s.recordMission)
+  const tutorialEvent = useGameStore((s) => s.tutorialEvent)
 
   const [phase, setPhase] = useState('list') // list / ready / doing / done / failed
   const [selected, setSelected] = useState(null)
@@ -161,6 +162,7 @@ export default function Training() {
     else if (selected.stat === 'arms') addArms(selected.gain)
     addPoints(selected.gain * 10)
     recordMission('train')
+    tutorialEvent('trained')
     sfx.coin()
     setPhase('list')
     setSelected(null)
@@ -174,14 +176,15 @@ export default function Training() {
     return (
       <div style={styles.container}>
         <div style={styles.title}>TRAINING</div>
-        <div style={styles.statsRow}>
+        <div style={styles.statsRow} data-tut="train-stats">
           <StatChip label="体幹" value={player.core} color="#e67e22" />
           <StatChip label="脚力" value={player.legs} color="#27ae60" />
           <StatChip label="腕力" value={player.arms} color="#2980b9" />
         </div>
         <div style={styles.menuList}>
           {MENUS.map((menu) => (
-            <button key={menu.id} style={styles.menuCard} onClick={() => { sfx.tap(); startTraining(menu) }}>
+            <button key={menu.id} style={styles.menuCard} data-tut={`train-${menu.id}`}
+              onClick={() => { sfx.tap(); startTraining(menu) }}>
               <GameIcon name={menu.icon} size={32} />
               <div style={styles.menuInfo}>
                 <span style={styles.menuName}>{menu.name}</span>

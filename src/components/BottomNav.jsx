@@ -2,11 +2,11 @@ import { Link, useLocation } from 'react-router-dom'
 import GameIcon from './GameIcon'
 
 const navItems = [
-  { to: '/', label: 'ホーム', icon: 'home' },
-  { to: '/training', label: '鍛錬', icon: 'muscle' },
-  { to: '/climbing', label: '登山', icon: 'mountain' },
-  { to: '/explore', label: '探索', icon: 'search' },
-  { to: '/menu', label: 'メニュー', icon: 'menu' },
+  { to: '/', label: 'ホーム', icon: 'home', tut: 'nav-home' },
+  { to: '/training', label: '鍛錬', icon: 'muscle', tut: 'nav-training' },
+  { to: '/climbing', label: '登山', icon: 'mountain', tut: 'nav-climbing' },
+  { to: '/explore', label: '探索', icon: 'search', tut: 'nav-explore' },
+  { to: '/menu', label: 'メニュー', icon: 'menu', tut: 'nav-menu' },
 ]
 
 export default function BottomNav() {
@@ -17,7 +17,7 @@ export default function BottomNav() {
       {navItems.map((item) => {
         const isActive = location.pathname === item.to
         return (
-          <Link key={item.to} to={item.to} style={{ textDecoration: 'none', flex: 1 }}>
+          <Link key={item.to} to={item.to} style={{ textDecoration: 'none', flex: 1 }} data-tut={item.tut}>
             <div style={{ ...styles.item, ...(isActive ? styles.itemActive : {}) }}>
               {isActive && <div style={styles.activeDot} />}
               <GameIcon name={item.icon} size={24} style={{ color: isActive ? '#f5c842' : '#889' }} />

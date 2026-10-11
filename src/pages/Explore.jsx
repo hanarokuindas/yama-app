@@ -32,6 +32,7 @@ export default function Explore() {
   const discovered = useGameStore((s) => s.discovered)
   const exploreLevel = useGameStore((s) => s.exploreLevel)
   const setExploreLevel = useGameStore((s) => s.setExploreLevel)
+  const tutorialEvent = useGameStore((s) => s.tutorialEvent)
 
   const mountains = useGameStore((s) => s.mountains)
   const [phase, setPhase] = useState('idle')   // idle / playing / clear / gameover
@@ -69,6 +70,7 @@ export default function Explore() {
     }
     setResult({ score, gained, found, newCount: newOnes.length, nextLevel: exploreLevel + 1 })
     setPhase(ok ? 'clear' : 'gameover')
+    tutorialEvent('explored')
   }
 
   const total = encyclopedia.length
@@ -178,7 +180,7 @@ export default function Explore() {
         <p style={styles.spotHint}>登山で山を訪れると、その山でしか見つからない固有種を探せるようになるよ</p>
       )}
 
-      <div style={styles.areaList}>
+      <div style={styles.areaList} data-tut="explore-areas">
         {AREAS.map((a) => {
           const pool = encyclopedia.filter((e) => e.area === a.id && (spot ? e.mountain === spot : !e.mountain))
           const got = pool.filter((e) => discovered.includes(e.id)).length

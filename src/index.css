@@ -161,6 +161,24 @@ button, input {
   50%      { transform: rotate(90deg); }
 }
 
+/* チュートリアル：照らした枠の脈動 */
+@keyframes tutRing {
+  0%, 100% { outline: 3px solid rgba(245,200,66,0.95); outline-offset: 0px; }
+  50%      { outline: 3px solid rgba(245,200,66,0.35); outline-offset: 5px; }
+}
+
+/* チュートリアル：要素を指す矢印 */
+@keyframes tutBounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+
+/* オープニング：ページ送りの▼ */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.2; }
+}
+
 /* 標本を拾ったときの土ぼこり */
 @keyframes dustPuff {
   0%   { transform: translate(-50%,-50%) scale(0.4); opacity: 0.75; }

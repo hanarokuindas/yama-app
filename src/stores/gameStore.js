@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { TUTORIALS, nextStepIndex } from '../data/tutorial'
 
 const DEFAULT_MOUNTAINS = {
   yatsugatake: {
@@ -82,6 +83,10 @@ export const useGameStore = create(
 
       // ご利益：お土産を山神にお供えすると付く。次の登山1回だけ総合体力を底上げする
       blessing: null,  // { mountainId, name, pct }
+
+      // チュートリアル。進行中なら { id, step }（data/tutorial.js の章とステップ位置）
+      tutorial: null,
+      tutorialSeen: {},  // { start: true, climb: true }
 
       // --- 計算プロパティ（getter） ---
       getTotalStamina: () => {
@@ -202,9 +207,56 @@ export const useGameStore = create(
         flags: { ...state.flags, introCompleted: true }
       })),
 
+      // プロフィールを決めたら、そのままチュートリアルを始める
       completeProfile: () => set((state) => ({
-        flags: { ...state.flags, profileCompleted: true }
+        flags: { ...state.flags, profileCompleted: true },
+        tutorial: { id: 'start', step: nextStepIndex('start', -1, state) },
       })),
+
+      // --- チュートリアル ---
+      startTutorial: (id) => set((state) => {
+        const step = nextStepIndex(id, -1, state)
+        return step === null ? state : { tutorial: { id, step } }
+      }),
+
+      // メニューから最初（オープニング）から見直す
+      replayTutorial: () => set((state) => ({
+        flags: { ...state.flags, introCompleted: false },
+        tutorial: { id: 'start', step: nextStepIndex('start', -1, state) },
+      })),
+
+      // 次のステップへ。最後まで来たら終了して、もらえた報酬ptを返す
+      advanceTutorial: () => {
+        const t = get().tutorial
+        if (!t) return 0
+        const next = nextStepIndex(t.id, t.step, get())
+        if (next === null) return get().endTutorial(true)
+        set({ tutorial: { ...t, step: next } })
+        return 0
+      },
+
+      // 画面側の出来事（トレーニング完了など）を待っているステップを進める
+      tutorialEvent: (name) => {
+        const t = get().tutorial
+        if (!t || TUTORIALS[t.id].steps[t.step]?.waitFor !== name) return
+        get().advanceTutorial()
+      },
+
+      // completed=false はスキップ。報酬は最後まで進めた初回だけ
+      endTutorial: (completed) => {
+        const t = get().tutorial
+        if (!t) return 0
+        const reward = completed && !get().tutorialSeen[t.id] ? TUTORIALS[t.id].reward : 0
+        set((state) => ({
+          tutorial: null,
+          tutorialSeen: { ...state.tutorialSeen, [t.id]: true },
+          player: { ...state.player, points: state.player.points + reward },
+        }))
+        // 案内中に登山が解禁されていたら、続けて登山編を出す
+        const s = get()
+        if (t.id === 'start' && s.flags.climbingUnlocked && !s.tutorialSeen.climb) s.startTutorial('climb')
+        return reward
+      },
 
       unlockShopping: () => set((state) => ({
         flags: { ...state.flags, shopUnlocked: true }

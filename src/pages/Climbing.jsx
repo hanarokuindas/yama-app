@@ -312,7 +312,7 @@ export default function Climbing() {
             )
           })}
         </div>
-        <button style={styles.shopLink} onClick={() => navigate('/shop')}>登山ショップへ ›</button>
+        <button style={styles.shopLink} data-tut="climb-shop" onClick={() => navigate('/shop')}>登山ショップへ ›</button>
       </div>
     )
   }

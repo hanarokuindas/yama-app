@@ -78,8 +78,8 @@ export default function Guide() {
           <div style={styles.senpaiRow}>
             <img src={senpaiPose.think[0]} alt="先輩" style={{ height: 86 }} draggable={false} />
             <div style={styles.senpaiBubble}>
-              山は逃げないけど、準備不足で登ると痛い目にあうぞ。
-              この順番で進めるのが一番ラクだ。
+              山は逃げないけど、準備不足で登るとたいへんな目にあうよ。
+              この順番で進めるのがいちばんラクかな！
             </div>
           </div>
 
