@@ -11,14 +11,21 @@ import { FX } from '../assets/fx'
 /*
  * 山探索：トリプルマッチ（Match 3D 系）
  *
- * 散らばった標本をタップしてトレイに集め、同じものが3つそろうと
- * 消えて図鑑に登録される。トレイ(7枠)が埋まると失敗。
- * 3種の標本は「岩場（鉱物）／登山道（動物）／草原（植物）」の
- * 実在の図鑑データから出題される。
+ * 上に出る「ターゲット」の標本を3つずつそろえるとクリア。そろえたターゲットは図鑑に登録される。
+ * 盤面にはターゲット以外の標本も混ざる。
+ *   おじゃま … 3個ずつあり、そろえれば消せる（図鑑には登録されない）
+ *   ハズレ   … 1〜2個しかなく、取るとトレイの枠をふさいだままになる（Lv3から）
+ * 上に別の標本が重なっている標本は取れない。トレイ(7枠)が埋まるか時間切れで失敗。
  */
 
 const TRAY_SIZE = 7
 const MATCH = 3
+const FIELD_H = 400
+const PIECE_R = 21      // 標本の見た目の半径(px)。scale を掛けて使う
+const COVER = 0.85      // 中心同士がこの割合より近いと「上に重なっている」とみなす
+const TARGET_POINT = 300
+const DECOY_POINT = 50
+const TIME_BONUS = 15   // クリア時の残り1秒あたり
 
 const AREAS = {
   rock: { name: '岩場', bg: BG.stage.rocky, tint: 'rgba(40,30,70,0.35)' },
@@ -38,91 +45,150 @@ function makeRng(seed) {
   }
 }
 
-/* 山＋エリアに対応する図鑑エントリを抽出。
-   マッチングゲームなので、1ステージ内で見た目（アイコン）が重複しないように選ぶ。 */
-function pickSpecies(area, mountainId, kinds, rng) {
-  const shuffle = (arr) => {
-    const a = [...arr]
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1))
-      ;[a[i], a[j]] = [a[j], a[i]]
-    }
-    return a
+function shuffle(arr, rng) {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
   }
-  const inArea = encyclopedia.filter((e) => e.area === area)
-  // 山を選んでいるときは、その山の固有種を先に並べて必ず出るようにする
-  const unique = mountainId ? shuffle(inArea.filter((e) => e.mountain === mountainId)) : []
-  const common = shuffle(inArea.filter((e) => !e.mountain))
-  const shuffled = [...unique, ...common]
-  // 専用スプライトがある種は見た目が固有。無い種はアイコン流用なので重複を避ける
-  const usedLooks = new Set()
-  const picked = []
-  for (const sp of shuffled) {
-    const look = specimenSprite(sp.id) ? `sprite:${sp.id}` : `icon:${sp.icon}`
-    if (usedLooks.has(look)) continue
-    usedLooks.add(look)
-    picked.push(sp)
-    if (picked.length >= kinds) break
-  }
-  return picked
+  return a
 }
 
-/* 盤面の標本を生成。重なりと傾きで立体的な「山積み」を作る */
-function buildPieces(species, sets, rng) {
-  const bag = []
-  species.forEach((sp) => {
-    for (let i = 0; i < sets * MATCH; i++) bag.push(sp)
-  })
-  for (let i = bag.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1))
-    ;[bag[i], bag[j]] = [bag[j], bag[i]]
+// 専用スプライトがある種は見た目が固有。無い種はアイコン流用なので、同じアイコンの種は同時に出さない
+const lookOf = (sp) => (specimenSprite(sp.id) ? `sprite:${sp.id}` : `icon:${sp.icon}`)
+
+/* ターゲット・おじゃま・ハズレを、見た目が重ならないように選ぶ */
+function pickSpecies(area, mountainId, stage, rng) {
+  const used = new Set()
+  const take = (list, n) => {
+    const out = []
+    for (const sp of list) {
+      if (out.length >= n) break
+      const look = lookOf(sp)
+      if (used.has(look)) continue
+      used.add(look)
+      out.push(sp)
+    }
+    return out
   }
-  return bag.map((sp, i) => ({
-    uid: i,
-    sp,
+  const inArea = encyclopedia.filter((e) => e.area === area)
+  // ターゲット：山を選んでいるときは、その山の固有種を優先する
+  const unique = mountainId ? shuffle(inArea.filter((e) => e.mountain === mountainId), rng) : []
+  const common = shuffle(inArea.filter((e) => !e.mountain), rng)
+  const targets = take([...unique, ...common], stage.targetKinds)
+  // おじゃま・ハズレ：同じエリアの残り → ほかのエリアの順に選ぶ
+  const rest = [...common, ...shuffle(encyclopedia.filter((e) => e.area !== area && !e.mountain), rng)]
+  const decoys = take(rest, stage.decoyKinds)
+  const hazure = take(rest, stage.hazure)
+  return { targets, decoys, hazure }
+}
+
+function place(rng) {
+  return {
     x: 8 + rng() * 84,          // %
-    y: 10 + rng() * 76,         // %
+    y: 9 + rng() * 80,          // %
     rot: (rng() - 0.5) * 44,    // deg
-    depth: rng(),               // 奥行き（重なり順・明るさ）
+    depth: rng(),               // 奥行き（大きいほど上）
     scale: 0.86 + rng() * 0.3,
-  }))
+  }
+}
+
+/* 盤面の標本を生成。重なりと傾きで「山積み」を作る */
+function buildPieces({ targets, decoys, hazure }, stage, rng) {
+  const bag = []
+  targets.forEach((sp) => { for (let i = 0; i < stage.targetSets * MATCH; i++) bag.push({ sp, role: 'target' }) })
+  decoys.forEach((sp) => { for (let i = 0; i < MATCH; i++) bag.push({ sp, role: 'decoy' }) })
+  hazure.forEach((sp) => { const n = rng() < 0.5 ? 1 : 2; for (let i = 0; i < n; i++) bag.push({ sp, role: 'hazure' }) })
+  return shuffle(bag, rng).map((b, i) => ({ uid: i, ...b, ...place(rng) }))
+}
+
+/* 上に別の標本が重なっていて取れない標本の uid */
+function coveredSet(pieces, fieldW) {
+  const covered = new Set()
+  for (const a of pieces) {
+    for (const b of pieces) {
+      if (b.depth <= a.depth) continue
+      const dx = ((a.x - b.x) / 100) * fieldW
+      const dy = ((a.y - b.y) / 100) * FIELD_H
+      const lim = COVER * PIECE_R * (a.scale + b.scale)
+      if (dx * dx + dy * dy < lim * lim) { covered.add(a.uid); break }
+    }
+  }
+  return covered
 }
 
 export default function TripleMatchGame({ area, mountainId, level, onClear, onGameOver, onDiscover }) {
   const stage = useMemo(() => buildStage(level), [level])
-  const [seed] = useState(() => Math.floor(Math.random() * 1e9))
-
-  const [pieces, setPieces] = useState(() => {
-    const rng = makeRng(seed)
-    const species = pickSpecies(area, mountainId, stage.kinds, rng)
-    return buildPieces(species, stage.sets, rng)
+  const [setup] = useState(() => {
+    const rng = makeRng(Math.floor(Math.random() * 1e9))
+    const picked = pickSpecies(area, mountainId, stage, rng)
+    return { targets: picked.targets, pieces: buildPieces(picked, stage, rng) }
   })
+  const targetIds = useMemo(() => new Set(setup.targets.map((sp) => sp.id)), [setup])
+
+  const [pieces, setPieces] = useState(setup.pieces)
   const [tray, setTray] = useState([])
   const [timeLeft, setTimeLeft] = useState(stage.time)
   const [score, setScore] = useState(0)
-  const [combo, setCombo] = useState(0)
-  const [found, setFound] = useState([])       // 図鑑登録された種
-  const [popup, setPopup] = useState(null)     // 新種発見の演出
-  const [flyers, setFlyers] = useState([])     // 加点の飛び出し表示
+  const [cleared, setCleared] = useState({})   // ターゲットごとにそろえたセット数
+  const [found, setFound] = useState([])       // 図鑑登録されたターゲット
+  const [popup, setPopup] = useState(null)     // 図鑑登録の演出
+  const [flyers, setFlyers] = useState([])     // 取ったときの土ぼこり・加点表示
   const [shuffleLeft, setShuffleLeft] = useState(1)
   const [undoLeft, setUndoLeft] = useState(1)
+  const [result, setResult] = useState(null)   // { ok, reason, score, found }
   const endedRef = useRef(false)
+  const popupRef = useRef(null)
+  const cbRef = useRef({ onClear, onGameOver })
+  const fieldRef = useRef(null)
+  const [fieldW, setFieldW] = useState(400)
 
-  const remaining = pieces.length
+  useEffect(() => { cbRef.current = { onClear, onGameOver } })
+  useEffect(() => { popupRef.current = popup }, [popup])
 
-  /* ── 終了判定 ── */
-  const finish = useCallback((ok) => {
+  // 盤面の幅（重なり判定に使う）
+  useEffect(() => {
+    const el = fieldRef.current
+    if (!el) return
+    const update = () => setFieldW(el.clientWidth || 400)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const covered = useMemo(() => coveredSet(pieces, fieldW), [pieces, fieldW])
+  // 重なり順（depth の小さい順に 1, 2, …）
+  const layer = useMemo(() => {
+    const order = [...pieces].sort((a, b) => a.depth - b.depth)
+    return new Map(order.map((p, i) => [p.uid, i + 1]))
+  }, [pieces])
+
+  const targetsLeft = setup.targets.reduce((n, sp) => n + stage.targetSets - (cleared[sp.id] || 0), 0)
+
+  /* ── 終了（1回だけ） ── */
+  const end = useCallback((ok, reason, finalScore, finalFound) => {
     if (endedRef.current) return
     endedRef.current = true
-    if (ok) { sfx.fanfare(); onClear({ score, found }) }
-    else { sfx.miss(); onGameOver({ score, found }) }
-  }, [score, found, onClear, onGameOver])
+    setResult({ ok, reason, score: finalScore, found: finalFound })
+  }, [])
 
-  /* ── タイマー ── */
+  useEffect(() => {
+    if (!result) return
+    if (result.ok) sfx.fanfare(); else sfx.miss()
+    const t = setTimeout(() => {
+      const cb = result.ok ? cbRef.current.onClear : cbRef.current.onGameOver
+      cb({ score: result.score, found: result.found, reason: result.reason })
+    }, result.ok ? 1200 : 900)
+    return () => clearTimeout(t)
+  }, [result])
+
+  /* ── タイマー（図鑑登録の演出中は止める） ── */
   useEffect(() => {
     const id = setInterval(() => {
+      if (endedRef.current || popupRef.current) return
       setTimeLeft((t) => {
-        if (t <= 1) { clearInterval(id); return 0 }
+        if (t <= 1) return 0
         if (t <= 11) sfx.tick()
         return t - 1
       })
@@ -130,76 +196,77 @@ export default function TripleMatchGame({ area, mountainId, level, onClear, onGa
     return () => clearInterval(id)
   }, [])
 
-  // 時間切れ。state の更新関数の中で親を更新しないよう、ここで判定する
   useEffect(() => {
-    if (timeLeft === 0) finish(false)
-  }, [timeLeft, finish])
+    if (timeLeft === 0) end(false, 'time', score, found)
+  }, [timeLeft, score, found, end])
 
   /* ── トレイ判定（3つそろう / 埋まる） ── */
   useEffect(() => {
-    if (tray.length === 0) return
+    if (tray.length === 0 || endedRef.current) return
     const counts = {}
     tray.forEach((t) => { counts[t.sp.id] = (counts[t.sp.id] || 0) + 1 })
     const hit = Object.keys(counts).find((k) => counts[k] >= MATCH)
 
     if (hit) {
       const sp = tray.find((t) => t.sp.id === hit).sp
+      const isTarget = targetIds.has(hit)
       const timer = setTimeout(() => {
         setTray((prev) => {
           let removed = 0
           return prev.filter((t) => !(t.sp.id === hit && removed++ < MATCH))
         })
-        setCombo((c) => c + 1)
-        setScore((s) => s + 300 + combo * 100)
-        setFound((f) => (f.some((x) => x.id === sp.id) ? f : [...f, sp]))
-        onDiscover?.(sp)          // 揃った時点で図鑑に保存（失敗しても記録は残る）
-        setPopup(sp)
-        sfx.item()
+        if (isTarget) {
+          setScore((s) => s + TARGET_POINT)
+          setCleared((c) => ({ ...c, [hit]: (c[hit] || 0) + 1 }))
+          setFound((f) => (f.some((x) => x.id === sp.id) ? f : [...f, sp]))
+          onDiscover?.(sp)          // そろった時点で図鑑に保存（失敗しても記録は残る）
+          setPopup(sp)
+          sfx.item()
+        } else {
+          setScore((s) => s + DECOY_POINT)
+          sfx.coin()
+        }
       }, 220)
       return () => clearTimeout(timer)
     }
 
     if (tray.length >= TRAY_SIZE) {
-      const timer = setTimeout(() => finish(false), 500)
+      const timer = setTimeout(() => end(false, 'tray', score, found), 500)
       return () => clearTimeout(timer)
     }
-  }, [tray, combo, finish, onDiscover])
+  }, [tray, targetIds, onDiscover, end, score, found])
 
-  /* ── 全部片付いたらクリア ── */
+  /* ── ターゲットを全部そろえたらクリア（残り時間ボーナスは1回だけ） ── */
   useEffect(() => {
-    if (remaining === 0 && tray.length === 0 && !endedRef.current) {
-      setScore((s) => s + timeLeft * 15)   // 残り時間ボーナス
-      const t = setTimeout(() => finish(true), 400)
-      return () => clearTimeout(t)
-    }
-  }, [remaining, tray.length, timeLeft, finish])
+    if (targetsLeft > 0 || endedRef.current) return
+    const bonus = timeLeft * TIME_BONUS
+    setScore((s) => s + bonus)
+    setPopup(null)
+    end(true, 'clear', score + bonus, found)
+  }, [targetsLeft, timeLeft, score, found, end])
 
   /* ── 標本をタップ ── */
   const pick = (piece) => {
     if (endedRef.current || tray.length >= TRAY_SIZE) return
+    if (covered.has(piece.uid)) { sfx.miss(); return }
     sfx.tap()
     setPieces((prev) => prev.filter((p) => p.uid !== piece.uid))
     setTray((prev) => [...prev, piece])
-    setScore((s) => s + 10)
-    setCombo(0)
     const id = piece.uid
-    setFlyers((f) => [...f, { id, x: piece.x, y: piece.y, kind: 'dust' }])
+    setFlyers((f) => [...f, { id, x: piece.x, y: piece.y }])
     setTimeout(() => setFlyers((f) => f.filter((x) => x.id !== id)), 700)
   }
 
   /* ── ブースター ── */
   const doShuffle = () => {
-    if (shuffleLeft <= 0) return
+    if (shuffleLeft <= 0 || endedRef.current) return
     sfx.confirm()
     setShuffleLeft((n) => n - 1)
     const rng = makeRng(Date.now())
-    setPieces((prev) => prev.map((p) => ({
-      ...p, x: 8 + rng() * 84, y: 10 + rng() * 76,
-      rot: (rng() - 0.5) * 44, depth: rng(),
-    })))
+    setPieces((prev) => prev.map((p) => ({ ...p, ...place(rng), scale: p.scale })))
   }
   const doUndo = () => {
-    if (undoLeft <= 0 || tray.length === 0) return
+    if (undoLeft <= 0 || tray.length === 0 || endedRef.current) return
     sfx.cancel()
     setUndoLeft((n) => n - 1)
     const last = tray[tray.length - 1]
@@ -209,6 +276,7 @@ export default function TripleMatchGame({ area, mountainId, level, onClear, onGa
 
   const timePct = (timeLeft / stage.time) * 100
   const areaConf = AREAS[area]
+  const endText = result && (result.ok ? 'ターゲット達成！' : result.reason === 'tray' ? 'トレイがいっぱい…' : '時間切れ…')
 
   return (
     <div style={st.root}>
@@ -234,39 +302,52 @@ export default function TripleMatchGame({ area, mountainId, level, onClear, onGa
         <div style={{ ...st.timeBarFill, width: `${timePct}%`, background: timeLeft <= 11 ? '#e74c3c' : 'linear-gradient(90deg,#2ecc71,#7ee8a5)' }} />
       </div>
 
+      {/* ターゲット */}
+      <div style={st.targetBar}>
+        <span style={st.targetLabel}>ターゲット</span>
+        {setup.targets.map((sp) => {
+          const done = (cleared[sp.id] || 0) >= stage.targetSets
+          const got = (cleared[sp.id] || 0) * MATCH + tray.filter((t) => t.sp.id === sp.id).length
+          const left = stage.targetSets * MATCH - got
+          return (
+            <div key={sp.id} style={{ ...st.targetChip, opacity: done ? 0.55 : 1 }} title={sp.name}>
+              <Specimen sp={sp} size={28} />
+              <span style={{ ...st.targetCount, color: done ? '#1a8a47' : '#1a1a2e' }}>{done ? '✓' : left}</span>
+            </div>
+          )
+        })}
+      </div>
+
       {/* 盤面（標本の山） */}
-      <div style={st.field}>
-        {pieces.map((p) => (
-          <button
-            key={p.uid}
-            onClick={() => pick(p)}
-            style={{
-              ...st.piece,
-              left: `${p.x}%`, top: `${p.y}%`,
-              zIndex: Math.round(p.depth * 100),
-              transform: `translate(-50%,-50%) rotate(${p.rot}deg) scale(${p.scale})`,
-              filter: `brightness(${0.78 + p.depth * 0.32})`,
-            }}
-            aria-label={p.sp.name}
-          >
-            <span style={st.pieceInner}>
-              <Specimen sp={p.sp} size={46} />
-            </span>
-          </button>
-        ))}
+      <div style={st.field} ref={fieldRef}>
+        {pieces.map((p) => {
+          const blocked = covered.has(p.uid)
+          return (
+            <button
+              key={p.uid}
+              onClick={() => pick(p)}
+              style={{
+                ...st.piece,
+                left: `${p.x}%`, top: `${p.y}%`,
+                zIndex: layer.get(p.uid),
+                transform: `translate(-50%,-50%) rotate(${p.rot}deg) scale(${p.scale})`,
+                filter: blocked ? 'brightness(0.5) saturate(0.6)' : `brightness(${0.95 + p.depth * 0.12})`,
+                cursor: blocked ? 'default' : 'pointer',
+              }}
+              aria-label={blocked ? `${p.sp.name}（下にあって取れない）` : p.sp.name}
+            >
+              <span style={st.pieceInner}>
+                <Specimen sp={p.sp} size={46} />
+              </span>
+            </button>
+          )
+        })}
 
         {flyers.map((f) => (
-          <span key={f.id}>
-            {FX.dust && (
-              <img src={FX.dust} alt="" style={{ ...st.dust, left: `${f.x}%`, top: `${f.y}%` }} />
-            )}
-            <span style={{ ...st.flyer, left: `${f.x}%`, top: `${f.y}%` }}>+10</span>
-          </span>
+          FX.dust && <img key={f.id} src={FX.dust} alt="" style={{ ...st.dust, left: `${f.x}%`, top: `${f.y}%` }} />
         ))}
 
-        {remaining === 0 && tray.length === 0 && (
-          <div style={st.clearMsg}>すべて発見！</div>
-        )}
+        {endText && <div style={st.clearMsg}>{endText}</div>}
       </div>
 
       {/* ブースター */}
@@ -279,7 +360,7 @@ export default function TripleMatchGame({ area, mountainId, level, onClear, onGa
           <GameIcon name="box" size={20} />
           <span style={st.boosterLabel}>もどす {undoLeft}</span>
         </button>
-        <div style={st.remainChip}>のこり {remaining}</div>
+        <div style={st.remainChip}>のこり {pieces.length}個</div>
       </div>
 
       {/* トレイ */}
@@ -302,7 +383,7 @@ export default function TripleMatchGame({ area, mountainId, level, onClear, onGa
         })}
       </div>
 
-      {/* 新種発見ポップ */}
+      {/* 図鑑登録ポップ */}
       {popup && (
         <button style={st.discOverlay} onClick={() => setPopup(null)}>
           <div style={st.discCard}>
@@ -356,7 +437,7 @@ const st = {
   },
   timeBarFill: { height: '100%', borderRadius: 99, transition: 'width 0.9s linear' },
 
-  field: { position: 'relative', height: 400, margin: '2px 6px 0' },
+  field: { position: 'relative', zIndex: 0, height: FIELD_H, margin: '2px 6px 0' },  // zIndex で重なり順をこの中に閉じる
   piece: {
     position: 'absolute', background: 'none', border: 'none',
     padding: 0, cursor: 'pointer', lineHeight: 0,
@@ -369,22 +450,30 @@ const st = {
   },
   dust: {
     position: 'absolute', transform: 'translate(-50%,-50%)',
-    width: 74, height: 74, pointerEvents: 'none', zIndex: 190,
+    width: 74, height: 74, pointerEvents: 'none', zIndex: 1000,
     animation: 'dustPuff 0.65s ease-out forwards',
   },
-  flyer: {
-    position: 'absolute', transform: 'translate(-50%,-50%)',
-    color: '#f5c842', fontWeight: 900, fontSize: 15,
-    textShadow: '0 2px 6px #000', pointerEvents: 'none',
-    animation: 'coinFly 0.7s ease-out forwards', zIndex: 200,
-  },
   clearMsg: {
-    position: 'absolute', inset: 0, display: 'flex',
+    position: 'absolute', inset: 0, zIndex: 1001, display: 'flex',
     alignItems: 'center', justifyContent: 'center',
     color: '#fff', fontSize: 22, fontWeight: 900,
     textShadow: '0 0 18px rgba(245,200,66,0.9)',
     animation: 'popIn 0.5s ease',
   },
+
+  targetBar: {
+    position: 'relative', display: 'flex', alignItems: 'center', gap: 6,
+    margin: '2px 10px 0', padding: '5px 8px',
+    background: 'rgba(8,10,24,0.72)', backdropFilter: 'blur(6px)',
+    border: '1px solid rgba(245,200,66,0.45)', borderRadius: 14,
+    flexWrap: 'wrap',
+  },
+  targetLabel: { color: '#f5c842', fontSize: 10.5, fontWeight: 900, letterSpacing: 1, marginRight: 2 },
+  targetChip: {
+    display: 'flex', alignItems: 'center', gap: 2,
+    background: 'rgba(255,255,255,0.85)', borderRadius: 10, padding: '1px 6px 1px 2px',  // 黒っぽい標本も見えるように明るい下地
+  },
+  targetCount: { fontSize: 13, fontWeight: 900, minWidth: 10, textAlign: 'center' },
 
   boosters: {
     position: 'relative', display: 'flex', alignItems: 'center', gap: 8,

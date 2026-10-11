@@ -46,8 +46,8 @@ export const TUTORIALS = {
       },
       {
         id: 'pickArea', route: '/explore', target: 'explore-areas', action: true, waitFor: 'explored', pose: 'glassesWink',
-        text: '同じ標本を3つタップして、下のトレイでそろえると消えるよ。\nトレイ（7枠）があふれる前に片づけよう。好きなエリアを選んでね',
-        hint: '同じ標本を3つそろえよう！',
+        text: '上に出るターゲットの標本を3つずつそろえるとクリア。\n上に重なっている標本は取れないから、おじゃまをどかしながら探してね。好きなエリアを選んでね',
+        hint: 'ターゲットを3つずつそろえよう！',
       },
       {
         id: 'explored', route: '/explore', pose: 'smileCheer',

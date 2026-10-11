@@ -59,7 +59,7 @@ export default function Explore() {
   const [snapshot, setSnapshot] = useState([])
   const handleDiscover = useCallback((sp) => discover(sp.id), [discover])
 
-  const handleEnd = (ok) => ({ score, found }) => {
+  const handleEnd = (ok) => ({ score, found, reason }) => {
     const newOnes = found.filter((sp) => !snapshot.includes(sp.id))
     const bonus = newOnes.length * 200
     const gained = ok ? score + bonus : Math.floor(score / 2)
@@ -68,7 +68,7 @@ export default function Explore() {
       recordMission('explore')
       setExploreLevel(exploreLevel + 1)
     }
-    setResult({ score, gained, found, newCount: newOnes.length, nextLevel: exploreLevel + 1 })
+    setResult({ score, gained, found, reason, newCount: newOnes.length, nextLevel: exploreLevel + 1 })
     setPhase(ok ? 'clear' : 'gameover')
     tutorialEvent('explored')
   }
@@ -104,7 +104,7 @@ export default function Explore() {
           {ok
             ? <GameIcon name="trophy" size={62} style={{ animation: 'popIn 0.5s ease' }} />
             : <img src={senpaiPose.think[2]} alt="先輩" style={{ height: 96 }} draggable={false} />}
-          <h3 style={styles.cardTitle}>{ok ? 'エリア踏破！' : 'トレイがいっぱい…'}</h3>
+          <h3 style={styles.cardTitle}>{ok ? 'エリア踏破！' : result.reason === 'time' ? '時間切れ…' : 'トレイがいっぱい…'}</h3>
 
           <div style={styles.resultRows}>
             <Row label="スコア" value={result.score.toLocaleString()} />
@@ -151,15 +151,16 @@ export default function Explore() {
         </div>
         <div style={styles.summaryDivider} />
         <div style={styles.summaryItem}>
-          <span style={styles.summaryLabel}>今回の種類</span>
-          <span style={styles.summaryValue}>{stage.kinds}</span>
+          <span style={styles.summaryLabel}>ターゲット</span>
+          <span style={styles.summaryValue}>{stage.targetKinds}<span style={{ fontSize: 12 }}>種</span></span>
           <span style={styles.summarySub}>制限 {stage.time}秒</span>
         </div>
       </div>
 
       <p style={styles.rule}>
-        同じ標本を<b style={{ color: '#f5c842' }}>3つ</b>そろえると図鑑に登録できるよ。<br />
-        トレイ（7枠）が埋まる前にすべて片づけよう！
+        上に出る<b style={{ color: '#f5c842' }}>ターゲット</b>を3つずつそろえるとクリア。図鑑に登録されるよ。<br />
+        ほかの標本はおじゃま（{stage.hazure > 0 ? '3つそろわないハズレもあるよ' : '3つそろえれば消せる'}）。<br />
+        上に重なっている標本は取れない。トレイ（7枠）があふれたら失敗！
       </p>
 
       <div style={styles.spotRow}>
@@ -245,6 +246,7 @@ const styles = {
   summaryDivider: { width: 1, background: 'rgba(255,255,255,0.12)', margin: '2px 0' },
 
   rule: {
+    width: 'calc(100% - 32px)', maxWidth: 360,
     color: '#ccd', fontSize: 12, lineHeight: 1.8, textAlign: 'center',
     marginBottom: 14, textShadow: '0 1px 4px rgba(0,0,0,0.8)',
   },
