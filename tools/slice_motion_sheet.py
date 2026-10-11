@@ -1,6 +1,6 @@
 """モーションのシート画像（コマを1列に並べた生成画像）を、アプリ用のコマに切り出す。
 
-  python3 tools/slice_motion_sheet.py <シート画像> <種目ID> [--axis x|y]
+  python3 tools/slice_motion_sheet.py <シート画像> <種目ID> [--axis x|y] [--anchor center|front]
 
 - 白背景を透過にする（外周からつながる白と、体のすき間に閉じた白を抜く）
 - 生成画像に描かれてしまった細い床線を消す（体と重なる部分は残す）
@@ -9,7 +9,8 @@
 - src/assets/motions/<種目ID>/01.webp, 02.webp ... に保存する
 
 --axis は コマが横に並んでいれば x（既定）、縦に積まれていれば y。
-寝転ぶ種目（プランク・腕立てなど）も、床に着く部分の中心でそろえる。
+--anchor は そろえる基準。center（既定）は床に着く部分全体の中心、
+front は いちばん前（画面右）の接地点（ランジの前足・腹筋の足先など、動かない足が前にある種目）。
 """
 import argparse
 import os
@@ -99,6 +100,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('sheet'); ap.add_argument('motion_id')
     ap.add_argument('--axis', choices=['x', 'y'], default='x')
+    ap.add_argument('--anchor', choices=['center', 'front'], default='center')
     ap.add_argument('--out', default=os.path.join(os.path.dirname(__file__), '..', 'src', 'assets', 'motions'))
     args = ap.parse_args()
 
@@ -121,7 +123,7 @@ def main():
             ys = ys + a
         bottom = ys.max()
         foot = xs[ys >= bottom - FOOT_BAND]
-        anchor = (foot.min() + foot.max()) / 2
+        anchor = foot.max() if args.anchor == 'front' else (foot.min() + foot.max()) / 2
         frames.append(dict(x0=xs.min(), x1=xs.max(), y0=ys.min(), y1=bottom, ax=anchor))
         print(f'panel {len(frames)}: x {xs.min()}-{xs.max()} y {ys.min()}-{bottom} 接地中心 x={anchor:.0f}')
 
