@@ -80,6 +80,9 @@ export const useGameStore = create(
       // 直前の登山で失った体力。温泉の回復量の基準に使う
       lastFatigue: 0,
 
+      // ご利益：お土産を山神にお供えすると付く。次の登山1回だけ総合体力を底上げする
+      blessing: null,  // { mountainId, name, pct }
+
       // --- 計算プロパティ（getter） ---
       getTotalStamina: () => {
         const { core, legs, arms } = get().player
@@ -257,6 +260,16 @@ export const useGameStore = create(
       )),
 
       setExploreLevel: (lv) => set({ exploreLevel: lv }),
+
+      // お土産を買うとご利益が付く（既にある場合は強い方を残す）
+      grantBlessing: (mountainId, name, pct) => set((state) => (
+        state.blessing && state.blessing.pct >= pct
+          ? state
+          : { blessing: { mountainId, name, pct } }
+      )),
+
+      // 登山に使うと消える
+      consumeBlessing: () => set({ blessing: null }),
 
       addAlbumEntry: (entry) => set((state) => ({
         album: [...state.album, { ...entry, date: new Date().toISOString() }]

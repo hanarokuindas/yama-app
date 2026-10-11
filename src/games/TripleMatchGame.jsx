@@ -24,6 +24,7 @@ const AREAS = {
   rock: { name: '岩場', bg: BG.stage.rocky, tint: 'rgba(40,30,70,0.35)' },
   trail: { name: '登山道', bg: BG.stage.trail, tint: 'rgba(20,50,25,0.30)' },
   meadow: { name: '草原', bg: BG.stage.meadow, tint: 'rgba(30,60,30,0.22)' },
+  bounty: { name: '山の恵み', bg: BG.stage.trail, tint: 'rgba(60,40,15,0.30)' },
 }
 
 /* 決定的な疑似乱数（同じシードなら同じ配置） */

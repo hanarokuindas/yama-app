@@ -6,6 +6,7 @@ import { useGameStore } from '../stores/gameStore'
 import charactersData from '../data/characters.json'
 import encyclopedia from '../data/encyclopedia.json'
 import { sfx } from '../utils/sound'
+import { buildAlbumText, shareText } from '../utils/share'
 
 const TABS = ['図鑑', '山神', '登頂記録', '所持装備']
 
@@ -21,7 +22,28 @@ export default function Album() {
   const mountains = useGameStore((s) => s.mountains)
   const album = useGameStore((s) => s.album)
   const discovered = useGameStore((s) => s.discovered)
+  const player = useGameStore((s) => s.player)
   const [tab, setTab] = useState('図鑑')
+  const [shareMsg, setShareMsg] = useState('')
+
+  const handleShare = async () => {
+    sfx.tap()
+    const text = buildAlbumText({
+      playerName: player.name,
+      summitCount: album.length,
+      rate: Math.round((discovered.length / encyclopedia.length) * 100),
+      discovered: discovered.length,
+      total: encyclopedia.length,
+    })
+    const r = await shareText('山アプリ 登山記録', text)
+    setShareMsg(
+      r === 'shared' ? '共有しました！'
+      : r === 'copied' ? '記録をコピーしました。SNSに貼り付けてね'
+      : r === 'cancelled' ? ''
+      : '共有できませんでした'
+    )
+    setTimeout(() => setShareMsg(''), 3000)
+  }
   const [encArea, setEncArea] = useState('rock')
   const [detail, setDetail] = useState(null)
 
@@ -81,6 +103,14 @@ export default function Album() {
       {/* 登頂記録タブ */}
       {tab === '登頂記録' && (
         <div style={styles.list}>
+          {album.length > 0 && (
+            <>
+              <button style={styles.shareBtn} onClick={handleShare}>
+                <GameIcon name="phone" size={16} /> 登山記録を共有する
+              </button>
+              {shareMsg && <p style={{ color: '#7ee8a5', fontSize: 12, textAlign: 'center' }}>{shareMsg}</p>}
+            </>
+          )}
           {album.length === 0 && (
             <div style={styles.empty}>
               <GameIcon name="mountain" size={52} />
@@ -134,6 +164,7 @@ const ENC_AREAS = [
   { id: 'rock', name: '岩場', sub: '鉱物', icon: 'gem', color: '#7c3aed' },
   { id: 'trail', name: '登山道', sub: '動物', icon: 'paw', color: '#059669' },
   { id: 'meadow', name: '草原', sub: '植物', icon: 'blossom', color: '#db2777' },
+  { id: 'bounty', name: '山の恵み', sub: '山菜・ジビエ', icon: 'onigiri', color: '#d97706' },
 ]
 
 function Encyclopedia({ discovered, encArea, setEncArea, detail, setDetail }) {
@@ -220,6 +251,14 @@ function Encyclopedia({ discovered, encArea, setEncArea, detail, setDetail }) {
 }
 
 const styles = {
+  shareBtn: {
+    width: '100%', padding: '11px 0', marginBottom: 4,
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+    background: 'rgba(255,255,255,0.08)', color: '#dde',
+    border: '1px solid rgba(255,255,255,0.22)', borderRadius: 24,
+    fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+  },
+
   /* ── 図鑑 ── */
   encWrap: { width: 'calc(100% - 32px)', maxWidth: 380, paddingBottom: 20 },
   encHeader: {

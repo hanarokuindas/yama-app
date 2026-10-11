@@ -174,14 +174,16 @@ function StagePlay({ stage, player, onClear, onFail }) {
 // ──────────────────────────────────────────
 // 登山ゲーム全体制御
 // ──────────────────────────────────────────
-export default function ClimbingGame({ course, player, onComplete }) {
+export default function ClimbingGame({ course, player, blessingPct = 0, onComplete }) {
   const stages = buildStages(course.difficulty)
   const [stageIdx, setStageIdx] = useState(0)
   const [cleared, setCleared] = useState([])
   const [phase, setPhase] = useState('intro') // intro / playing / between / summit / fail
   const [failReason, setFailReason] = useState('')
 
-  const total = Math.floor((player.core + player.legs + player.arms) / 3)
+  const baseTotal = Math.floor((player.core + player.legs + player.arms) / 3)
+  // ご利益のぶんだけ総合体力を底上げして判定する
+  const total = Math.floor(baseTotal * (1 + blessingPct))
   const reqTotal = course.requiredStamina * 5
   const currentStageKey = stages[stageIdx]
   const currentStage = STAGE_TYPES.find((s) => s.key === currentStageKey)
@@ -243,6 +245,11 @@ export default function ClimbingGame({ course, player, onComplete }) {
             <p style={styles.infoRow}>全 {stages.length}ステージ</p>
           </div>
           <p style={{ color: '#ffd700', fontSize: 13 }}>あなたの総合体力: {total} / 推奨: {reqTotal}</p>
+          {blessingPct > 0 && (
+            <p style={{ color: '#7ee8a5', fontSize: 12, fontWeight: 700 }}>
+              ご利益で +{Math.round(blessingPct * 100)}%（{baseTotal} → {total}）
+            </p>
+          )}
           <button style={styles.primaryBtn} onClick={() => setPhase('playing')}>
             登山スタート！
           </button>

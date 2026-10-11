@@ -21,6 +21,7 @@ const AREAS = [
   { id: 'rock', name: '岩場', sub: '鉱物をさがす', icon: 'gem', color: '#7c3aed' },
   { id: 'trail', name: '登山道', sub: '動物をさがす', icon: 'paw', color: '#059669' },
   { id: 'meadow', name: '草原', sub: '植物をさがす', icon: 'blossom', color: '#db2777' },
+  { id: 'bounty', name: '山の恵み', sub: '山菜・果実・ジビエ・天然水', icon: 'onigiri', color: '#d97706' },
 ]
 
 export default function Explore() {

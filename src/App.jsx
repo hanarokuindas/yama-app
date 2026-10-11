@@ -9,6 +9,7 @@ import Maintenance from './pages/Maintenance'
 import Album from './pages/Album'
 import Shop from './pages/Shop'
 import Menu from './pages/Menu'
+import Guide from './pages/Guide'
 import AR from './pages/AR'
 
 function Inner() {
@@ -24,6 +25,7 @@ function Inner() {
           <Route path="/album" element={<Album />} />
           <Route path="/shop" element={<Shop />} />
           <Route path="/menu" element={<Menu />} />
+          <Route path="/guide" element={<Guide />} />
           <Route path="/ar" element={<AR />} />
         </Routes>
       </PageTransition>

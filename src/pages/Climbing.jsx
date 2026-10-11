@@ -11,6 +11,8 @@ import { sfx } from '../utils/sound'
 import { takaoPose } from '../assets/characters/takao'
 import { senpaiPose } from '../assets/characters/senpai'
 import { isUnderMaintenance, remainingMinutes, formatDuration } from '../data/maintenanceActivities'
+import { buildSummitText, shareText } from '../utils/share'
+import encyclopedia from '../data/encyclopedia.json'
 
 const MOUNTAINS = [
   { id: 'takao', name: '高尾山', emoji: 'forest', color: '#27ae60' },
@@ -25,10 +27,11 @@ const ONSEN_RECOVER = 5
 const ONSEN_RATE = 0.7
 
 // お土産一覧
+// blessing は次の登山で総合体力に乗る割合（ご利益）
 const SOUVENIRS = [
-  { id: 'takao_manju', name: '高尾まんじゅう', price: 200, mountainId: 'takao', emoji: 'dango' },
-  { id: 'yatsu_beer', name: '八ヶ岳地ビール', price: 500, mountainId: 'yatsugatake', emoji: 'beer' },
-  { id: 'hakone_yosegi', name: '箱根寄木細工', price: 800, mountainId: 'hakone', emoji: 'gift' },
+  { id: 'takao_manju', name: '高尾まんじゅう', price: 200, mountainId: 'takao', emoji: 'dango', blessing: 0.05 },
+  { id: 'yatsu_beer', name: '八ヶ岳地ビール', price: 500, mountainId: 'yatsugatake', emoji: 'beer', blessing: 0.10 },
+  { id: 'hakone_yosegi', name: '箱根寄木細工', price: 800, mountainId: 'hakone', emoji: 'gift', blessing: 0.15 },
 ]
 
 // ──────────────────────────────────────────
@@ -126,18 +129,24 @@ function OnsenScreen({ onNext, onSkip }) {
 // ──────────────────────────────────────────
 // お土産画面
 // ──────────────────────────────────────────
-function SouvenirScreen({ mountainId, onDone }) {
+function SouvenirScreen({ mountainId, mountainName, onDone }) {
   const addPoints = useGameStore((s) => s.addPoints)
   const spendPoints = useGameStore((s) => s.spendPoints)
+  const grantBlessing = useGameStore((s) => s.grantBlessing)
   const [bought, setBought] = useState([])
+  const [granted, setGranted] = useState(null)
 
   const souvenirs = SOUVENIRS.filter((s) => s.mountainId === mountainId)
 
   const handleBuy = (s) => {
     if (bought.includes(s.id)) return
     if (!spendPoints(s.price)) return alert('ポイントが足りません')
-    // お供えボーナス
+    sfx.item()
+    // お供えボーナス（ポイントの一部が戻る）
     addPoints(Math.floor(s.price * 0.3))
+    // ご利益：次の登山1回だけ総合体力が上がる
+    grantBlessing(mountainId, `${mountainName}の${s.name}`, s.blessing)
+    setGranted(s)
     setBought([...bought, s.id])
   }
 
@@ -145,15 +154,26 @@ function SouvenirScreen({ mountainId, onDone }) {
     <div style={styles.card}>
       <div style={{ marginBottom: 8 }}><GameIcon name="gift" size={52} /></div>
       <h3 style={styles.cardTitle}>お土産コーナー</h3>
-      <p style={{ color: '#ccc', fontSize: 13, marginBottom: 16 }}>
-        買うと山神へのお供えになり、ご利益ボーナスがもらえるよ！
+      <p style={{ color: '#ccc', fontSize: 13, marginBottom: 12 }}>
+        買うと山神へのお供えになり、次の登山にご利益がつくよ！
       </p>
+      {granted && (
+        <div style={styles.blessingBox}>
+          <GameIcon name="sparkle" size={22} />
+          <span>
+            ご利益がついた！次の登山で総合体力 <b style={{ color: '#7ee8a5' }}>+{Math.round(granted.blessing * 100)}%</b>
+          </span>
+        </div>
+      )}
       <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
         {souvenirs.map((s) => (
           <div key={s.id} style={styles.souvenirRow}>
             <GameIcon name={s.emoji} size={26} />
             <span style={{ flex: 1, color: '#fff', fontSize: 14 }}>{s.name}</span>
-            <span style={{ color: '#ffd700', fontSize: 13, marginRight: 8 }}>{s.price}pt</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginRight: 8 }}>
+              <span style={{ color: '#ffd700', fontSize: 13 }}>{s.price}pt</span>
+              <span style={{ color: '#7ee8a5', fontSize: 10 }}>ご利益 +{Math.round(s.blessing * 100)}%</span>
+            </div>
             <button
               style={{ ...styles.buyBtn, opacity: bought.includes(s.id) ? 0.5 : 1 }}
               onClick={() => handleBuy(s)}
@@ -186,6 +206,10 @@ export default function Climbing() {
   const applyFatigue = useGameStore((s) => s.applyFatigue)
   const album = useGameStore((s) => s.album)
   const spendPointsPenalty = useGameStore((s) => s.spendPoints)
+  const blessing = useGameStore((s) => s.blessing)
+  const discovered = useGameStore((s) => s.discovered)
+  const [shareMsg, setShareMsg] = useState('')
+  const consumeBlessing = useGameStore((s) => s.consumeBlessing)
 
   const [phase, setPhase] = useState('mountain') // mountain / course / intro / equip / game / result / onsen / souvenir
   const [selectedMountain, setSelectedMountain] = useState(null)
@@ -215,6 +239,7 @@ export default function Climbing() {
   const handleGameComplete = (result, clearedStages = 0) => {
     setGameResult(result)
     recordMission('climb')
+    consumeBlessing()   // ご利益は1回の登山で消費される
     const reqTotal = selectedCourse.requiredStamina * 5
     if (result === 'success') {
       sfx.fanfare()
@@ -231,6 +256,25 @@ export default function Climbing() {
       spendPointsPenalty(Math.min(Math.floor(selectedCourse.reward * 0.1), 500))
     }
     setPhase('result')
+  }
+
+  const handleShare = async () => {
+    sfx.tap()
+    const text = buildSummitText({
+      playerName: player.name,
+      mountainName: selectedMountain.name,
+      courseName: selectedCourse.name,
+      total,
+      rate: Math.round((discovered.length / encyclopedia.length) * 100),
+    })
+    const r = await shareText('山アプリ 登頂記録', text)
+    setShareMsg(
+      r === 'shared' ? '共有しました！'
+      : r === 'copied' ? '登頂記録をコピーしました。SNSに貼り付けてね'
+      : r === 'cancelled' ? ''
+      : '共有できませんでした'
+    )
+    setTimeout(() => setShareMsg(''), 3000)
   }
 
   const courses = coursesData.filter((c) => c.mountainId === selectedMountain?.id)
@@ -297,6 +341,11 @@ export default function Climbing() {
       <div style={styles.container}>
         <h2 style={{ color: '#fff', fontSize: 20, fontWeight: 900, padding: '18px 0 4px' }}>{selectedMountain.name}</h2>
         <p style={{ color: '#aaa', fontSize: 13, marginBottom: 8 }}>総合体力: {total}</p>
+        {blessing && (
+          <p style={styles.blessingChip}>
+            <GameIcon name="sparkle" size={14} /> {blessing.name}のご利益 +{Math.round(blessing.pct * 100)}%
+          </p>
+        )}
         <div style={styles.list}>
           {courses.map((c) => {
             const done = summited.includes(c.id)
@@ -346,6 +395,7 @@ export default function Climbing() {
         <ClimbingGame
           course={selectedCourse}
           player={player}
+          blessingPct={blessing?.pct ?? 0}
           onComplete={handleGameComplete}
         />
       </div>
@@ -381,7 +431,13 @@ export default function Climbing() {
             </p>
           )}
           {success ? (
-            <button style={styles.primaryBtn} onClick={() => setPhase('onsen')}>温泉へ ›</button>
+            <>
+              <button style={styles.primaryBtn} onClick={() => setPhase('onsen')}>温泉へ ›</button>
+              <button style={styles.shareBtn} onClick={handleShare}>
+                <GameIcon name="phone" size={16} /> この登頂を共有する
+              </button>
+              {shareMsg && <p style={{ color: '#7ee8a5', fontSize: 12 }}>{shareMsg}</p>}
+            </>
           ) : (
             <button style={styles.primaryBtn} onClick={() => setPhase('mountain')}>ホームへ</button>
           )}
@@ -408,6 +464,7 @@ export default function Climbing() {
       <div style={styles.container}>
         <SouvenirScreen
           mountainId={selectedMountain.id}
+          mountainName={selectedMountain.name}
           onDone={() => navigate('/')}
         />
       </div>
@@ -502,6 +559,26 @@ const styles = {
     fontSize: 13,
     fontWeight: 900,
     cursor: 'pointer',
+  },
+  shareBtn: {
+    width: '100%', padding: '11px 0', marginTop: 2,
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+    background: 'rgba(255,255,255,0.08)', color: '#dde',
+    border: '1px solid rgba(255,255,255,0.22)', borderRadius: 24,
+    fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+  },
+  blessingChip: {
+    display: 'inline-flex', alignItems: 'center', gap: 5,
+    background: 'rgba(126,232,165,0.14)', border: '1px solid rgba(126,232,165,0.45)',
+    borderRadius: 14, padding: '5px 12px', marginBottom: 10,
+    color: '#7ee8a5', fontSize: 11.5, fontWeight: 700,
+  },
+  blessingBox: {
+    display: 'flex', alignItems: 'center', gap: 8,
+    background: 'rgba(126,232,165,0.12)', border: '1px solid rgba(126,232,165,0.4)',
+    borderRadius: 12, padding: '10px 13px', marginBottom: 14,
+    color: '#ccd', fontSize: 12, lineHeight: 1.6, textAlign: 'left',
+    animation: 'popIn 0.35s ease',
   },
   blockedMsg: {
     color: '#f5c842', fontSize: 13, fontWeight: 700, textAlign: 'center',

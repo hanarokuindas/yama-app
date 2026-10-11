@@ -22,6 +22,7 @@ export default function Menu() {
   }
 
   const menuLinks = [
+    { to: '/guide', icon: 'book', label: 'ガイドブック' },
     { to: '/shop', icon: 'cart', label: '登山ショップ' },
     { to: '/climbing', icon: 'mountain', label: '登山' },
     { to: '/explore', icon: 'search', label: '山探索' },
