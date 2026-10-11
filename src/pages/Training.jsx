@@ -68,10 +68,10 @@ function cycleOf(t, p) {
   return MOTIONS[t.id]?.cycle ?? 3
 }
 
+// 時間はすべて「X分YY秒」で表示する（例：1分30秒、0分45秒）
 function formatSec(sec) {
   const s = Math.max(0, Math.ceil(sec))
-  const m = Math.floor(s / 60)
-  return m > 0 ? `${m}:${String(s % 60).padStart(2, '0')}` : `${s}秒`
+  return `${Math.floor(s / 60)}分${String(s % 60).padStart(2, '0')}秒`
 }
 
 export default function Training() {
@@ -300,7 +300,7 @@ export default function Training() {
             <div style={{ ...styles.restCard, borderColor: `${color}66` }}>
               <div style={styles.restLabel}>{p.label === '切り替え' ? '反対側に切り替え' : '休憩'}</div>
               <div style={styles.restCount}>{Math.ceil(p.sec - inPhase)}</div>
-              {next && <div style={styles.restNext}>次は {next.label}{next.reps ? ` ${next.reps}回` : ` ${next.sec}秒`}</div>}
+              {next && <div style={styles.restNext}>次は {next.label}{next.reps ? ` ${next.reps}回` : ` ${formatSec(next.sec)}`}</div>}
             </div>
           ) : hasMotion(t.id) ? (
             <MotionPlayer id={t.id} cycle={cycleOf(t, p)} time={inPhase} mirror={p.label === '右'} color={color} size={248}>
@@ -385,8 +385,8 @@ function NoMotion({ icon, color, size, children }) {
 
 // 区間の残り時間の円グラフ
 function TimerRing({ pct, left, color }) {
-  const sz = 56
-  const r = 22
+  const sz = 64
+  const r = 26
   return (
     <div style={{ position: 'relative', width: sz, height: sz }}>
       <svg width={sz} height={sz} style={{ transform: 'rotate(-90deg)' }}>
@@ -522,7 +522,7 @@ const styles = {
   ringSlot: { position: 'absolute', top: 8, right: 8 },
   ringLabel: {
     position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: '#fff', fontSize: 12, fontWeight: 900,
+    color: '#fff', fontSize: 10.5, fontWeight: 900, letterSpacing: -0.3,
   },
   restCard: {
     width: 248, height: 248, borderRadius: 24, border: '1.5px solid',
