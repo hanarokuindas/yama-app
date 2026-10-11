@@ -1,35 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { BG } from '../assets/backgrounds'
 import GameIcon from '../components/GameIcon'
 import { useGameStore } from '../stores/gameStore'
+import { sfx } from '../utils/sound'
+import {
+  ACTIVITIES, getCost, getRestore, formatDuration, remainingMinutes, rushCost,
+} from '../data/maintenanceActivities'
 
 const MOUNTAINS = [
   { id: 'takao', name: '高尾山', emoji: 'forest' },
   { id: 'yatsugatake', name: '八ヶ岳連峰', emoji: 'mountain' },
   { id: 'hakone', name: '箱根山', emoji: 'volcano' },
 ]
-
-// 整備アクティビティ定義
-const ACTIVITIES = [
-  { id: 'trash', name: 'ゴミ拾い', icon: 'trash', cost: 1000, restore: 5, duration: 10, desc: '山道のゴミを拾って清潔に！' },
-  { id: 'branch', name: '枝切り', icon: 'scissors', cost: 10000, restore: 10, duration: 30, desc: '危険な枝を除去！' },
-  { id: 'grass', name: '草刈り', icon: 'grass', cost: 10000, restore: 10, duration: 30, desc: '登山道の草を刈る！' },
-  { id: 'patrol', name: '巡回', icon: 'footsteps', cost: 10000, restore: 8, duration: 20, desc: '山のパトロール！' },
-  { id: 'trail', name: '登山道整備', icon: 'tools', cost: 20000, restore: 20, duration: 60, desc: '道の補修や整備！' },
-  { id: 'planting', name: '植栽', icon: 'sprout', cost: 80000, restore: 40, duration: 120, desc: '木を植えて緑化！' },
-  { id: 'thinning', name: '間伐', icon: 'log', cost: 100000, restore: 50, duration: 180, desc: '森を健康に保つ！' },
-]
-
-// 荒廃時は各コストが10倍
-function getCost(activity, maintenanceLevel) {
-  if (maintenanceLevel < 30) return activity.cost * 10
-  return activity.cost
-}
-
-function getRestore(activity, maintenanceLevel) {
-  if (maintenanceLevel < 30) return activity.restore * 0.5
-  return activity.restore
-}
 
 function MaintenanceBar({ level }) {
   const color = level > 60 ? '#27ae60' : level > 30 ? '#f39c12' : '#e74c3c'
@@ -51,16 +33,25 @@ export default function Maintenance() {
   const player = useGameStore((s) => s.player)
   const mountains = useGameStore((s) => s.mountains)
   const spendPoints = useGameStore((s) => s.spendPoints)
-  const maintainMountain = useGameStore((s) => s.maintainMountain)
+  const startMaintenance = useGameStore((s) => s.startMaintenance)
+  const collectMaintenance = useGameStore((s) => s.collectMaintenance)
+  const rushMaintenance = useGameStore((s) => s.rushMaintenance)
 
   const [selected, setSelected] = useState(null) // mountainId
-  const [working, setWorking] = useState(null)   // activityId
-  const [workTimer, setWorkTimer] = useState(0)
-  const [done, setDone] = useState(false)
   const [message, setMessage] = useState('')
+  const [, setTick] = useState(0)                // 残り時間の表示を1分ごとに更新する
+
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 30000)
+    return () => clearInterval(id)
+  }, [])
 
   const mt = selected ? mountains[selected] : null
   const level = mt?.maintenanceLevel ?? 100
+  const leftMin = remainingMinutes(mt)
+  const working = mt?.workingActivity
+    ? ACTIVITIES.find((a) => a.id === mt.workingActivity)
+    : null
 
   const startWork = (activity) => {
     const cost = getCost(activity, level)
@@ -69,40 +60,36 @@ export default function Maintenance() {
       setTimeout(() => setMessage(''), 2000)
       return
     }
-    setWorking(activity)
-    setWorkTimer(activity.duration)
-    setDone(false)
-
-    const id = setInterval(() => {
-      setWorkTimer((prev) => {
-        if (prev <= 1) {
-          clearInterval(id)
-          const restore = getRestore(activity, level)
-          maintainMountain(selected, restore)
-          setDone(true)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    sfx.confirm()
+    startMaintenance(selected, activity.id, activity.duration)
   }
 
-  const handleBack = () => {
-    setWorking(null)
-    setDone(false)
-    setWorkTimer(0)
+  const collect = () => {
+    sfx.item()
+    collectMaintenance(selected, getRestore(working, level))
   }
 
-  // 作業中
+  const rush = () => {
+    if (rushMaintenance(selected)) sfx.coin()
+    else {
+      setMessage('ポイントが足りません')
+      setTimeout(() => setMessage(''), 2000)
+    }
+  }
+
+  // 作業中／完了待ち
   if (working) {
+    const pct = Math.max(0, Math.min(100, (1 - leftMin / working.duration) * 100))
     return (
       <div style={styles.container}>
         <div style={styles.card}>
           <GameIcon name={working.icon} size={56} />
           <h3 style={styles.title}>{working.name}</h3>
-          {!done ? (
+          {leftMin > 0 ? (
             <>
-              <p style={{ color: '#ccc', fontSize: 14 }}>作業中… {workTimer}秒</p>
+              <p style={{ color: '#ccc', fontSize: 14 }}>
+                作業中… 残り {formatDuration(leftMin)}
+              </p>
               <div style={styles.progressRing}>
                 <svg width={100} height={100} style={{ transform: 'rotate(-90deg)' }}>
                   <circle cx={50} cy={50} r={42} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={8} />
@@ -110,18 +97,29 @@ export default function Maintenance() {
                     cx={50} cy={50} r={42} fill="none"
                     stroke="#27ae60" strokeWidth={8}
                     strokeDasharray={`${2 * Math.PI * 42}`}
-                    strokeDashoffset={`${2 * Math.PI * 42 * (workTimer / working.duration)}`}
-                    style={{ transition: 'stroke-dashoffset 0.9s linear' }}
+                    strokeDashoffset={`${2 * Math.PI * 42 * (1 - pct / 100)}`}
+                    style={{ transition: 'stroke-dashoffset 0.6s ease' }}
                   />
                 </svg>
-                <span style={styles.ringLabel}>{workTimer}s</span>
+                <span style={styles.ringLabel}>{Math.round(pct)}%</span>
               </div>
+              <p style={styles.noteBox}>
+                作業が終わるまで、この山には登れないよ。<br />
+                アプリを閉じても時間は進むから、またあとで見に来てね。
+              </p>
+              {message && <p style={{ color: '#e74c3c', fontSize: 13 }}>{message}</p>}
+              <button style={styles.rushBtn} onClick={rush}>
+                ポイントで早める（{rushCost(mt).toLocaleString()}pt）
+              </button>
+              <button style={styles.backBtn} onClick={() => setSelected(null)}>山選択へ</button>
             </>
           ) : (
             <>
               <GameIcon name="check" size={44} />
-              <p style={{ color: '#27ae60', fontSize: 16 }}>整備完了！整備レベルが回復しました</p>
-              <button style={styles.primaryBtn} onClick={handleBack}>戻る</button>
+              <p style={{ color: '#27ae60', fontSize: 16 }}>整備完了！</p>
+              <button style={styles.primaryBtn} onClick={collect}>
+                受け取る（+{getRestore(working, level)}%）
+              </button>
             </>
           )}
         </div>
@@ -178,6 +176,7 @@ export default function Maintenance() {
                 <div style={styles.actMeta}>
                   <span style={{ color: '#ffd700', fontSize: 13 }}>{cost.toLocaleString()}pt</span>
                   <span style={{ color: '#27ae60', fontSize: 12 }}>+{restore}%</span>
+                  <span style={{ color: '#8a90a8', fontSize: 11 }}>{formatDuration(a.duration)}</span>
                 </div>
               </button>
             )
@@ -201,11 +200,15 @@ export default function Maintenance() {
           if (!mt?.unlocked) return null
           const lv = mt.maintenanceLevel
           const color = lv > 60 ? '#27ae60' : lv > 30 ? '#f39c12' : '#e74c3c'
+          const busy = remainingMinutes(mt)
           return (
             <button key={m.id} style={styles.mountCard} onClick={() => setSelected(m.id)}>
               <GameIcon name={m.emoji} size={40} />
               <div style={{ flex: 1 }}>
-                <div style={styles.mountName}>{m.name}</div>
+                <div style={styles.mountName}>
+                  {m.name}
+                  {busy > 0 && <span style={styles.busyChip}>整備中 残り{formatDuration(busy)}</span>}
+                </div>
                 <div style={{ height: 6, background: 'rgba(255,255,255,0.15)', borderRadius: 3, marginTop: 6 }}>
                   <div style={{ height: '100%', width: `${lv}%`, background: color, borderRadius: 3 }} />
                 </div>
@@ -318,6 +321,22 @@ const styles = {
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  noteBox: {
+    color: '#aab', fontSize: 11.5, lineHeight: 1.7, textAlign: 'center',
+    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 10, padding: '10px 12px', margin: '4px 0',
+  },
+  rushBtn: {
+    width: '100%', padding: '11px 0',
+    background: 'linear-gradient(135deg, #f5c842, #e0a800)',
+    color: '#1a0e00', border: 'none', borderRadius: 24,
+    fontSize: 14, fontWeight: 900, cursor: 'pointer',
+  },
+  busyChip: {
+    background: 'rgba(245,200,66,0.18)', border: '1px solid rgba(245,200,66,0.5)',
+    color: '#f5c842', fontSize: 10, fontWeight: 900,
+    borderRadius: 8, padding: '2px 7px', marginLeft: 6,
   },
   primaryBtn: {
     width: '100%',

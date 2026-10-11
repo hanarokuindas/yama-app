@@ -10,6 +10,7 @@ import { Confetti } from '../components/Celebration'
 import { sfx } from '../utils/sound'
 import { takaoPose } from '../assets/characters/takao'
 import { senpaiPose } from '../assets/characters/senpai'
+import { isUnderMaintenance, remainingMinutes, formatDuration } from '../data/maintenanceActivities'
 
 const MOUNTAINS = [
   { id: 'takao', name: '高尾山', emoji: 'forest', color: '#27ae60' },
@@ -20,6 +21,8 @@ const MOUNTAINS = [
 // 温泉 300pt 回復
 const ONSEN_COST = 300
 const ONSEN_RECOVER = 5
+// 完全回復はさせず、登山で失った分の7割までに留める（議事録 2026-10-11）
+const ONSEN_RATE = 0.7
 
 // お土産一覧
 const SOUVENIRS = [
@@ -73,12 +76,13 @@ function EquipmentCheck({ course, onReady, onBack }) {
 // ──────────────────────────────────────────
 // 温泉画面
 // ──────────────────────────────────────────
-function OnsenScreen({ course, onNext, onSkip }) {
+function OnsenScreen({ onNext, onSkip }) {
   const spendPoints = useGameStore((s) => s.spendPoints)
   const recover = useGameStore((s) => s.recover)
+  const lastFatigue = useGameStore((s) => s.lastFatigue)
   const [used, setUsed] = useState(false)
-  // 回復量はコースの必要総合体力 × 0.05（企画書p21）
-  const recoverAmount = course ? Math.max(ONSEN_RECOVER, Math.ceil(course.requiredStamina * 5 * 0.05)) : ONSEN_RECOVER
+  // 直前の登山で失った分の7割まで回復する
+  const recoverAmount = Math.max(ONSEN_RECOVER, Math.ceil(lastFatigue * ONSEN_RATE))
 
   const handleOnsen = () => {
     if (spendPoints(ONSEN_COST)) {
@@ -96,7 +100,10 @@ function OnsenScreen({ course, onNext, onSkip }) {
       {!used ? (
         <>
           <p style={{ color: '#ccc', fontSize: 14, marginBottom: 16 }}>
-            入湯料 {ONSEN_COST}pt で体力が回復するよ！
+            入湯料 {ONSEN_COST}pt で体力が回復するよ！<br />
+            <span style={{ fontSize: 12, color: '#aab' }}>
+              登山で失った {lastFatigue} のうち {recoverAmount} ぶん戻るよ
+            </span>
           </p>
           <button style={styles.primaryBtn} onClick={handleOnsen}>
             入湯する（{ONSEN_COST}pt）
@@ -106,7 +113,8 @@ function OnsenScreen({ course, onNext, onSkip }) {
       ) : (
         <>
           <p style={{ color: '#27ae60', fontSize: 16, marginBottom: 16 }}>
-            体力が回復した！（各ステータス +{recoverAmount}）
+            体力が回復した！（各ステータス +{recoverAmount}）<br />
+            <span style={{ fontSize: 12, color: '#aab' }}>疲れは完全には取れないから、鍛え続けよう</span>
           </p>
           <button style={styles.primaryBtn} onClick={onNext}>次へ</button>
         </>
@@ -183,10 +191,18 @@ export default function Climbing() {
   const [selectedMountain, setSelectedMountain] = useState(null)
   const [selectedCourse, setSelectedCourse] = useState(null)
   const [gameResult, setGameResult] = useState(null) // success / early_fail / mid_fail / balance_fail
+  const [blockedMsg, setBlockedMsg] = useState('')
 
   const total = Math.floor((player.core + player.legs + player.arms) / 3)
 
   const handleSelectMountain = (m) => {
+    // 整備作業中の山には登れない（議事録 2026-10-11）
+    if (isUnderMaintenance(mountains[m.id])) {
+      sfx.miss()
+      setBlockedMsg(`${m.name}は整備作業中だよ。あと${formatDuration(remainingMinutes(mountains[m.id]))}で終わるよ`)
+      setTimeout(() => setBlockedMsg(''), 3000)
+      return
+    }
     setSelectedMountain(m)
     if (!mountains[m.id]?.firstAccessed) {
       setMountainAccessed(m.id)
@@ -225,9 +241,11 @@ export default function Climbing() {
     return (
       <div style={styles.container}>
         <div style={styles.pageTitle}>CLIMBING</div>
+        {blockedMsg && <p style={styles.blockedMsg}>{blockedMsg}</p>}
         <div style={styles.list}>
           {MOUNTAINS.map((m) => {
             const unlocked = mountains[m.id]?.unlocked
+            const busy = remainingMinutes(mountains[m.id])
             return (
               <button
                 key={m.id}
@@ -235,10 +253,15 @@ export default function Climbing() {
                 onClick={() => unlocked && handleSelectMountain(m)}
                 disabled={!unlocked}
               >
-                <span style={{ fontSize: 40 }}>{m.emoji}</span>
-                <div>
+                <GameIcon name={m.emoji} size={40} />
+                <div style={{ flex: 1, textAlign: 'left' }}>
                   <div style={styles.mountainName}>{m.name}</div>
                   {!unlocked && <div style={{ color: '#888', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}><GameIcon name="lock" size={14} /> 未解禁</div>}
+                  {unlocked && busy > 0 && (
+                    <div style={{ color: '#f5c842', fontSize: 11.5, marginTop: 3 }}>
+                      整備作業中 — あと{formatDuration(busy)}
+                    </div>
+                  )}
                 </div>
                 {unlocked && <span style={{ color: m.color, fontSize: 20 }}>›</span>}
               </button>
@@ -372,7 +395,6 @@ export default function Climbing() {
     return (
       <div style={{ ...styles.container, backgroundImage: `linear-gradient(rgba(8,10,24,0.55), rgba(8,10,24,0.75)), url(${BG.onsen})` }}>
         <OnsenScreen
-          course={selectedCourse}
           onNext={() => setPhase('souvenir')}
           onSkip={() => setPhase('souvenir')}
         />
@@ -480,6 +502,12 @@ const styles = {
     fontSize: 13,
     fontWeight: 900,
     cursor: 'pointer',
+  },
+  blockedMsg: {
+    color: '#f5c842', fontSize: 13, fontWeight: 700, textAlign: 'center',
+    background: 'rgba(245,200,66,0.12)', border: '1px solid rgba(245,200,66,0.4)',
+    borderRadius: 12, padding: '10px 14px', margin: '0 16px 10px',
+    animation: 'popIn 0.3s ease',
   },
   shopLink: {
     color: '#f5c842',

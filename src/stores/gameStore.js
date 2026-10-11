@@ -8,6 +8,8 @@ const DEFAULT_MOUNTAINS = {
     summitedCourses: [],
     maintenanceLevel: 100,
     lastMaintainedAt: null,
+    workingActivity: null,   // 整備作業中のアクティビティID
+    workingUntil: null,      // 作業完了時刻(ISO)。この間はその山に登れない
   },
   takao: {
     unlocked: true,
@@ -15,6 +17,8 @@ const DEFAULT_MOUNTAINS = {
     summitedCourses: [],
     maintenanceLevel: 100,
     lastMaintainedAt: null,
+    workingActivity: null,
+    workingUntil: null,
   },
   hakone: {
     unlocked: false,
@@ -22,6 +26,8 @@ const DEFAULT_MOUNTAINS = {
     summitedCourses: [],
     maintenanceLevel: 100,
     lastMaintainedAt: null,
+    workingActivity: null,
+    workingUntil: null,
   },
 }
 
@@ -70,6 +76,9 @@ export const useGameStore = create(
       // 図鑑（発見済みの標本ID）と山探索の進行度
       discovered: [],
       exploreLevel: 1,
+
+      // 直前の登山で失った体力。温泉の回復量の基準に使う
+      lastFatigue: 0,
 
       // --- 計算プロパティ（getter） ---
       getTotalStamina: () => {
@@ -159,6 +168,7 @@ export const useGameStore = create(
 
       // 疲労（登山による総合体力の減少。企画書p21: 登頂=必要値×0.1 / 脱落=×0.02×ステージ数）
       applyFatigue: (amount) => set((state) => ({
+        lastFatigue: amount,
         player: {
           ...state.player,
           core: Math.max(0, state.player.core - amount),
@@ -251,6 +261,49 @@ export const useGameStore = create(
       addAlbumEntry: (entry) => set((state) => ({
         album: [...state.album, { ...entry, date: new Date().toISOString() }]
       })),
+
+      // 整備作業を開始する。durationMin 分が実時間で経過するまで完了しない
+      startMaintenance: (mountainId, activityId, durationMin) => set((state) => ({
+        mountains: {
+          ...state.mountains,
+          [mountainId]: {
+            ...state.mountains[mountainId],
+            workingActivity: activityId,
+            workingUntil: new Date(Date.now() + durationMin * 60000).toISOString(),
+          }
+        }
+      })),
+
+      // 作業完了を受け取って整備度に反映する
+      collectMaintenance: (mountainId, restoreAmount) => set((state) => ({
+        mountains: {
+          ...state.mountains,
+          [mountainId]: {
+            ...state.mountains[mountainId],
+            maintenanceLevel: Math.min(100, state.mountains[mountainId].maintenanceLevel + restoreAmount),
+            lastMaintainedAt: new Date().toISOString(),
+            workingActivity: null,
+            workingUntil: null,
+          }
+        }
+      })),
+
+      // 残り時間をポイントで短縮する（1分あたり10pt）
+      rushMaintenance: (mountainId) => {
+        const m = get().mountains[mountainId]
+        if (!m?.workingUntil) return false
+        const leftMin = Math.max(0, Math.ceil((new Date(m.workingUntil).getTime() - Date.now()) / 60000))
+        const cost = leftMin * 10
+        if (get().player.points < cost) return false
+        set((state) => ({
+          player: { ...state.player, points: state.player.points - cost },
+          mountains: {
+            ...state.mountains,
+            [mountainId]: { ...state.mountains[mountainId], workingUntil: new Date().toISOString() }
+          }
+        }))
+        return true
+      },
 
       maintainMountain: (mountainId, restoreAmount) => set((state) => ({
         mountains: {
