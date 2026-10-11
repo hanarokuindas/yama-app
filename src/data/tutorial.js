@@ -33,12 +33,12 @@ export const TUTORIALS = {
       },
       {
         id: 'pickTraining', route: '/training', target: 'train-plank', action: true, waitFor: 'trained', pose: 'winkCheer',
-        text: '最初はプランクがおすすめ。\n1分だけ、腕とつま先で体をまっすぐ支えてみよう！',
+        text: '最初はプランクがおすすめ。\n30秒だけ、ひじとつま先で体をまっすぐ支えてみよう！',
         hint: 'プランクを最後までやってみよう',
       },
       {
         id: 'trained', route: '/training', target: 'train-stats', pose: 'armsCrossedLaugh',
-        text: 'おつかれさま！ 体幹が上がって、ポイントももらえたね。\n体幹・脚力・腕力の平均が総合体力になるよ',
+        text: 'おつかれさま！ 体幹と腕力が上がって、ポイントももらえたね。\n体幹・脚力・腕力の平均が総合体力になるよ',
       },
       {
         id: 'goExplore', route: null, target: 'nav-explore', action: true, pose: 'megaphone',

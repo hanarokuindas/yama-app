@@ -1,8 +1,6 @@
-/* 手描きのモーションコマ（ドロップイン）。
-   src/assets/motions/<メニューID>/01.webp, 02.webp ... を置くと、そのメニューは
-   コードで描いた人物の代わりにこの絵をパラパラ再生する。
-   枚数が docs/ASSET_BRIEF.md セクション6 の指定どおりなら声かけと同期し、
-   違う場合は1周に均等に割り振る。 */
+/* お手本アニメの画像コマ。
+   src/assets/motions/<種目ID>/01.webp, 02.webp ... を置くと自動で読み込む。
+   種目IDは src/data/trainings.json の id。コマの並びと声かけは src/data/motions.js に書く。 */
 const files = import.meta.glob('./*/*.{png,webp}', { eager: true, import: 'default' })
 
 export const MOTION_IMAGES = {}
