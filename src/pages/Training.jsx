@@ -5,7 +5,8 @@ import { Confetti } from '../components/Celebration'
 import { sfx } from '../utils/sound'
 import { senpaiPose, senpaiMini } from '../assets/characters/senpai'
 import { BG } from '../assets/backgrounds'
-import MotionPlayer from '../components/MotionPlayer'
+import MotionPlayer, { MotionStrip } from '../components/MotionPlayer'
+import { HOWTO } from '../data/howto'
 import { MOTIONS, hasMotion } from '../data/motions'
 import { TUTORIALS } from '../data/tutorial'
 import TRAININGS from '../data/trainings.json'
@@ -30,6 +31,8 @@ const STAT = {
   core: { label: '体幹', color: '#e67e22' },
 }
 const SIDE_LABEL = { lr: '左右', alt: '左右交互' }
+const DEMO_MIN_SEC = 4 // 準備画面のお手本は1回を最低4秒かけて見せる
+const TIP_SEC = 10     // 実施中の先輩コメントの切り替え間隔
 
 // 上がる能力値。筋トレは4秒で1、ストレッチは8秒で1を、表で印のついた能力に分ける
 function gainsOf(t) {
@@ -215,10 +218,23 @@ export default function Training() {
           <h3 style={styles.trainTitle}>{t.name}</h3>
           {t.note && <p style={styles.trainNote}>{t.note}</p>}
           {hasMotion(t.id) ? (
-            <MotionPlayer id={t.id} cycle={cycleOf(t, firstWork)} color={color} size={210}>
-              <span style={styles.demoTag}>お手本</span>
-            </MotionPlayer>
+            <>
+              {/* 形が見えるよう、実際より遅く再生する */}
+              <MotionPlayer id={t.id} cycle={Math.max(cycleOf(t, firstWork) * 1.5, DEMO_MIN_SEC)} color={color} size={210}>
+                <span style={styles.demoTag}>お手本（ゆっくり）</span>
+              </MotionPlayer>
+              <MotionStrip id={t.id} color={color} />
+            </>
           ) : <NoMotion icon={GROUP_ICON[t.group]} color={color} size={150} />}
+
+          {HOWTO[t.id] && (
+            <div style={styles.howto}>
+              <div style={styles.howtoHead}>やり方</div>
+              <ol style={styles.howtoList}>
+                {HOWTO[t.id].map((line) => <li key={line} style={styles.howtoItem}>{line}</li>)}
+              </ol>
+            </div>
+          )}
 
           <div style={styles.specBox}>
             <div style={styles.specMain}>
@@ -252,11 +268,11 @@ export default function Training() {
     const { p, inPhase, i } = cur
     const next = t.phases[i + 1]
     const works = t.phases.filter((x) => !x.rest)
-    const tip = t.tips.length ? t.tips[Math.floor(elapsed / 7) % t.tips.length] : ''
+    const tip = t.tips.length ? t.tips[Math.floor(elapsed / TIP_SEC) % t.tips.length] : ''
     const ring = <TimerRing pct={(inPhase / p.sec) * 100} left={p.sec - inPhase} color={color} />
     const counter = p.reps ? (
       <div style={{ ...styles.reps, borderColor: `${color}aa` }}>
-        <span key={reps} style={styles.repsNum}>{reps}</span>
+        <span style={styles.repsNum}>{reps}</span>
         <span style={styles.repsUnit}>/ {p.reps}回</span>
       </div>
     ) : null
@@ -299,7 +315,7 @@ export default function Training() {
           )}
 
           {tip && (
-            <div key={tip} style={styles.liveTip}>
+            <div style={styles.liveTip}>
               <img src={senpaiMini.winkCheer} alt="" style={{ height: 40, flexShrink: 0 }} draggable={false} />
               <span>{tip}</span>
             </div>
@@ -501,7 +517,7 @@ const styles = {
     background: 'rgba(8,10,24,0.72)', border: '1.5px solid',
     borderRadius: 14, padding: '3px 10px',
   },
-  repsNum: { color: '#fff', fontSize: 22, fontWeight: 900, animation: 'popIn 0.3s ease', display: 'inline-block' },
+  repsNum: { color: '#fff', fontSize: 22, fontWeight: 900 },
   repsUnit: { color: '#aab', fontSize: 11, fontWeight: 700 },
   ringSlot: { position: 'absolute', top: 8, right: 8 },
   ringLabel: {
@@ -525,7 +541,13 @@ const styles = {
     display: 'flex', alignItems: 'center', gap: 8, width: '100%',
     background: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: '6px 10px',
     color: '#eef', fontSize: 13, fontWeight: 700, textAlign: 'left', lineHeight: 1.5,
-    animation: 'popIn 0.35s ease',
   },
+  howto: {
+    width: '100%', background: 'rgba(0,0,0,0.25)', borderRadius: 12,
+    padding: '10px 12px', textAlign: 'left', boxSizing: 'border-box',
+  },
+  howtoHead: { color: '#f5c842', fontSize: 12, fontWeight: 900, letterSpacing: 1, marginBottom: 4 },
+  howtoList: { margin: 0, paddingLeft: 20, color: '#fff' },
+  howtoItem: { fontSize: 13, lineHeight: 1.65, marginBottom: 3 },
   rewardBox: { background: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: 16, width: '100%', fontSize: 18 },
 }
