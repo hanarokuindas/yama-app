@@ -4,7 +4,7 @@ import GameIcon from '../components/GameIcon'
 import { useGameStore } from '../stores/gameStore'
 import { sfx } from '../utils/sound'
 import {
-  ACTIVITIES, getCost, getRestore, formatDuration, remainingMinutes, rushCost,
+  ACTIVITIES, getCost, getRestore, formatDuration, remainingMinutes, rushCost, maintenanceState,
 } from '../data/maintenanceActivities'
 
 const MOUNTAINS = [
@@ -15,8 +15,7 @@ const MOUNTAINS = [
 ]
 
 function MaintenanceBar({ level }) {
-  const color = level > 60 ? '#27ae60' : level > 30 ? '#f39c12' : '#e74c3c'
-  const label = level > 60 ? '良好' : level > 30 ? '要注意' : '荒廃中！'
+  const { color, label, penalty } = maintenanceState(level)
   return (
     <div style={{ marginBottom: 8 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#fff', marginBottom: 4 }}>
@@ -25,6 +24,11 @@ function MaintenanceBar({ level }) {
       </div>
       <div style={{ height: 10, background: 'rgba(255,255,255,0.15)', borderRadius: 5 }}>
         <div style={{ height: '100%', width: `${level}%`, background: color, borderRadius: 5, transition: 'width 0.5s' }} />
+      </div>
+      <div style={{ color: penalty ? color : '#8a90a8', fontSize: 12, marginTop: 6 }}>
+        {penalty
+          ? `道が荒れていて、登山の必要体力が +${Math.round(penalty * 100)}% になっているよ`
+          : '道は歩きやすいよ（61%以上なら登山に影響なし）'}
       </div>
     </div>
   )
@@ -149,7 +153,7 @@ export default function Maintenance() {
           <MaintenanceBar level={level} />
           {level < 30 && (
             <div style={styles.alertBox}>
-              山が荒廃しています！コストが10倍になります。早く整備して！
+              山が荒廃しています！整備の費用が10倍、登山の必要体力が+50%になっています。早く整備して！
             </div>
           )}
           <p style={{ color: '#aaa', fontSize: 13, margin: '8px 0' }}>
@@ -194,6 +198,7 @@ export default function Maintenance() {
       <div style={styles.pageTitle}>MAINTENANCE</div>
       <p style={{ color: '#ccc', fontSize: 13, marginBottom: 12, textAlign: 'center', padding: '0 16px', lineHeight: 1.7 }}>
         登った山は、整備度が1日に5%ずつ下がるよ。<br />
+        60%以下になると道が荒れて、登山で脱落しやすくなるよ。<br />
         大きな作業ほど割安だけど、そのぶん長く登れなくなるよ。
       </p>
       <div style={styles.list}>
@@ -201,7 +206,7 @@ export default function Maintenance() {
           const mt = mountains[m.id]
           if (!mt?.unlocked) return null
           const lv = mt.maintenanceLevel
-          const color = lv > 60 ? '#27ae60' : lv > 30 ? '#f39c12' : '#e74c3c'
+          const { color, penalty } = maintenanceState(lv)
           const busy = remainingMinutes(mt)
           return (
             <button key={m.id} style={styles.mountCard} onClick={() => setSelected(m.id)}>
@@ -214,7 +219,9 @@ export default function Maintenance() {
                 <div style={{ height: 6, background: 'rgba(255,255,255,0.15)', borderRadius: 3, marginTop: 6 }}>
                   <div style={{ height: '100%', width: `${lv}%`, background: color, borderRadius: 3 }} />
                 </div>
-                <div style={{ color, fontSize: 12, marginTop: 2 }}>整備 {lv}%</div>
+                <div style={{ color, fontSize: 12, marginTop: 2 }}>
+                  整備 {lv}%{penalty > 0 && `（登山の必要体力 +${Math.round(penalty * 100)}%）`}
+                </div>
               </div>
               <span style={{ color: '#aaa', fontSize: 20 }}>›</span>
             </button>

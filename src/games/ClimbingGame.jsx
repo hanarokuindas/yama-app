@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import GameIcon from '../components/GameIcon'
 import { sfx } from '../utils/sound'
+import { maintenanceState, requiredStaminaFor } from '../data/maintenanceActivities'
 import { BG } from '../assets/backgrounds'
 
 // ステージ定義
@@ -185,7 +186,7 @@ function StagePlay({ stage, player, onClear, onFail }) {
 // ──────────────────────────────────────────
 // 登山ゲーム全体制御
 // ──────────────────────────────────────────
-export default function ClimbingGame({ course, player, blessingPct = 0, onComplete, onCancel }) {
+export default function ClimbingGame({ course, player, blessingPct = 0, maintenanceLevel = 100, onComplete, onCancel }) {
   const stages = buildStages(course.difficulty)
   const [stageIdx, setStageIdx] = useState(0)
   const [cleared, setCleared] = useState([])
@@ -194,7 +195,10 @@ export default function ClimbingGame({ course, player, blessingPct = 0, onComple
   const baseTotal = Math.floor((player.core + player.legs + player.arms) / 3)
   // ご利益のぶんだけ総合体力を底上げして判定する
   const total = Math.floor(baseTotal * (1 + blessingPct))
-  const reqTotal = course.requiredStamina * 5
+  // 整備度が低い山は道が荒れていて、必要体力が上がる（＝途中で脱落しやすい）
+  const baseReq = course.requiredStamina * 5
+  const reqTotal = requiredStaminaFor(course, maintenanceLevel)
+  const mt = maintenanceState(maintenanceLevel)
   const currentStageKey = stages[stageIdx]
   const currentStage = STAGE_TYPES.find((s) => s.key === currentStageKey)
 
@@ -247,6 +251,11 @@ export default function ClimbingGame({ course, player, blessingPct = 0, onComple
             <p style={styles.infoRow}>全 {stages.length}ステージ</p>
           </div>
           <p style={{ color: total >= reqTotal ? '#7ee8a5' : '#ffd700', fontSize: 13, margin: 0 }}>あなたの総合体力: {total} / 推奨: {reqTotal}</p>
+          {mt.penalty > 0 && (
+            <p style={{ color: mt.color, fontSize: 12, fontWeight: 700, margin: 0 }}>
+              整備度 {maintenanceLevel}%（{mt.label}）で道が荒れている：推奨 {baseReq} → {reqTotal}
+            </p>
+          )}
           {total < reqTotal && (
             <p style={styles.warn}>
               推奨体力に {reqTotal - total} 足りないよ。山頂まで登りきれずに脱落するかも。

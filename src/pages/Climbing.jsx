@@ -10,7 +10,7 @@ import { Confetti } from '../components/Celebration'
 import { sfx } from '../utils/sound'
 import { takaoPose } from '../assets/characters/takao'
 import { senpaiPose } from '../assets/characters/senpai'
-import { isUnderMaintenance, remainingMinutes, formatDuration } from '../data/maintenanceActivities'
+import { isUnderMaintenance, remainingMinutes, formatDuration, maintenanceState, requiredStaminaFor } from '../data/maintenanceActivities'
 import { buildSummitText, shareText } from '../utils/share'
 import encyclopedia from '../data/encyclopedia.json'
 import characters from '../data/characters.json'
@@ -286,7 +286,7 @@ export default function Climbing() {
     setGameResult(result)
     recordMission('climb')
     consumeBlessing()   // ご利益は1回の登山で消費される
-    const reqTotal = selectedCourse.requiredStamina * 5
+    const reqTotal = selectedCourse.requiredStamina * 5 // 疲労は整備度に関係なく本来の必要体力で計算
     if (result === 'success') {
       sfx.fanfare()
       completeCourse(selectedMountain.id, selectedCourse.id)
@@ -325,6 +325,8 @@ export default function Climbing() {
 
   const courses = coursesData.filter((c) => c.mountainId === selectedMountain?.id)
   const summited = mountains[selectedMountain?.id]?.summitedCourses || []
+  const mtLevel = mountains[selectedMountain?.id]?.maintenanceLevel ?? 100
+  const mtState = maintenanceState(mtLevel)
 
   // 下のナビやメニューからも来られるので、ここでも解禁を確かめる（ホームのスポットと同じ条件）
   if (!flags.climbingUnlocked) {
@@ -364,6 +366,14 @@ export default function Climbing() {
                 <div style={{ flex: 1, textAlign: 'left' }}>
                   <div style={styles.mountainName}>{m.name}</div>
                   {unlocked && m.sub && <div style={{ color: '#9ccc65', fontSize: 11.5, marginTop: 2 }}>{m.sub}</div>}
+                  {unlocked && (() => {
+                    const ms = maintenanceState(mountains[m.id]?.maintenanceLevel ?? 100)
+                    return ms.penalty > 0 && (
+                      <div style={{ color: ms.color, fontSize: 11.5, marginTop: 3 }}>
+                        整備{ms.label}（{mountains[m.id].maintenanceLevel}%）— 必要体力 +{Math.round(ms.penalty * 100)}%
+                      </div>
+                    )
+                  })()}
                   {!unlocked && <div style={{ color: '#888', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}><GameIcon name="lock" size={14} /> 未解禁</div>}
                   {unlocked && busy > 0 && (
                     <div style={{ color: '#f5c842', fontSize: 11.5, marginTop: 3 }}>
@@ -413,10 +423,16 @@ export default function Climbing() {
             <GameIcon name="sparkle" size={14} /> {blessing.name}のご利益 +{Math.round(blessing.pct * 100)}%
           </p>
         )}
+        {mtState.penalty > 0 && (
+          <p style={{ ...styles.blockedMsg, color: mtState.color, borderColor: `${mtState.color}88`, background: `${mtState.color}1f` }}>
+            整備度が {mtLevel}%（{mtState.label}）で道が荒れているよ。必要体力が +{Math.round(mtState.penalty * 100)}% になっているから、
+            山整備をしてから登ると楽になるよ
+          </p>
+        )}
         <div style={styles.list}>
           {courses.map((c) => {
             const done = summited.includes(c.id)
-            const reqTotal = c.requiredStamina * 5
+            const reqTotal = requiredStaminaFor(c, mtLevel)
             const enough = total >= reqTotal
             return (
               <button
@@ -465,6 +481,7 @@ export default function Climbing() {
           course={selectedCourse}
           player={player}
           blessingPct={blessing?.pct ?? 0}
+          maintenanceLevel={mtLevel}
           onComplete={handleGameComplete}
           onCancel={() => setPhase('course')}
         />
@@ -497,6 +514,11 @@ export default function Climbing() {
               ? `疲労で総合体力が ${Math.ceil(selectedCourse.requiredStamina * 5 * 0.1)} 減少。温泉で回復しよう！`
               : `疲労で体力が ${lastFatigue} 減って、${penalty}pt 失った…`}
           </p>
+          {!success && mtState.penalty > 0 && (
+            <p style={{ color: mtState.color, fontSize: 12.5, lineHeight: 1.6, margin: 0 }}>
+              道が荒れていて、必要体力が +{Math.round(mtState.penalty * 100)}% になっていたよ。山整備をすると登りやすくなるよ
+            </p>
+          )}
           {success && album.length === 1 && (
             <p style={{ color: '#f5c842', fontSize: 13, fontWeight: 700, animation: 'popIn 0.5s 0.3s both' }}>
               AR撮影が解禁されたよ！ホームから使ってみてね！
@@ -512,7 +534,9 @@ export default function Climbing() {
             </>
           ) : (
             <>
-              <button style={styles.primaryBtn} onClick={() => navigate('/training')}>トレーニングへ</button>
+              {mtState.penalty > 0
+                ? <button style={styles.primaryBtn} onClick={() => navigate('/maintenance')}>山整備へ</button>
+                : <button style={styles.primaryBtn} onClick={() => navigate('/training')}>トレーニングへ</button>}
               <button style={styles.backBtn} onClick={() => setPhase('mountain')}>山選択へ</button>
             </>
           )}

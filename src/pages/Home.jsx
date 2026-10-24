@@ -11,6 +11,7 @@ import { senpaiPose, senpaiMini } from '../assets/characters/senpai'
 import { takaoPose } from '../assets/characters/takao'
 import { sfx } from '../utils/sound'
 import IntroStory from '../components/IntroStory'
+import { maintenanceState } from '../data/maintenanceActivities'
 
 function getTimeSlot() {
   const h = new Date().getHours()
@@ -232,8 +233,9 @@ export default function Home() {
     setClimbUnlockShow(true) // eslint-disable-line react-hooks/set-state-in-effect -- 解禁した瞬間に1回だけ出す演出
   }, [reachedClimb, unlockClimbing])
 
+  // 整備度が登山に響きはじめる（60%以下）山があれば知らせる
   const needsMaintenance = Object.values(mountains).some(
-    (m) => m.unlocked && m.maintenanceLevel < 50
+    (m) => m.unlocked && m.firstAccessed && maintenanceState(m.maintenanceLevel).penalty > 0
   )
 
   if (!flags.introCompleted) return <IntroStory returning={flags.profileCompleted} onComplete={completeIntro} />

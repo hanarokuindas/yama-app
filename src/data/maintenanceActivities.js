@@ -26,14 +26,33 @@ export const ACTIVITIES = [
   { id: 'thinning', name: '間伐', icon: 'log', cost: 5200, restore: 40, duration: 360, desc: '森を健康に保つ！' },
 ]
 
+/* 整備度の段階。表示・費用・登山の難しさはすべてここで決める
+   良好（61%以上）  … 影響なし
+   要注意（30〜60%）… 登山の必要体力 +20%
+   荒廃（30%未満）  … 登山の必要体力 +50%、整備の費用10倍・効果半減（企画書p76） */
+const RUINED_BELOW = 30
+const CAUTION_UPTO = 60
+
+export function maintenanceState(level) {
+  if (level > CAUTION_UPTO) return { key: 'good', label: '良好', color: '#27ae60', penalty: 0 }
+  if (level >= RUINED_BELOW) return { key: 'caution', label: '要注意', color: '#f39c12', penalty: 0.2 }
+  return { key: 'ruined', label: '荒廃中', color: '#e74c3c', penalty: 0.5 }
+}
+
+/** 登山の必要体力（整備度が低いと道が荒れて脱落しやすくなる） */
+export function requiredStaminaFor(course, maintenanceLevel = 100) {
+  const base = course.requiredStamina * 5
+  return Math.ceil(base * (1 + maintenanceState(maintenanceLevel).penalty))
+}
+
 /** 荒廃した山（30%未満）は費用が10倍（企画書p76） */
 export function getCost(activity, maintenanceLevel) {
-  return maintenanceLevel < 30 ? activity.cost * 10 : activity.cost
+  return maintenanceLevel < RUINED_BELOW ? activity.cost * 10 : activity.cost
 }
 
 /** 荒廃した山は効果が半減（整備度が小数にならないよう切り上げ） */
 export function getRestore(activity, maintenanceLevel) {
-  return maintenanceLevel < 30 ? Math.ceil(activity.restore * 0.5) : activity.restore
+  return maintenanceLevel < RUINED_BELOW ? Math.ceil(activity.restore * 0.5) : activity.restore
 }
 
 /** 「2時間30分」のような表示にする */
