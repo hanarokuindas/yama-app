@@ -68,10 +68,9 @@ function cycleOf(t, p) {
   return MOTIONS[t.id]?.cycle ?? 3
 }
 
-// 時間はすべて「X分YY秒」で表示する（例：1分30秒、0分45秒）
+// 時間はすべて秒で表示する（例：90秒、45秒）。表の「30回（90秒）」と単位をそろえる
 function formatSec(sec) {
-  const s = Math.max(0, Math.ceil(sec))
-  return `${Math.floor(s / 60)}分${String(s % 60).padStart(2, '0')}秒`
+  return `${Math.max(0, Math.ceil(sec))}秒`
 }
 
 export default function Training() {
@@ -522,7 +521,7 @@ const styles = {
   ringSlot: { position: 'absolute', top: 8, right: 8 },
   ringLabel: {
     position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: '#fff', fontSize: 10.5, fontWeight: 900, letterSpacing: -0.3,
+    color: '#fff', fontSize: 12, fontWeight: 900,
   },
   restCard: {
     width: 248, height: 248, borderRadius: 24, border: '1.5px solid',
