@@ -3,6 +3,16 @@ import { persist } from 'zustand/middleware'
 import { TUTORIALS, nextStepIndex } from '../data/tutorial'
 
 const DEFAULT_MOUNTAINS = {
+  // 架空の練習用の山。登山解禁（総合体力20）から高尾山（推奨100）までの間を埋める
+  satoyama: {
+    unlocked: true,
+    firstAccessed: false,
+    summitedCourses: [],
+    maintenanceLevel: 100,
+    lastMaintainedAt: null,
+    workingActivity: null,
+    workingUntil: null,
+  },
   yatsugatake: {
     unlocked: true,
     firstAccessed: false,
@@ -31,6 +41,9 @@ const DEFAULT_MOUNTAINS = {
     workingUntil: null,
   },
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000
+const DECAY_PER_DAY = 5 // 整備度は1日に5%ずつ下がる
 
 export const useGameStore = create(
   persist(
@@ -297,12 +310,14 @@ export const useGameStore = create(
         }
       }),
 
+      // 初めて訪れた時点から、荒廃の時計を動かしはじめる
       setMountainAccessed: (mountainId) => set((state) => ({
         mountains: {
           ...state.mountains,
           [mountainId]: {
             ...state.mountains[mountainId],
             firstAccessed: true,
+            lastMaintainedAt: state.mountains[mountainId].lastMaintainedAt ?? new Date().toISOString(),
           }
         }
       })),
@@ -382,22 +397,26 @@ export const useGameStore = create(
         }
       })),
 
-      // 時間経過による山の荒廃（呼び出し時に計算）
+      // 時間経過による山の荒廃（呼び出し時に計算）。1日ごとに DECAY_PER_DAY ずつ下がる。
+      // 訪れたことのある山だけが対象。端数の時間は次回に持ち越す
       applyMountainDecay: () => set((state) => {
         const now = Date.now()
         const updated = { ...state.mountains }
         Object.keys(updated).forEach((key) => {
           const m = updated[key]
-          if (!m.lastMaintainedAt) return
-          const elapsed = now - new Date(m.lastMaintainedAt).getTime()
-          const daysPassed = elapsed / (1000 * 60 * 60 * 24)
-          // 1日ごとに5ポイント劣化
-          const decay = Math.floor(daysPassed * 5)
+          if (!m.firstAccessed && !m.lastMaintainedAt) return
+          // 以前のデータで、訪れたのに時計が動いていない山は今から数える
+          if (!m.lastMaintainedAt) {
+            updated[key] = { ...m, lastMaintainedAt: new Date(now).toISOString() }
+            return
+          }
+          const from = new Date(m.lastMaintainedAt).getTime()
+          const decay = Math.floor(((now - from) / DAY_MS) * DECAY_PER_DAY)
           if (decay > 0) {
             updated[key] = {
               ...m,
               maintenanceLevel: Math.max(0, m.maintenanceLevel - decay),
-              lastMaintainedAt: new Date().toISOString(),
+              lastMaintainedAt: new Date(from + (decay / DECAY_PER_DAY) * DAY_MS).toISOString(),
             }
           }
         })
@@ -406,6 +425,12 @@ export const useGameStore = create(
     }),
     {
       name: 'yama-app-storage',
+      // 保存データの山の一覧は丸ごと置き換わるので、あとから増えた山（ふもとの里山など）を足す
+      merge: (persisted, current) => ({
+        ...current,
+        ...persisted,
+        mountains: { ...current.mountains, ...(persisted?.mountains || {}) },
+      }),
     }
   )
 )

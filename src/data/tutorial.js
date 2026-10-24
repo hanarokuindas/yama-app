@@ -68,7 +68,7 @@ export const TUTORIALS = {
     steps: [
       {
         id: 'goClimb', route: '/', target: 'spot-climb', action: true, pose: 'winkCheer',
-        text: '登山が解禁されたね！\nさっそく山を見に行こう',
+        text: '登山が解禁されたね！\nまずは練習用の「ふもとの里山」から行ってみよう',
       },
       {
         id: 'gear', route: '/climbing', target: 'climb-shop', pose: 'glassesSmile',

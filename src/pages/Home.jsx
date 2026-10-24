@@ -188,11 +188,13 @@ export default function Home() {
   const [loginBonus, setLoginBonus] = useState(null)
 
   const [{ charName, greeting, homePose }] = useState(() => {
-    const ids = ['senpai', 'yatsugatake', 'takao', 'hakone'].filter(
+    // 絵のあるキャラだけ出す（八ヶ岳・箱根は絵がまだ無く、先輩の絵に別の名前が付いてしまうため）
+    const POSES = { senpai: senpaiPose.home, takao: takaoPose.home }
+    const ids = Object.keys(POSES).filter(
       (id) => id === 'senpai' || mountains[id]?.firstAccessed
     )
     const id = ids[Math.floor(Math.random() * ids.length)]
-    const poseSet = id === 'takao' ? takaoPose.home : senpaiPose.home
+    const poseSet = POSES[id]
     const pose = poseSet[Math.floor(Math.random() * poseSet.length)]
     return { charName: characters[id]?.shortName || '', greeting: getGreeting(id), homePose: pose }
   })
@@ -312,7 +314,7 @@ export default function Home() {
         <Celebration
           icon={<GameIcon name="mountain" size={80} />}
           title="登山が解禁された！"
-          subtitle="まずは高尾山「いろはの森コース」（推奨体力100）を目指そう！"
+          subtitle="まずは「ふもとの里山」（推奨体力30）で登山に慣れよう！"
           onClose={() => {
             setClimbUnlockShow(false)
             if (!climbTutorialSeen && !tutorialActive) startTutorial('climb')

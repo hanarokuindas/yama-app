@@ -8,6 +8,7 @@ import {
 } from '../data/maintenanceActivities'
 
 const MOUNTAINS = [
+  { id: 'satoyama', name: 'ふもとの里山', emoji: 'herb' },
   { id: 'takao', name: '高尾山', emoji: 'forest' },
   { id: 'yatsugatake', name: '八ヶ岳連峰', emoji: 'mountain' },
   { id: 'hakone', name: '箱根山', emoji: 'volcano' },
@@ -191,8 +192,9 @@ export default function Maintenance() {
   return (
     <div style={styles.container}>
       <div style={styles.pageTitle}>MAINTENANCE</div>
-      <p style={{ color: '#ccc', fontSize: 13, marginBottom: 12, textAlign: 'center', padding: '0 16px' }}>
-        山を整備して自然を守ろう。放置すると荒廃するよ！
+      <p style={{ color: '#ccc', fontSize: 13, marginBottom: 12, textAlign: 'center', padding: '0 16px', lineHeight: 1.7 }}>
+        登った山は、整備度が1日に5%ずつ下がるよ。<br />
+        大きな作業ほど割安だけど、そのぶん長く登れなくなるよ。
       </p>
       <div style={styles.list}>
         {MOUNTAINS.map((m) => {

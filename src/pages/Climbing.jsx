@@ -13,8 +13,10 @@ import { senpaiPose } from '../assets/characters/senpai'
 import { isUnderMaintenance, remainingMinutes, formatDuration } from '../data/maintenanceActivities'
 import { buildSummitText, shareText } from '../utils/share'
 import encyclopedia from '../data/encyclopedia.json'
+import characters from '../data/characters.json'
 
 const MOUNTAINS = [
+  { id: 'satoyama', name: 'ふもとの里山', emoji: 'herb', color: '#7cb342', sub: 'はじめての登山におすすめ' },
   { id: 'takao', name: '高尾山', emoji: 'forest', color: '#27ae60' },
   { id: 'yatsugatake', name: '八ヶ岳連峰', emoji: 'mountain', color: '#7f8c8d' },
   { id: 'hakone', name: '箱根山', emoji: 'volcano', color: '#c0392b' },
@@ -22,16 +24,24 @@ const MOUNTAINS = [
 
 // 温泉 300pt 回復
 const ONSEN_COST = 300
-const ONSEN_RECOVER = 5
 // 完全回復はさせず、登山で失った分の7割までに留める（議事録 2026-10-11）
 const ONSEN_RATE = 0.7
 
 // お土産一覧
 // blessing は次の登山で総合体力に乗る割合（ご利益）
+// 山に初めて来たときのあいさつ。山神がいる山は characters.json の自己紹介を使う
+const MOUNTAIN_INTRO = {
+  satoyama: '先輩「ここは、ふもとの里山。\n高尾山に行く前に、登山の練習をするのにぴったりの小さな山だよ。まずはここで慣れていこう！」',
+  ...Object.fromEntries(['takao', 'yatsugatake', 'hakone']
+    .filter((id) => characters[id]?.intro)
+    .map((id) => [id, characters[id].intro.join('\n')])),
+}
+
 // 登山の解禁条件（ホームの登山スポットと同じ。企画書p25）
 const CLIMB_UNLOCK_REQ = 20
 
 const SOUVENIRS = [
+  { id: 'satoyama_onigiri', name: '里山のおにぎり', price: 100, mountainId: 'satoyama', emoji: 'onigiri', blessing: 0.03 },
   { id: 'takao_manju', name: '高尾まんじゅう', price: 200, mountainId: 'takao', emoji: 'dango', blessing: 0.05 },
   { id: 'yatsu_beer', name: '八ヶ岳地ビール', price: 500, mountainId: 'yatsugatake', emoji: 'beer', blessing: 0.10 },
   { id: 'hakone_yosegi', name: '箱根寄木細工', price: 800, mountainId: 'hakone', emoji: 'gift', blessing: 0.15 },
@@ -113,7 +123,8 @@ function OnsenScreen({ onNext, onSkip }) {
   const [used, setUsed] = useState(false)
   const [msg, setMsg] = useState('')
   // 直前の登山で失った分の7割まで回復する
-  const recoverAmount = Math.max(ONSEN_RECOVER, Math.ceil(lastFatigue * ONSEN_RATE))
+  // 小さいコースでも減った分より多くは戻らないよう、切り捨てにする（疲れていれば最低1）
+  const recoverAmount = lastFatigue > 0 ? Math.max(1, Math.floor(lastFatigue * ONSEN_RATE)) : 0
 
   const handleOnsen = () => {
     if (spendPoints(ONSEN_COST)) {
@@ -352,6 +363,7 @@ export default function Climbing() {
                 <GameIcon name={m.emoji} size={40} />
                 <div style={{ flex: 1, textAlign: 'left' }}>
                   <div style={styles.mountainName}>{m.name}</div>
+                  {unlocked && m.sub && <div style={{ color: '#9ccc65', fontSize: 11.5, marginTop: 2 }}>{m.sub}</div>}
                   {!unlocked && <div style={{ color: '#888', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}><GameIcon name="lock" size={14} /> 未解禁</div>}
                   {unlocked && busy > 0 && (
                     <div style={{ color: '#f5c842', fontSize: 11.5, marginTop: 3 }}>
@@ -374,12 +386,12 @@ export default function Climbing() {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          {selectedMountain.id === 'takao'
-            ? <img src={takaoPose.intro[0]} alt="高尾" style={{ height: 220, animation: 'popIn 0.5s ease' }} draggable={false} />
-            : <span style={{ fontSize: 56 }}>{selectedMountain.emoji}</span>}
+          {selectedMountain.id === 'takao' ? <img src={takaoPose.intro[0]} alt="高尾" style={{ height: 220, animation: 'popIn 0.5s ease' }} draggable={false} />
+            : selectedMountain.id === 'satoyama' ? <img src={senpaiPose.home[0]} alt="先輩" style={{ height: 160, animation: 'popIn 0.5s ease' }} draggable={false} />
+            : <GameIcon name={selectedMountain.emoji} size={72} />}
           <h3 style={styles.cardTitle}>{selectedMountain.name}</h3>
-          <p style={{ color: '#ddd', lineHeight: 1.8, marginBottom: 20 }}>
-            {`はじめまして！ ${selectedMountain.name}だよ。\nたくさん遊びに来てね！`}
+          <p style={{ color: '#ddd', lineHeight: 1.8, marginBottom: 20, whiteSpace: 'pre-wrap', textAlign: 'center' }}>
+            {MOUNTAIN_INTRO[selectedMountain.id] || `はじめまして！ ${selectedMountain.name}だよ。\nたくさん遊びに来てね！`}
           </p>
           <button style={styles.primaryBtn} onClick={() => setPhase('course')}>コース選択へ</button>
         </div>

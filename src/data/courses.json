@@ -1,5 +1,35 @@
 [
   {
+    "id": "satoyama_sanpo",
+    "mountainId": "satoyama",
+    "mountainName": "ふもとの里山",
+    "name": "里山さんぽ道",
+    "difficulty": 1,
+    "distance": 1.5,
+    "duration": "40分",
+    "calories": 150,
+    "description": "畑と雑木林のあいだを歩く、ゆるやかな道。登山がはじめての人の練習にぴったり！",
+    "requiredItems": ["shoes_hiking", "water", "insurance"],
+    "requiredLevel": 2,
+    "requiredStamina": 6,
+    "reward": 400
+  },
+  {
+    "id": "satoyama_oka",
+    "mountainId": "satoyama",
+    "mountainName": "ふもとの里山",
+    "name": "見晴らしの丘コース",
+    "difficulty": 1,
+    "distance": 2.8,
+    "duration": "1.5時間",
+    "calories": 260,
+    "description": "少しだけ坂を登って、ふもとの町を見わたせる丘へ。高尾山に行く前の腕だめし！",
+    "requiredItems": ["socks", "shoes_hiking", "backpack", "water", "insurance"],
+    "requiredLevel": 3,
+    "requiredStamina": 12,
+    "reward": 700
+  },
+  {
     "id": "takao_iroha",
     "mountainId": "takao",
     "mountainName": "高尾山",
