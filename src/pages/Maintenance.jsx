@@ -39,6 +39,7 @@ export default function Maintenance() {
   const mountains = useGameStore((s) => s.mountains)
   const spendPoints = useGameStore((s) => s.spendPoints)
   const startMaintenance = useGameStore((s) => s.startMaintenance)
+  const recordMission = useGameStore((s) => s.recordMission)
   const collectMaintenance = useGameStore((s) => s.collectMaintenance)
   const rushMaintenance = useGameStore((s) => s.rushMaintenance)
 
@@ -67,6 +68,7 @@ export default function Maintenance() {
     }
     sfx.confirm()
     startMaintenance(selected, activity.id, activity.duration)
+    recordMission('maintain')
   }
 
   const collect = () => {

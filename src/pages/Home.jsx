@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGameStore } from '../stores/gameStore'
 import characters from '../data/characters.json'
-import { DAILY_MISSIONS } from '../data/missions'
+import { DAILY_MISSIONS, todayString } from '../data/missions'
 import GameIcon from '../components/GameIcon'
 import CountUp from '../components/CountUp'
 import { Celebration, Confetti } from '../components/Celebration'
@@ -14,6 +14,9 @@ import { yatsugatakePose } from '../assets/characters/yatsugatake'
 import { hakonePose } from '../assets/characters/hakone'
 import { sfx } from '../utils/sound'
 import IntroStory from '../components/IntroStory'
+import MissionWindow from '../components/MissionWindow'
+import MenuWindow from '../components/MenuWindow'
+import { Plank } from '../components/ui'
 import { maintenanceState } from '../data/maintenanceActivities'
 
 function getTimeSlot() {
@@ -100,52 +103,6 @@ function LoginBonusModal({ streak, bonus, onClose }) {
   )
 }
 
-/* ─────────────────────── デイリーミッション ─────────────────────── */
-function MissionPanel({ onClose }) {
-  const daily = useGameStore((st) => st.daily)
-  const claimMission = useGameStore((st) => st.claimMission)
-  const today = new Date().toISOString().slice(0, 10)
-  const progress = daily.missionDate === today ? daily.missionProgress : {}
-
-  return (
-    <div style={s.popupOverlay} onClick={onClose}>
-      <div style={s.popup} onClick={(e) => e.stopPropagation()}>
-        <div style={s.popupHeader}>今日のミッション</div>
-        {DAILY_MISSIONS.map((m) => {
-          const cur = Math.min(progress[m.id] || 0, m.goal)
-          const done = cur >= m.goal
-          const claimed = daily.missionClaimed.includes(m.id)
-          return (
-            <div key={m.id} style={s.missionRow}>
-              <GameIcon name={m.icon} size={30} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={s.missionLabel}>{m.label}</div>
-                <div style={s.missionBarBg}>
-                  <div style={{ ...s.missionBarFill, width: `${(cur / m.goal) * 100}%` }} />
-                </div>
-                <div style={s.missionProgressText}>{cur}/{m.goal} ・ 報酬 {m.reward}P</div>
-              </div>
-              <button
-                style={{
-                  ...s.missionBtn,
-                  background: done && !claimed ? 'linear-gradient(135deg,#f8c537,#e0a000)' : '#e6dccb',
-                  color: done && !claimed ? '#4a2e00' : '#a8977f',
-                  cursor: done && !claimed ? 'pointer' : 'default',
-                }}
-                disabled={!done || claimed}
-                onClick={() => { if (claimMission(m.id, m.reward)) sfx.item() }}
-              >
-                {claimed ? '受取済' : done ? 'うけとる' : '未達成'}
-              </button>
-            </div>
-          )
-        })}
-        <button style={s.popupCloseBtn} onClick={() => { sfx.cancel(); onClose() }}>✕ 閉じる</button>
-      </div>
-    </div>
-  )
-}
-
 /* ─────────────────────── 丸太にのせたアイコン ─────────────────────── */
 function LogIcon({ label, icon, locked, badge, onClick, tut, small = false }) {
   return (
@@ -157,16 +114,6 @@ function LogIcon({ label, icon, locked, badge, onClick, tut, small = false }) {
       </span>
       <span className="icon-label" style={small ? s.logLabelSmall : s.logLabel}>{label}</span>
     </button>
-  )
-}
-
-/* 名前やポイントをのせる長い看板 */
-function Plank({ children, style, onClick, tut }) {
-  const Tag = onClick ? 'button' : 'div'
-  return (
-    <Tag style={{ ...s.plank, ...(onClick ? { cursor: 'pointer' } : null), ...style }} onClick={onClick} data-tut={tut}>
-      {children}
-    </Tag>
   )
 }
 
@@ -189,6 +136,7 @@ export default function Home() {
   const climbTutorialSeen = useGameStore((st) => !!st.tutorialSeen.climb)
   const startTutorial = useGameStore((st) => st.startTutorial)
   const [missionOpen, setMissionOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [loginBonus, setLoginBonus] = useState(null)
 
   const [{ callName, greeting, homePose }] = useState(() => {
@@ -240,10 +188,9 @@ export default function Home() {
     (m) => m.unlocked && m.firstAccessed && maintenanceState(m.maintenanceLevel).penalty > 0
   )
 
-  const today = new Date().toISOString().slice(0, 10)
-  const missionProg = daily.missionDate === today ? daily.missionProgress : {}
-  const missionReady = DAILY_MISSIONS.some(
-    (m) => (missionProg[m.id] || 0) >= m.goal && !daily.missionClaimed.includes(m.id)
+  const missionToday = daily.missionDate === todayString()
+  const missionReady = missionToday && DAILY_MISSIONS.some(
+    (m) => (daily.missionProgress[m.id] || 0) >= m.goal && !daily.missionClaimed.includes(m.id)
   )
 
   const go = (path) => { sfx.confirm(); navigate(path) }
@@ -292,7 +239,7 @@ export default function Home() {
       <div style={s.topRight}>
         <LogIcon small label="AR撮影" icon="camera" locked={!flags.arUnlocked}
           onClick={() => { if (flags.arUnlocked) go('/ar'); else sfx.miss() }} />
-        <LogIcon small label="メニュー" icon="menu" tut="home-menu" onClick={() => go('/menu')} />
+        <LogIcon small label="メニュー" icon="menu" tut="home-menu" onClick={() => { sfx.confirm(); setMenuOpen(true) }} />
       </div>
 
       {/* ══════════ 右：山探索・トレーニング・登山・山整備 ══════════ */}
@@ -310,7 +257,8 @@ export default function Home() {
         <LogIcon label="装備" icon="trekkingshoes" onClick={() => go('/shop')} />
       </div>
 
-      {missionOpen && <MissionPanel onClose={() => setMissionOpen(false)} />}
+      {missionOpen && <MissionWindow onClose={() => setMissionOpen(false)} />}
+      {menuOpen && <MenuWindow onClose={() => setMenuOpen(false)} />}
       {loginBonus && (
         <LoginBonusModal streak={loginBonus.streak} bonus={loginBonus.bonus}
           onClose={() => setLoginBonus(null)} />
@@ -367,15 +315,6 @@ const s = {
   statusArea: {
     position: 'absolute', top: '2.5cqh', left: '1.5cqw', zIndex: 20,
     display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '1cqh',
-  },
-  plank: {
-    position: 'relative',
-    display: 'flex', alignItems: 'center', gap: 6,
-    height: 'clamp(34px, 10.5cqh, 66px)',
-    padding: '0 clamp(14px, 4cqh, 28px) 2px',
-    background: `url(${UI.plankLong}) center / 100% 100% no-repeat`,
-    border: 'none',
-    filter: 'drop-shadow(0 2px 3px rgba(60,40,20,0.35))',
   },
   plankIcon: { width: 'clamp(22px, 7cqh, 42px)', height: 'clamp(22px, 7cqh, 42px)' },
   lvChip: {
@@ -504,28 +443,6 @@ const s = {
   },
   signBtn: { width: 'auto', padding: '10px 40px', fontSize: FS(4.4, 14, 22) },
 
-  /* ─── ミッション ─── */
-  missionRow: {
-    display: 'flex', alignItems: 'center', gap: 12,
-    background: 'var(--beige-light)',
-    border: '2px solid var(--beige-edge)',
-    borderRadius: 14, padding: '10px 14px', marginBottom: 8,
-  },
-  missionLabel: { color: 'var(--brown-text)', fontSize: 14, fontWeight: 800, marginBottom: 6 },
-  missionBarBg: {
-    height: 8, background: '#e6dccb', borderRadius: 99, overflow: 'hidden',
-  },
-  missionBarFill: {
-    height: '100%', background: 'linear-gradient(90deg, #f8b500, #ffd65c)',
-    borderRadius: 99, transition: 'width 0.5s ease',
-  },
-  missionProgressText: { color: '#8b7a66', fontSize: 11.5, marginTop: 4 },
-  missionBtn: {
-    border: 'none', borderRadius: 12,
-    padding: '9px 14px', fontSize: 13, fontWeight: 800,
-    flexShrink: 0, letterSpacing: 0.5,
-  },
-
   /* ─── ポップアップ ─── */
   popupOverlay: {
     position: 'fixed', inset: 0,
@@ -534,26 +451,6 @@ const s = {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     zIndex: 200,
   },
-  popup: {
-    background: 'var(--beige)',
-    border: '3px solid var(--beige-edge)',
-    borderRadius: 22,
-    padding: '14px 18px 16px',
-    width: 'min(560px, 92cqw)', maxHeight: '94cqh', overflowY: 'auto',
-    animation: 'popIn 0.3s cubic-bezier(.22,1,.36,1)',
-    boxShadow: '0 10px 40px rgba(40,25,10,0.45)',
-  },
-  popupHeader: {
-    color: 'var(--brown-text)', fontSize: 18, fontWeight: 800, letterSpacing: 2,
-    textAlign: 'center', marginBottom: 12,
-  },
-  popupCloseBtn: {
-    display: 'block', margin: '6px auto 0',
-    background: '#fff', border: '2px solid var(--beige-edge)',
-    borderRadius: 99, padding: '8px 28px',
-    color: 'var(--brown-text)', fontSize: 14, fontWeight: 800, cursor: 'pointer',
-  },
-
   /* ─── プロフィール入力 ─── */
   fullOverlay: {
     position: 'fixed', inset: 0,

@@ -6,7 +6,6 @@ import { useGameStore } from '../stores/gameStore'
 import charactersData from '../data/characters.json'
 import encyclopedia from '../data/encyclopedia.json'
 import { sfx } from '../utils/sound'
-import { buildAlbumText, shareText } from '../utils/share'
 
 const TABS = ['山探索', '山神', '登頂記録', '所持装備']
 
@@ -22,28 +21,8 @@ export default function Album() {
   const mountains = useGameStore((s) => s.mountains)
   const album = useGameStore((s) => s.album)
   const discovered = useGameStore((s) => s.discovered)
-  const player = useGameStore((s) => s.player)
   const [tab, setTab] = useState('山探索')
-  const [shareMsg, setShareMsg] = useState('')
-
-  const handleShare = async () => {
-    sfx.tap()
-    const text = buildAlbumText({
-      playerName: player.name,
-      summitCount: album.length,
-      rate: Math.round((discovered.length / encyclopedia.length) * 100),
-      discovered: discovered.length,
-      total: encyclopedia.length,
-    })
-    const r = await shareText('山アプリ 登山記録', text)
-    setShareMsg(
-      r === 'shared' ? '共有しました！'
-      : r === 'copied' ? '記録をコピーしました。SNSに貼り付けてね'
-      : r === 'cancelled' ? ''
-      : '共有できませんでした'
-    )
-    setTimeout(() => setShareMsg(''), 3000)
-  }
+  // 記録の共有はメニューの「SNS」へ移した（修正指示）
   const [encArea, setEncArea] = useState('rock')
   const [detail, setDetail] = useState(null)
 
@@ -103,14 +82,6 @@ export default function Album() {
       {/* 登頂記録タブ */}
       {tab === '登頂記録' && (
         <div style={styles.list}>
-          {album.length > 0 && (
-            <>
-              <button style={styles.shareBtn} onClick={handleShare}>
-                <GameIcon name="phone" size={16} /> 登山記録を共有する
-              </button>
-              {shareMsg && <p style={{ color: '#7ee8a5', fontSize: 12, textAlign: 'center' }}>{shareMsg}</p>}
-            </>
-          )}
           {album.length === 0 && (
             <div style={styles.empty}>
               <GameIcon name="mountain" size={52} />

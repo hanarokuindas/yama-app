@@ -1,4 +1,4 @@
-/* 登頂記録のSNS共有。Web Share API が使える端末では共有シート、
+/* 記録のSNS共有。Web Share API が使える端末では共有シート、
    使えない環境（PCブラウザなど）ではクリップボードにコピーする。 */
 
 const SITE = 'https://hanarokuindas.github.io/yama-app/'
@@ -14,11 +14,14 @@ export function buildSummitText({ playerName, mountainName, courseName, total, r
   ].join('\n')
 }
 
-export function buildAlbumText({ playerName, summitCount, rate, discovered, total }) {
-  const who = playerName ? `${playerName}の` : ''
+/* メニューの「SNS」：自分の記録（登った山・アルバムのコンプ率など） */
+export function buildRecordText({ playerName, level, total, climbed, courseCount, discovered, totalSpecimens }) {
+  const who = playerName ? `${playerName}さん` : 'わたし'
+  const rate = Math.round((discovered / totalSpecimens) * 100)
   return [
-    `${who}登山記録：${summitCount}コース登頂`,
-    `アルバム ${discovered} / ${total} 種（${rate}%）`,
+    `${who}の山の記録（Lv.${level}・総合体力 ${total}）`,
+    climbed.length ? `登った山：${climbed.join('・')}（${courseCount}コース）` : '登った山：まだこれから！',
+    `アルバム ${discovered} / ${totalSpecimens} 種（コンプ率 ${rate}%）`,
     '',
     '#山アプリ',
     SITE,

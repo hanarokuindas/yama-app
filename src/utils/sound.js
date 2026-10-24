@@ -1,6 +1,7 @@
 /* WebAudio合成による効果音システム（音源ファイル不要） */
 let ctx = null
 let muted = false
+let sfxVolume = 0.8 // 効果音の音量（0〜1）。メニューの「サウンド」で変える
 
 function ac() {
   if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)()
@@ -11,8 +12,15 @@ function ac() {
 export function setMuted(m) { muted = m }
 export function isMuted() { return muted }
 
+/* メニューの「サウンド」の設定を反映する。環境音は素材が届いたらここで鳴らす */
+export function applySoundSettings({ sfxOn, sfxVol }) {
+  muted = !sfxOn
+  sfxVolume = sfxVol
+}
+
 function tone({ freq = 440, dur = 0.15, type = 'sine', vol = 0.2, when = 0, slide = 0 }) {
-  if (muted) return
+  if (muted || sfxVolume <= 0) return
+  vol *= sfxVolume
   try {
     const c = ac()
     const t0 = c.currentTime + when

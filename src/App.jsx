@@ -9,11 +9,12 @@ import Climbing from './pages/Climbing'
 import Maintenance from './pages/Maintenance'
 import Album from './pages/Album'
 import Shop from './pages/Shop'
-import Menu from './pages/Menu'
 import Guide from './pages/Guide'
 import AR from './pages/AR'
 import TutorialOverlay from './components/TutorialOverlay'
 import GameIcon from './components/GameIcon'
+import { useGameStore } from './stores/gameStore'
+import { applySoundSettings } from './utils/sound'
 
 /* まだ横画面向けに作り直していない画面。中央の列に置き、左上にホームへ戻るボタンを出す */
 function Legacy({ children }) {
@@ -28,6 +29,10 @@ function Legacy({ children }) {
 function Inner() {
   const location = useLocation()
   const scrollRef = useRef(null)
+  const settings = useGameStore((s) => s.settings)
+
+  // メニューの「サウンド」の設定を効果音に反映する
+  useEffect(() => { applySoundSettings(settings) }, [settings])
 
   // 画面が変わったら上から見せる（スクロールは .app-scroll の中で起きる）
   useEffect(() => {
@@ -46,9 +51,8 @@ function Inner() {
               <Route path="/climbing" element={<Legacy><Climbing /></Legacy>} />
               <Route path="/maintenance" element={<Legacy><Maintenance /></Legacy>} />
               <Route path="/album" element={<Legacy><Album /></Legacy>} />
-              <Route path="/shop" element={<Legacy><Shop /></Legacy>} />
-              <Route path="/menu" element={<Legacy><Menu /></Legacy>} />
-              <Route path="/guide" element={<Legacy><Guide /></Legacy>} />
+              <Route path="/shop" element={<Shop />} />
+              <Route path="/guide" element={<Guide />} />
               <Route path="/ar" element={<Legacy><AR /></Legacy>} />
             </Routes>
           </PageTransition>

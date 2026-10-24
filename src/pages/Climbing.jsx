@@ -248,6 +248,8 @@ export default function Climbing() {
   const unlockAR = useGameStore((s) => s.unlockAR)
   const addPoints = useGameStore((s) => s.addPoints)
   const recordMission = useGameStore((s) => s.recordMission)
+  const spendClimbGear = useGameStore((s) => s.spendClimbGear)
+  const [wornOut, setWornOut] = useState([])
   const applyFatigue = useGameStore((s) => s.applyFatigue)
   const album = useGameStore((s) => s.album)
   const spendPointsPenalty = useGameStore((s) => s.spendPoints)
@@ -284,7 +286,9 @@ export default function Climbing() {
 
   const handleGameComplete = (result, clearedStages = 0) => {
     setGameResult(result)
-    recordMission('climb')
+    recordMission('climb', selectedMountain.id)
+    // 持って行った装備を1回ぶん使う（登頂しても脱落しても1回）。使い切ったものは消える
+    setWornOut(spendClimbGear(selectedCourse.requiredItems || []))
     consumeBlessing()   // ご利益は1回の登山で消費される
     const reqTotal = selectedCourse.requiredStamina * 5 // 疲労は整備度に関係なく本来の必要体力で計算
     if (result === 'success') {
@@ -386,7 +390,7 @@ export default function Climbing() {
             )
           })}
         </div>
-        <button style={styles.shopLink} data-tut="climb-shop" onClick={() => navigate('/shop')}>登山ショップへ ›</button>
+        <button style={styles.shopLink} data-tut="climb-shop" onClick={() => navigate('/shop')}>山ショップへ ›</button>
       </div>
     )
   }
@@ -517,6 +521,11 @@ export default function Climbing() {
           {!success && mtState.penalty > 0 && (
             <p style={{ color: mtState.color, fontSize: 12.5, lineHeight: 1.6, margin: 0 }}>
               道が荒れていて、必要体力が +{Math.round(mtState.penalty * 100)}% になっていたよ。山整備をすると登りやすくなるよ
+            </p>
+          )}
+          {wornOut.length > 0 && (
+            <p style={{ color: '#ffb36b', fontSize: 13, fontWeight: 700, lineHeight: 1.6, margin: 0 }}>
+              {wornOut.map((w) => w.name).join('・')}が消耗しました！ 山ショップで買い直そう
             </p>
           )}
           {success && album.length === 1 && (

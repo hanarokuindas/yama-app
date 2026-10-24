@@ -72,7 +72,7 @@ export const TUTORIALS = {
       },
       {
         id: 'gear', route: '/climbing', target: 'climb-shop', pose: 'glassesSmile',
-        text: 'コースごとに必要な装備がちがうんだ。\n足りないものは「登山ショップ」でそろえてから出発してね',
+        text: 'コースごとに必要な装備がちがうんだ。\n足りないものは「山ショップ」でそろえてから出発してね。\n食料や水は登るたびに使い切るよ',
       },
       {
         id: 'onsen', route: '/climbing', pose: 'armsCrossedSmile', last: true,

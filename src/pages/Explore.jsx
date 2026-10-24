@@ -66,10 +66,8 @@ export default function Explore() {
     const bonus = newOnes.length * 200
     const gained = ok ? score + bonus : Math.floor(score / 2)
     addPoints(gained)
-    if (ok) {
-      recordMission('explore')
-      setExploreLevel(exploreLevel + 1)
-    }
+    recordMission('explore') // ミッションは「山探索5回」なので、クリアできなくても1回と数える
+    if (ok) setExploreLevel(exploreLevel + 1)
     setResult({ score, gained, found, reason, newCount: newOnes.length, nextLevel: exploreLevel + 1 })
     setPhase(ok ? 'clear' : 'gameover')
     tutorialEvent('explored')

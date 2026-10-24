@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BG } from '../assets/backgrounds'
+import { CloseButton } from '../components/ui'
+import { ui, FS } from '../components/uiStyles'
 import GameIcon from '../components/GameIcon'
 import Specimen from '../components/Specimen'
 import { useGameStore } from '../stores/gameStore'
@@ -38,7 +40,7 @@ const FLOW = [
   },
 ]
 
-/* ───────── 図鑑の手引き ───────── */
+/* ───────── アルバムの手引き ───────── */
 const AREA_GUIDE = [
   { id: 'rock', name: '岩場', sub: '鉱物・化石', icon: 'gem', color: '#7c3aed' },
   { id: 'trail', name: '登山道', sub: '動物・鳥・昆虫', icon: 'paw', color: '#059669' },
@@ -49,210 +51,207 @@ const AREA_GUIDE = [
 export default function Guide() {
   const navigate = useNavigate()
   const discovered = useGameStore((s) => s.discovered)
+  const replayTutorial = useGameStore((s) => s.replayTutorial)
   const [tab, setTab] = useState('遊び方')
 
   const total = encyclopedia.length
   const got = discovered.length
-  const newest = encyclopedia.filter((e) => discovered.includes(e.id)).slice(-4)
+  const newest = encyclopedia.filter((e) => discovered.includes(e.id)).slice(-6)
 
   return (
-    <div style={styles.container}>
-      <div style={styles.title}>GUIDE BOOK</div>
-
-      <div style={styles.tabs}>
-        {TABS.map((t) => (
-          <button key={t}
-            style={{
-              ...styles.tabBtn,
-              borderBottom: tab === t ? '2px solid #f5c842' : '2px solid transparent',
-              color: tab === t ? '#f5c842' : '#778',
-            }}
-            onClick={() => { sfx.tap(); setTab(t) }}>
-            {t}
-          </button>
-        ))}
-      </div>
-
-      {tab === '遊び方' && (
-        <div style={styles.body}>
-          <div style={styles.senpaiRow}>
-            <img src={senpaiPose.think[0]} alt="先輩" style={{ height: 86 }} draggable={false} />
-            <div style={styles.senpaiBubble}>
-              山は逃げないけど、準備不足で登るとたいへんな目にあうよ。
-              この順番で進めるのがいちばんラクかな！
-            </div>
+    <div style={styles.root}>
+      <div style={styles.window}>
+        <div style={styles.head}>
+          <div style={styles.tabs}>
+            {TABS.map((t) => (
+              <button key={t} style={{ ...styles.tabBtn, ...(tab === t ? styles.tabOn : null) }}
+                onClick={() => { sfx.tap(); setTab(t) }}>
+                {t}
+              </button>
+            ))}
           </div>
+          <div style={styles.title}>ガイド</div>
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+            <CloseButton onClick={() => navigate('/')} />
+          </div>
+        </div>
 
-          {FLOW.map((f, i) => (
-            <div key={f.title} style={styles.stepCard}>
-              <div style={styles.stepHead}>
-                <div style={{ ...styles.stepIcon, background: `${f.color}28`, border: `1.5px solid ${f.color}88` }}>
-                  <GameIcon name={f.icon} size={24} />
-                </div>
-                <div>
-                  <div style={styles.stepNo}>STEP {i + 1}</div>
-                  <div style={styles.stepTitle}>{f.title}</div>
+        <div style={styles.scroll}>
+          {tab === '遊び方' && (
+            <>
+              <div style={styles.senpaiRow}>
+                <img src={senpaiPose.think[0]} alt="" style={styles.senpaiImg} draggable={false} />
+                <div style={{ ...ui.bubble, ...styles.senpaiBubble }}>
+                  山は逃げないけど、準備不足で登るとたいへんな目にあうよ。
+                  この順番で進めるのがいちばんラクかな！
                 </div>
               </div>
-              <p style={styles.stepBody}>{f.body}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {tab === 'アルバムの手引き' && (
-        <div style={styles.body}>
-          <div style={styles.progressCard}>
-            <div style={styles.progressLabel}>コンプリート率</div>
-            <div style={styles.progressValue}>
-              {Math.round((got / total) * 100)}<span style={{ fontSize: 14 }}>%</span>
-              <span style={styles.progressSub}> {got} / {total} 種</span>
-            </div>
-            <div style={styles.progressBarBg}>
-              <div style={{ ...styles.progressBarFill, width: `${(got / total) * 100}%` }} />
-            </div>
-          </div>
-
-          <p style={styles.lead}>
-            アルバムは<b style={{ color: '#f5c842' }}>山探索</b>で埋まっていくよ。
-            ターゲットの標本を3つそろえるとアルバムに載って、その種の解説が読めるようになる。
-          </p>
-
-          <div style={styles.areaRow}>
-            {AREA_GUIDE.map((a) => {
-              const pool = encyclopedia.filter((e) => e.area === a.id)
-              const n = pool.filter((e) => discovered.includes(e.id)).length
-              return (
-                <div key={a.id} style={{ ...styles.areaCard, borderColor: `${a.color}66` }}>
-                  <GameIcon name={a.icon} size={26} />
-                  <div style={styles.areaName}>{a.name}</div>
-                  <div style={styles.areaSub}>{a.sub}</div>
-                  <div style={{ ...styles.areaCount, color: a.color }}>{n}/{pool.length}</div>
-                </div>
-              )
-            })}
-          </div>
-
-          <div style={styles.tipCard}>
-            <div style={styles.tipTitle}>固有種の集め方</div>
-            <p style={styles.tipBody}>
-              山ごとにしかいない種が全部で118種ある。
-              <b style={{ color: '#f5c842' }}>登山でその山を一度訪れる</b>と、
-              山探索の行き先にその山が出てきて、固有種を探せるようになるよ。
-            </p>
-          </div>
-
-          {newest.length > 0 && (
-            <>
-              <div style={styles.sectionLabel}>さいきん見つけたもの</div>
-              <div style={styles.recentRow}>
-                {newest.map((e) => (
-                  <div key={e.id} style={styles.recentChip} title={e.name}>
-                    <Specimen sp={e} size={34} />
-                    <span style={styles.recentName}>{e.name}</span>
+              <div style={styles.flowGrid}>
+                {FLOW.map((f, i) => (
+                  <div key={f.title} style={{ ...ui.bubble, ...styles.stepCard }}>
+                    <div style={styles.stepHead}>
+                      <div style={{ ...styles.stepIcon, background: `${f.color}22`, border: `2px solid ${f.color}88` }}>
+                        <GameIcon name={f.icon} size={26} />
+                      </div>
+                      <div>
+                        <div style={styles.stepNo}>STEP {i + 1}</div>
+                        <div style={styles.stepTitle}>{f.title}</div>
+                      </div>
+                    </div>
+                    <p style={styles.stepBody}>{f.body}</p>
                   </div>
                 ))}
               </div>
+              <button style={styles.replayBtn}
+                onClick={() => { sfx.confirm(); replayTutorial(); navigate('/') }}>
+                <GameIcon name="sparkle" size={22} /> チュートリアルをもう一度見る
+              </button>
             </>
           )}
 
-          <button className="btn-primary" style={{ marginTop: 16 }}
-            onClick={() => { sfx.confirm(); navigate('/album') }}>
-            アルバムを開く
-          </button>
+          {tab === 'アルバムの手引き' && (
+            <div style={styles.albumCols}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ ...ui.bubble, ...styles.progressCard }}>
+                  <div style={styles.progressLabel}>コンプリート率</div>
+                  <div style={styles.progressValue}>
+                    {Math.round((got / total) * 100)}<span style={{ fontSize: 16 }}>%</span>
+                    <span style={styles.progressSub}> {got} / {total} 種</span>
+                  </div>
+                  <div style={styles.progressBarBg}>
+                    <div style={{ ...styles.progressBarFill, width: `${(got / total) * 100}%` }} />
+                  </div>
+                </div>
+                <p style={styles.lead}>
+                  アルバムは<b>山探索</b>で埋まっていくよ。
+                  ターゲットの標本を3つそろえるとアルバムに載って、その種の解説が読めるようになる。
+                </p>
+                <div style={styles.areaRow}>
+                  {AREA_GUIDE.map((a) => {
+                    const pool = encyclopedia.filter((e) => e.area === a.id)
+                    const n = pool.filter((e) => discovered.includes(e.id)).length
+                    return (
+                      <div key={a.id} style={{ ...ui.bubble, ...styles.areaCard, border: `2px solid ${a.color}88` }}>
+                        <GameIcon name={a.icon} size={28} />
+                        <div style={styles.areaName}>{a.name}</div>
+                        <div style={styles.areaSub}>{a.sub}</div>
+                        <div style={{ ...styles.areaCount, color: a.color }}>{n}/{pool.length}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ ...ui.bubble, ...styles.tipCard }}>
+                  <div style={styles.tipTitle}>固有種の集め方</div>
+                  <p style={styles.tipBody}>
+                    山ごとにしかいない種が全部で118種ある。
+                    <b>登山でその山を一度訪れる</b>と、
+                    山探索の行き先にその山が出てきて、固有種を探せるようになるよ。
+                  </p>
+                </div>
+                {newest.length > 0 && (
+                  <>
+                    <div style={styles.sectionLabel}>さいきん見つけたもの</div>
+                    <div style={styles.recentRow}>
+                      {newest.map((e) => (
+                        <div key={e.id} style={{ ...ui.bubble, ...styles.recentChip }} title={e.name}>
+                          <Specimen sp={e} size={34} />
+                          <span style={styles.recentName}>{e.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+                <button className="btn-primary" style={{ marginTop: 14 }}
+                  onClick={() => { sfx.confirm(); navigate('/album') }}>
+                  アルバムを開く
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }
 
 const styles = {
-  container: {
-    minHeight: '100vh',
-    backgroundImage: `linear-gradient(rgba(8,10,24,0.78), rgba(8,10,24,0.88)), url(${BG.intro})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundAttachment: 'fixed',
-    paddingBottom: 90,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
+  root: {
+    height: '100cqh',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    backgroundImage: `linear-gradient(rgba(40,28,14,0.4), rgba(40,28,14,0.4)), url(${BG.home})`,
+    backgroundSize: 'cover', backgroundPosition: 'center',
   },
-  title: { color: '#f5c842', fontSize: 12, fontWeight: 700, letterSpacing: 3, padding: '18px 0 10px' },
-
-  tabs: {
-    display: 'flex', width: 'calc(100% - 32px)', maxWidth: 380, marginBottom: 14,
+  window: {
+    width: 'min(1000px, 96cqw)', height: '94cqh',
+    display: 'flex', flexDirection: 'column',
+    background: 'var(--beige)', border: '3px solid var(--beige-edge)', borderRadius: 22,
+    boxShadow: '0 10px 40px rgba(40,25,10,0.45)', overflow: 'hidden',
   },
+  head: {
+    display: 'flex', alignItems: 'center', gap: 10,
+    padding: 'clamp(6px, 2cqh, 12px) clamp(10px, 2cqw, 18px)',
+    borderBottom: '2px solid var(--beige-edge)',
+  },
+  tabs: { flex: 1, display: 'flex', gap: 6 },
   tabBtn: {
-    flex: 1, background: 'none', border: 'none', paddingBottom: 9,
-    fontSize: 13.5, fontWeight: 900, cursor: 'pointer',
+    padding: '5px 14px', borderRadius: 99,
+    border: '2px solid var(--beige-edge)', background: '#fff',
+    color: 'var(--brown-text)', fontSize: FS(3.6, 12.5, 16), fontWeight: 800, cursor: 'pointer',
+    whiteSpace: 'nowrap',
   },
+  tabOn: { background: 'linear-gradient(135deg, #f8c537, #e0a000)', color: '#4a2e00', border: '2px solid #c58f00' },
+  title: { color: 'var(--brown-text)', fontSize: FS(5, 16, 24), fontWeight: 800, letterSpacing: 2 },
+  scroll: { flex: 1, minHeight: 0, overflowY: 'auto', padding: 'clamp(8px, 2.5cqh, 16px) clamp(12px, 2.5cqw, 22px)' },
 
-  body: { width: 'calc(100% - 32px)', maxWidth: 380 },
-
-  senpaiRow: {
-    display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14,
-  },
-  senpaiBubble: {
-    flex: 1, background: '#fff', color: '#222',
-    borderRadius: 14, padding: '11px 14px',
-    fontSize: 12.5, lineHeight: 1.7,
-    boxShadow: '0 4px 18px rgba(0,0,0,0.3)',
-  },
-
-  stepCard: {
-    background: 'rgba(255,255,255,0.055)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 16, padding: '14px 16px', marginBottom: 10,
-  },
-  stepHead: { display: 'flex', alignItems: 'center', gap: 11, marginBottom: 9 },
+  senpaiRow: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 },
+  senpaiImg: { height: 'clamp(64px, 20cqh, 120px)' },
+  senpaiBubble: { flex: 1, padding: '10px 14px', fontSize: FS(3.6, 13, 16) },
+  flowGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 },
+  stepCard: { padding: '12px 14px' },
+  stepHead: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 },
   stepIcon: {
     width: 44, height: 44, borderRadius: 12, flexShrink: 0,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
-  stepNo: { color: '#f5c842', fontSize: 9.5, fontWeight: 900, letterSpacing: 1.5 },
-  stepTitle: { color: '#fff', fontSize: 15.5, fontWeight: 900 },
-  stepBody: { color: '#ccd', fontSize: 12.5, lineHeight: 1.85, whiteSpace: 'pre-wrap', margin: 0 },
-
-  progressCard: {
-    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(245,200,66,0.25)',
-    borderRadius: 14, padding: '13px 15px', marginBottom: 12,
+  stepNo: { color: '#c58f00', fontSize: 10.5, fontWeight: 800, letterSpacing: 1.5 },
+  stepTitle: { color: 'var(--brown-text)', fontSize: 16, fontWeight: 800 },
+  stepBody: { color: 'var(--brown-text)', fontSize: 13.5, lineHeight: 1.75, whiteSpace: 'pre-wrap', margin: 0, fontWeight: 700 },
+  replayBtn: {
+    display: 'flex', alignItems: 'center', gap: 8, margin: '14px auto 4px',
+    background: '#fff', border: '2px solid var(--beige-edge)', borderRadius: 99,
+    padding: '9px 22px', color: 'var(--brown-text)', fontSize: 14.5, fontWeight: 800, cursor: 'pointer',
+    boxShadow: '0 3px 0 var(--beige-edge)',
   },
-  progressLabel: { color: '#8a90a8', fontSize: 10, fontWeight: 700 },
-  progressValue: { color: '#f5c842', fontSize: 26, fontWeight: 900, lineHeight: 1.2 },
-  progressSub: { color: '#aab', fontSize: 12, fontWeight: 700 },
-  progressBarBg: { height: 6, background: 'rgba(255,255,255,0.12)', borderRadius: 99, overflow: 'hidden', marginTop: 8 },
-  progressBarFill: { height: '100%', background: 'linear-gradient(90deg,#f5c842,#ffe98a)', borderRadius: 99, transition: 'width 0.6s ease' },
 
-  lead: { color: '#ccd', fontSize: 12.5, lineHeight: 1.85, marginBottom: 12 },
-
-  areaRow: { display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' },
+  albumCols: { display: 'flex', gap: 'clamp(10px, 2.5cqw, 24px)', alignItems: 'flex-start' },
+  progressCard: { padding: '12px 16px', marginBottom: 10 },
+  progressLabel: { color: '#8b7a66', fontSize: 12, fontWeight: 800 },
+  progressValue: { color: '#c58f00', fontSize: 30, fontWeight: 800, lineHeight: 1.2 },
+  progressSub: { color: '#8b7a66', fontSize: 13, fontWeight: 800 },
+  progressBarBg: { height: 8, background: '#e6dccb', borderRadius: 99, overflow: 'hidden', marginTop: 8 },
+  progressBarFill: { height: '100%', background: 'linear-gradient(90deg,#f8b500,#ffd65c)', borderRadius: 99, transition: 'width 0.6s ease' },
+  lead: { color: 'var(--brown-text)', fontSize: 13.5, lineHeight: 1.8, margin: '0 0 10px' },
+  areaRow: { display: 'flex', gap: 8, flexWrap: 'wrap' },
   areaCard: {
-    flex: '1 1 76px', background: 'rgba(255,255,255,0.055)', border: '1.5px solid',
-    borderRadius: 14, padding: '12px 6px',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+    flex: '1 1 76px', padding: '10px 6px',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
   },
-  areaName: { color: '#fff', fontSize: 12.5, fontWeight: 900 },
-  areaSub: { color: '#8a90a8', fontSize: 9.5 },
-  areaCount: { fontSize: 12, fontWeight: 900, marginTop: 2 },
-
-  tipCard: {
-    background: 'rgba(245,200,66,0.09)', border: '1px solid rgba(245,200,66,0.3)',
-    borderRadius: 14, padding: '13px 15px', marginBottom: 14,
-  },
-  tipTitle: { color: '#f5c842', fontSize: 12.5, fontWeight: 900, marginBottom: 6 },
-  tipBody: { color: '#ccd', fontSize: 12, lineHeight: 1.85, margin: 0 },
-
-  sectionLabel: { color: '#f5c842', fontSize: 10.5, fontWeight: 700, letterSpacing: 2, marginBottom: 8 },
+  areaName: { color: 'var(--brown-text)', fontSize: 14, fontWeight: 800 },
+  areaSub: { color: '#8b7a66', fontSize: 11 },
+  areaCount: { fontSize: 13.5, fontWeight: 800, marginTop: 2 },
+  tipCard: { padding: '12px 16px', marginBottom: 12 },
+  tipTitle: { color: '#c58f00', fontSize: 14, fontWeight: 800, marginBottom: 4 },
+  tipBody: { color: 'var(--brown-text)', fontSize: 13.5, lineHeight: 1.8, margin: 0 },
+  sectionLabel: { color: '#8b7a66', fontSize: 12, fontWeight: 800, letterSpacing: 1, marginBottom: 6 },
   recentRow: { display: 'flex', gap: 7, flexWrap: 'wrap' },
   recentChip: {
-    flex: '1 1 76px', background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
-    padding: '9px 4px', display: 'flex', flexDirection: 'column',
-    alignItems: 'center', gap: 4,
+    flex: '1 1 76px', padding: '8px 4px',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
   },
   recentName: {
-    color: '#dde', fontSize: 8.5, fontWeight: 700, textAlign: 'center',
+    color: 'var(--brown-text)', fontSize: 10, fontWeight: 800, textAlign: 'center',
     display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
   },
 }

@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { TUTORIALS, nextStepIndex } from '../data/tutorial'
+import { itemUses } from '../data/equipment'
+import { pickMissionMountain, todayString } from '../data/missions'
 
 const DEFAULT_MOUNTAINS = {
   // 架空の練習用の山。登山解禁（総合体力20）から高尾山（推奨100）までの間を埋める
@@ -72,8 +74,13 @@ export const useGameStore = create(
       // 各山の状態
       mountains: DEFAULT_MOUNTAINS,
 
-      // 所持アイテム
+      // 所持アイテム。usesLeft はあと何回の登山で消耗するか（null は消耗しない）
       inventory: [],
+      // 登山で消耗して消えた装備。マイアイテムで「消耗しました！」を見せたら消す
+      wornOut: [],   // [{ id, name, icon }]
+
+      // 音の設定（効果音と環境音を別々に）。環境音は素材が届くまで鳴らない
+      settings: { sfxOn: true, sfxVol: 0.8, ambientOn: true, ambientVol: 0.6 },
 
       // デイリー（ログインボーナス・ミッション）
       daily: {
@@ -82,6 +89,7 @@ export const useGameStore = create(
         missionDate: null,
         missionProgress: {}, // { train: 1, explore: 0, ... }
         missionClaimed: [],  // ['train', ...]
+        missionMountain: null, // 今日の「〇〇に出かけよう」の山
       },
 
       // アルバム（登頂写真）
@@ -110,7 +118,7 @@ export const useGameStore = create(
       // --- デイリーログインボーナス ---
       // 新しい日なら {streak, bonus} を返してポイント付与、同日ならnull
       checkDailyLogin: () => {
-        const today = new Date().toISOString().slice(0, 10)
+        const today = todayString()
         const d = get().daily
         if (d.lastLoginDate === today) return null
         const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
@@ -127,16 +135,24 @@ export const useGameStore = create(
             missionDate: today,
             missionProgress: sameDay ? state.daily.missionProgress : {},
             missionClaimed: sameDay ? state.daily.missionClaimed : [],
+            missionMountain: sameDay && state.daily.missionMountain
+              ? state.daily.missionMountain : pickMissionMountain(today, state.mountains),
           },
         }))
         return { streak, bonus }
       },
 
       // --- デイリーミッション ---
-      recordMission: (type) => set((state) => {
-        const today = new Date().toISOString().slice(0, 10)
+      // climb は今日の山（missionMountain）に登ったときだけ数える
+      recordMission: (type, mountainId) => set((state) => {
+        const today = todayString()
         const d = state.daily
         const sameDay = d.missionDate === today
+        const missionMountain = sameDay && d.missionMountain
+          ? d.missionMountain : pickMissionMountain(today, state.mountains)
+        if (type === 'climb' && mountainId !== missionMountain) {
+          return sameDay ? state : { daily: { ...d, missionDate: today, missionProgress: {}, missionClaimed: [], missionMountain } }
+        }
         const progress = sameDay ? { ...d.missionProgress } : {}
         progress[type] = (progress[type] || 0) + 1
         return {
@@ -145,6 +161,7 @@ export const useGameStore = create(
             missionDate: today,
             missionProgress: progress,
             missionClaimed: sameDay ? d.missionClaimed : [],
+            missionMountain,
           },
         }
       }),
@@ -289,8 +306,28 @@ export const useGameStore = create(
       })),
 
       addItem: (item) => set((state) => ({
-        inventory: [...state.inventory, { ...item, purchasedAt: new Date().toISOString() }]
+        inventory: [...state.inventory, { ...item, usesLeft: itemUses(item), purchasedAt: new Date().toISOString() }]
       })),
+
+      // 登山1回ぶん、持って行った装備を使う。使い切ったものは持ち物から消えて wornOut に入る
+      spendClimbGear: (itemIds) => {
+        const worn = []
+        set((state) => {
+          const inventory = []
+          state.inventory.forEach((it) => {
+            if (!itemIds.includes(it.id) || it.usesLeft == null) { inventory.push(it); return }
+            const usesLeft = it.usesLeft - 1
+            if (usesLeft > 0) inventory.push({ ...it, usesLeft })
+            else worn.push({ id: it.id, name: it.name, icon: it.icon })
+          })
+          return { inventory, wornOut: [...state.wornOut.filter((w) => !worn.some((x) => x.id === w.id)), ...worn] }
+        })
+        return worn
+      },
+
+      clearWornOut: () => set({ wornOut: [] }),
+
+      setSettings: (patch) => set((state) => ({ settings: { ...state.settings, ...patch } })),
 
       hasItem: (itemId) => {
         return get().inventory.some((i) => i.id === itemId)
@@ -426,10 +463,15 @@ export const useGameStore = create(
     {
       name: 'yama-app-storage',
       // 保存データの山の一覧は丸ごと置き換わるので、あとから増えた山（ふもとの里山など）を足す
+      // 以前の保存データの装備には消耗の回数が無いので、買ったばかりとして数えはじめる
       merge: (persisted, current) => ({
         ...current,
         ...persisted,
         mountains: { ...current.mountains, ...(persisted?.mountains || {}) },
+        settings: { ...current.settings, ...(persisted?.settings || {}) },
+        inventory: (persisted?.inventory || current.inventory).map((it) => (
+          it.usesLeft === undefined ? { ...it, usesLeft: itemUses(it) } : it
+        )),
       }),
     }
   )
