@@ -1,40 +1,45 @@
-/* 背景画像の一元管理 */
-import homeMap from './bg_home_map.webp'
+/* 背景画像の一元管理（横画面用 1920x1072。tools/prepare_assets.py photo で変換） */
+import home from './bg_home.webp'
+import homeSakura from './bg_home_sakura.webp'
+import homeAutumn from './bg_home_autumn.webp'
+import homeWinter from './bg_home_winter.webp'
 import intro from './bg_intro.webp'
 import onsen from './bg_onsen.webp'
 import shop from './bg_shop.webp'
-import stageMeadow from './bg_stage_meadow.webp'
-import stageRocky from './bg_stage_rocky.webp'
-import stageTrail from './bg_stage_trail.webp'
+import myroom from './bg_myroom.webp'
 import training from './bg_training.webp'
+import exploreRock from './bg_explore_rock.webp'
+import exploreTrail from './bg_explore_trail.webp'
+import exploreMeadow from './bg_explore_meadow.webp'
+import forestGood from './bg_forest_good.webp'
+import forestBad from './bg_forest_bad.webp'
+import albumBook from './bg_album_book.webp'
+import albumPaper from './bg_album_paper.webp'
 
-/* 横画面用に作り直した背景（届いたものから置き換わる）。
-   src/assets/backgrounds/bg_home.webp などを置くと、ここに自動で入る */
-const LANDSCAPE = import.meta.glob('./bg_*.webp', { eager: true, query: '?url', import: 'default' })
-const pick = (name, fallback) => LANDSCAPE[`./${name}.webp`] || fallback
+/* ホームの背景は季節で変える：3〜4月は桜、10〜11月は紅葉、12〜2月は雪、それ以外は新緑 */
+function seasonalHome(date = new Date()) {
+  const m = date.getMonth() + 1
+  if (m === 3 || m === 4) return homeSakura
+  if (m === 10 || m === 11) return homeAutumn
+  if (m === 12 || m <= 2) return homeWinter
+  return home
+}
 
 export const BG = {
-  homeMap,
-  home: pick('bg_home', homeMap),
+  home: seasonalHome(),
+  homeGreen: home,
   intro,
   onsen,
   shop,
+  myroom,
   training,
+  forestGood,
+  forestBad,
+  albumBook,
+  albumPaper,
   stage: {
-    rocky: stageRocky,
-    trail: stageTrail,
-    meadow: stageMeadow,
+    rocky: exploreRock,
+    trail: exploreTrail,
+    meadow: exploreMeadow,
   },
-}
-
-/* 画面全体を覆う背景レイヤーのstyleを作る（暗幕の濃さを調整可能） */
-export function bgLayer(url, dim = 0.45) {
-  return {
-    position: 'absolute',
-    inset: 0,
-    backgroundImage: `linear-gradient(rgba(6,8,20,${dim}), rgba(6,8,20,${dim})), url(${url})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    pointerEvents: 'none',
-  }
 }

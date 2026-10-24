@@ -54,13 +54,13 @@ def distance_from(mask, steps):
     return d
 
 
-def save(rgba, out, size):
+def save(rgba, out, size, quality=90):
     im = Image.fromarray(rgba.astype(np.uint8), 'RGBA')
     if size:
         scale = size / max(im.size)
         if scale < 1:
             im = im.resize((round(im.width * scale), round(im.height * scale)), Image.LANCZOS)
-    im.save(out, 'WEBP', quality=90, method=6)
+    im.save(out, 'WEBP', quality=quality, method=6)
     print(f'{out}  {im.size[0]}x{im.size[1]}')
 
 
@@ -132,9 +132,13 @@ def do_card(src, out, size=1000):
 
 
 def do_photo(src, out, size=1920):
-    rgb = load(src)
-    rgba = np.dstack([rgb, np.full(rgb.shape[:2], 255)])
-    save(rgba, out, size)
+    # 背景は透明が要らないので RGB のまま保存し、画質を少し落として軽くする
+    im = Image.open(src).convert('RGB')
+    scale = size / max(im.size)
+    if scale < 1:
+        im = im.resize((round(im.width * scale), round(im.height * scale)), Image.LANCZOS)
+    im.save(out, 'WEBP', quality=82, method=6)
+    print(f'{out}  {im.size[0]}x{im.size[1]}')
 
 
 if __name__ == '__main__':

@@ -56,7 +56,7 @@ export default function IntroStory({ returning = false, onComplete }) {
   return (
     <div style={st.root} onClick={advance}>
       {/* 背景：ナレーションはワールドマップ、先輩の場面は山の景色 */}
-      <div style={{ ...st.bg, backgroundImage: `url(${BG.homeMap})`, opacity: line.bg === 'map' ? 1 : 0 }} />
+      <div style={{ ...st.bg, backgroundImage: `url(${BG.homeGreen})`, opacity: line.bg === 'map' ? 1 : 0 }} />
       <div style={{ ...st.bg, backgroundImage: `url(${BG.intro})`, opacity: line.bg === 'map' ? 0 : 1 }} />
       <div style={st.shade} />
 

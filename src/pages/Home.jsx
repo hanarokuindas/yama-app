@@ -361,8 +361,6 @@ const s = {
     backgroundImage: `url(${BG.home})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center 40%',
-    // 濃く鮮やかな新緑に寄せる（横長の背景が届くまで）
-    filter: BG.home === BG.homeMap ? 'saturate(1.35) contrast(1.05)' : 'none',
   },
 
   /* ─── 左上 ─── */
