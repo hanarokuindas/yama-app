@@ -9,7 +9,6 @@ import { sfx } from '../utils/sound'
 
 const PAD = 6          // 照らす枠と要素のすき間
 const BUBBLE_H = 176   // 吹き出しの高さの見込み（上下どちらに出すかの判定用）
-const NAV_H = 64
 
 // 照らす要素の位置を追いかける。画面遷移やアニメーションで動くので一定間隔で測り直す
 function useTargetRect(name) {
@@ -22,7 +21,7 @@ function useTargetRect(name) {
       if (!el) { setRect(null); return }
       const r = el.getBoundingClientRect()
       // 画面の外にあれば一度だけ見える位置までスクロールする
-      if (!scrolled && (r.top < 0 || r.bottom > window.innerHeight - NAV_H)) {
+      if (!scrolled && (r.top < 0 || r.bottom > window.innerHeight)) {
         scrolled = true
         el.scrollIntoView({ block: 'center', behavior: 'smooth' })
       }
@@ -116,6 +115,7 @@ export default function TutorialOverlay() {
   }
 
   const vh = window.innerHeight
+  const vw = window.innerWidth
   const hole = rect && {
     top: rect.top - PAD, left: rect.left - PAD,
     width: rect.width + PAD * 2, height: rect.height + PAD * 2,
@@ -123,14 +123,19 @@ export default function TutorialOverlay() {
   const gap = step.action ? 30 : 14
   const radius = hole ? (step.target.startsWith('spot-') ? Math.min(hole.width, hole.height) / 2 : 16) : 0
 
-  // 吹き出しは要素の下、入らなければ上、どちらも無理なら画面下
+  // 吹き出しは要素の下、入らなければ上、それも無理なら横（横画面では上下の余裕が少ない）
   let place = 'bottom'
-  if (hole && hole.top + hole.height + gap + BUBBLE_H < vh - NAV_H) place = 'below'
+  if (hole && hole.top + hole.height + gap + BUBBLE_H < vh) place = 'below'
   else if (hole && hole.top - gap - BUBBLE_H > 0) place = 'above'
+  else if (hole && hole.left > vw / 2) place = 'left'
+  else if (hole) place = 'right'
+  const sideTop = hole && Math.max(8, Math.min(vh - BUBBLE_H - 8, hole.top + hole.height / 2 - BUBBLE_H / 2))
   const bubblePos =
     place === 'below' ? { top: hole.top + hole.height + gap }
     : place === 'above' ? { bottom: vh - hole.top + gap }
-    : { bottom: NAV_H + 14 }
+    : place === 'left' ? { top: sideTop, left: 'auto', right: vw - hole.left + gap, margin: 0, width: Math.min(420, hole.left - gap - 12) }
+    : place === 'right' ? { top: sideTop, right: 'auto', left: hole.left + hole.width + gap, margin: 0, width: Math.min(420, vw - hole.left - hole.width - gap - 12) }
+    : { bottom: 14 }
 
   return (
     <div style={st.root} key={stepKey}>
@@ -163,7 +168,7 @@ export default function TutorialOverlay() {
       )}
 
       {/* 要素を指す矢印 */}
-      {step.action && hole && place !== 'bottom' && (
+      {step.action && hole && (place === 'below' || place === 'above') && (
         <div style={{
           ...st.arrow,
           left: hole.left + hole.width / 2 - 11,
@@ -172,13 +177,22 @@ export default function TutorialOverlay() {
             : { top: hole.top - 19, borderTop: '13px solid #f5c842' }),
         }} />
       )}
+      {step.action && hole && (place === 'left' || place === 'right') && (
+        <div style={{
+          ...st.arrowSide,
+          top: hole.top + hole.height / 2 - 11,
+          ...(place === 'left'
+            ? { left: hole.left - 19, borderLeft: '13px solid #f5c842' }
+            : { left: hole.left + hole.width + 6, borderRight: '13px solid #f5c842' }),
+        }} />
+      )}
 
       {/* 先輩の吹き出し */}
       <div style={{ ...st.bubbleWrap, ...bubblePos }}>
         <img src={senpaiMini[step.pose] || senpaiMini.smileCheer} alt="先輩" style={st.face} draggable={false} />
         <div style={st.bubble}>
+          {/* 先輩は名前を出さない（修正指示） */}
           <div style={st.bubbleHead}>
-            <span style={st.name}>先輩</span>
             <span style={st.chapter}>{chapter.title}</span>
           </div>
           {confirmSkip ? (
@@ -242,6 +256,12 @@ const st = {
     animation: 'tutBounce 0.9s ease-in-out infinite',
     pointerEvents: 'none',
   },
+  arrowSide: {
+    position: 'absolute', width: 0, height: 0,
+    borderTop: '11px solid transparent', borderBottom: '11px solid transparent',
+    filter: 'drop-shadow(0 0 6px rgba(245,200,66,0.8))',
+    pointerEvents: 'none',
+  },
 
   bubbleWrap: {
     position: 'absolute', left: 0, right: 0, margin: '0 auto',
@@ -261,11 +281,10 @@ const st = {
     boxShadow: '0 8px 30px rgba(0,0,0,0.45)',
     border: '2px solid #f5c842',
   },
-  bubbleHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  name: { color: '#db2777', fontSize: 11.5, fontWeight: 900, letterSpacing: 0.5 },
+  bubbleHead: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 2 },
   chapter: { color: '#a0a4b8', fontSize: 9.5, fontWeight: 700 },
   text: {
-    color: '#222', fontSize: 13, lineHeight: 1.7, margin: 0,
+    color: 'var(--brown-text)', fontSize: 14, lineHeight: 1.65, margin: 0,
     whiteSpace: 'pre-wrap',
   },
   row: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 8 },
@@ -296,7 +315,7 @@ const st = {
   pillTop: { bottom: 'auto', top: 10 },
   pill: {
     position: 'fixed', left: 0, right: 0, margin: '0 auto', width: 'fit-content',
-    bottom: 'calc(var(--nav-h) + 10px)', zIndex: 180,
+    bottom: 10, zIndex: 180,
     display: 'flex', alignItems: 'center', gap: 6,
     maxWidth: 'calc(100% - 32px)',
     background: 'rgba(14,14,34,0.92)', border: '1.5px solid rgba(245,200,66,0.6)',

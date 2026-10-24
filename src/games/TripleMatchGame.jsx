@@ -390,7 +390,7 @@ export default function TripleMatchGame({ area, mountainId, level, onClear, onGa
         <button style={st.discOverlay} onClick={() => setPopup(null)}>
           <div style={st.discCard}>
             {FX.sparkle && <img src={FX.sparkle} alt="" style={st.discSparkle} />}
-            <div style={st.discBadge}>図鑑に登録！</div>
+            <div style={st.discBadge}>アルバムに登録！</div>
             <div style={{ margin: '10px 0 4px', animation: 'popIn 0.45s ease' }}>
               <Specimen sp={popup} size={64} />
             </div>

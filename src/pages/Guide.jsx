@@ -8,7 +8,7 @@ import { senpaiPose } from '../assets/characters/senpai'
 import { sfx } from '../utils/sound'
 import encyclopedia from '../data/encyclopedia.json'
 
-const TABS = ['遊び方', '図鑑の手引き']
+const TABS = ['遊び方', 'アルバムの手引き']
 
 /* ───────── 遊び方 ───────── */
 const FLOW = [
@@ -18,7 +18,7 @@ const FLOW = [
   },
   {
     icon: 'search', color: '#7c3aed', title: '山を探索してポイントを稼ぐ',
-    body: '上に出る「ターゲット」の標本を3つずつそろえるとクリア。そろえたターゲットは図鑑に登録されて、ポイントがもらえる。\n上に重なっている標本は取れないし、トレイ（7枠）があふれたら失敗。ポイントは装備や整備に使うよ。',
+    body: '上に出る「ターゲット」の標本を3つずつそろえるとクリア。そろえたターゲットはアルバムに載って、ポイントがもらえる。\n上に重なっている標本は取れないし、トレイ（7枠）があふれたら失敗。ポイントは装備や整備に使うよ。',
   },
   {
     icon: 'cart', color: '#1d4ed8', title: '装備をそろえる',
@@ -100,7 +100,7 @@ export default function Guide() {
         </div>
       )}
 
-      {tab === '図鑑の手引き' && (
+      {tab === 'アルバムの手引き' && (
         <div style={styles.body}>
           <div style={styles.progressCard}>
             <div style={styles.progressLabel}>コンプリート率</div>
@@ -114,8 +114,8 @@ export default function Guide() {
           </div>
 
           <p style={styles.lead}>
-            図鑑は<b style={{ color: '#f5c842' }}>山探索</b>で埋まっていくよ。
-            ターゲットの標本を3つそろえると図鑑に登録されて、その種の解説が読めるようになる。
+            アルバムは<b style={{ color: '#f5c842' }}>山探索</b>で埋まっていくよ。
+            ターゲットの標本を3つそろえるとアルバムに載って、その種の解説が読めるようになる。
           </p>
 
           <div style={styles.areaRow}>
@@ -158,7 +158,7 @@ export default function Guide() {
 
           <button className="btn-primary" style={{ marginTop: 16 }}
             onClick={() => { sfx.confirm(); navigate('/album') }}>
-            図鑑を開く
+            アルバムを開く
           </button>
         </div>
       )}

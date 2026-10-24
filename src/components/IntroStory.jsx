@@ -69,14 +69,15 @@ export default function IntroStory({ returning = false, onComplete }) {
       </button>
 
       <div style={{ ...st.box, ...(narration ? st.boxNarration : {}) }}>
-        {!narration && <div style={st.nameTag}>{line.who}</div>}
+        {/* 名前は山神だけ出す（先輩は名前なし） */}
+        {!narration && line.who !== '先輩' && <div style={st.nameTag}>{line.who}</div>}
         <p style={{ ...st.text, ...(narration ? st.textNarration : {}) }}>
           {line.text.slice(0, shown)}
         </p>
         {typed && <span style={st.more}>▼</span>}
         <div style={st.dots}>
           {lines.map((_, i) => (
-            <span key={i} style={{ ...st.dot, background: i === idx ? '#f5c842' : 'rgba(255,255,255,0.22)' }} />
+            <span key={i} style={{ ...st.dot, background: i === idx ? '#e0a000' : (narration ? 'rgba(255,255,255,0.3)' : 'rgba(91,75,67,0.22)') }} />
           ))}
         </div>
       </div>
@@ -101,7 +102,7 @@ const st = {
   },
   chara: {
     position: 'absolute', left: 0, right: 0, bottom: 0, margin: '0 auto',
-    height: 'min(84vh, 760px)', width: 'auto',
+    height: '96cqh', width: 'auto',
     filter: 'drop-shadow(0 10px 30px rgba(0,0,0,0.45))',
     animation: 'pageIn 0.45s cubic-bezier(.22,1,.36,1)',
     pointerEvents: 'none',
@@ -116,16 +117,16 @@ const st = {
   box: {
     position: 'absolute', left: '50%', bottom: 'max(24px, env(safe-area-inset-bottom))',
     transform: 'translateX(-50%)',
-    width: 'calc(100% - 28px)', maxWidth: 460, minHeight: 132,
-    background: 'rgba(10,12,30,0.88)',
-    border: '1.5px solid rgba(245,200,66,0.6)',
-    borderRadius: 18, padding: '24px 20px 26px',
-    boxShadow: '0 10px 40px rgba(0,0,0,0.55)',
-    backdropFilter: 'blur(10px)',
+    width: 'min(860px, 90cqw)', minHeight: 'clamp(96px, 28cqh, 180px)',
+    background: 'rgba(255,253,247,0.95)',
+    border: '3px solid var(--beige-edge)',
+    borderRadius: 18, padding: 'clamp(12px, 4cqh, 24px) clamp(18px, 3cqw, 32px) clamp(18px, 5cqh, 30px)',
+    boxShadow: '0 10px 40px rgba(40,25,10,0.45)',
   },
   boxNarration: {
-    background: 'rgba(10,12,30,0.62)',
-    border: '1px solid rgba(255,255,255,0.16)',
+    background: 'rgba(30,22,12,0.6)',
+    border: '1px solid rgba(255,255,255,0.2)',
+    backdropFilter: 'blur(8px)',
   },
   nameTag: {
     position: 'absolute', top: -14, left: 18,
@@ -135,7 +136,7 @@ const st = {
     boxShadow: '0 3px 10px rgba(0,0,0,0.35)',
   },
   text: {
-    color: '#fff', fontSize: 16, lineHeight: 1.85, fontWeight: 700,
+    color: 'var(--brown-text)', fontSize: 'clamp(15px, 4.8cqh, 24px)', lineHeight: 1.75, fontWeight: 700,
     margin: 0, whiteSpace: 'pre-wrap', minHeight: 58,
   },
   textNarration: {
@@ -144,7 +145,7 @@ const st = {
   },
   more: {
     position: 'absolute', right: 18, bottom: 22,
-    color: '#f5c842', fontSize: 12,
+    color: '#e0a000', fontSize: 14,
     animation: 'blink 1s ease-in-out infinite',
   },
   dots: {

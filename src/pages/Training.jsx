@@ -10,6 +10,7 @@ import { HOWTO } from '../data/howto'
 import { MOTIONS, hasMotion } from '../data/motions'
 import { TUTORIALS } from '../data/tutorial'
 import TRAININGS from '../data/trainings.json'
+import { STAT } from '../data/stats'
 
 /* 種目は「手本動画」表から作った src/data/trainings.json（tools/import_trainings.py）。
    回数／時間・左右の切り替え・セット・先輩コメントは表のとおりに進める。 */
@@ -25,11 +26,6 @@ const GROUPS = [
 ]
 const GROUP_ICON = Object.fromEntries(GROUPS.map((g) => [g.id, g.icon]))
 
-const STAT = {
-  legs: { label: '脚力', color: '#27ae60' },
-  arms: { label: '腕力', color: '#2980b9' },
-  core: { label: '体幹', color: '#e67e22' },
-}
 const SIDE_LABEL = { lr: '左右', alt: '左右交互' }
 const DEMO_MIN_SEC = 4 // 準備画面のお手本は1回を最低4秒かけて見せる
 const TIP_SEC = 10     // 実施中の先輩コメントの切り替え間隔

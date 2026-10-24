@@ -4,6 +4,7 @@ import GameIcon from '../components/GameIcon'
 import { Link, useNavigate } from 'react-router-dom'
 import { useGameStore } from '../stores/gameStore'
 import { sfx } from '../utils/sound'
+import { STAT } from '../data/stats'
 
 export default function Menu() {
   const player = useGameStore((s) => s.player)
@@ -55,9 +56,9 @@ export default function Menu() {
               </button>
             </div>
             <div style={styles.statRow}>
-              <Stat label="体幹" value={player.core} color="#e67e22" />
-              <Stat label="脚力" value={player.legs} color="#27ae60" />
-              <Stat label="腕力" value={player.arms} color="#2980b9" />
+              <Stat label="体幹" value={player.core} color={STAT.core.color} />
+              <Stat label="脚力" value={player.legs} color={STAT.legs.color} />
+              <Stat label="腕力" value={player.arms} color={STAT.arms.color} />
               <Stat label="総合" value={total} color="#9b59b6" />
             </div>
             <p style={{ color: '#ffd700', fontSize: 13, textAlign: 'center', marginTop: 4 }}>

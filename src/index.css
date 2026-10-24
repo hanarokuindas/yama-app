@@ -13,7 +13,19 @@
   --text: #fff;
   --text-sub: #aab;
   --radius: 14px;
-  --nav-h: 64px;
+  --nav-h: 0px; /* 下のナビは無くした。古い画面の余白計算のために残す */
+
+  /* 修正指示（2026年10月）の配色 */
+  --beige: #efe4cf;        /* ナチュラルベージュ（地の色） */
+  --beige-light: #faf4e8;  /* 正方形の面 */
+  --beige-edge: #d9c7a5;   /* 正方形のふち・影 */
+  --beige-dark: #8a6a45;   /* アイコンの文字の光彩 */
+  --brown-text: #5b4b43;   /* 吹き出しの文字（グレーがかったこげ茶） */
+  --yamabuki: #f8b500;     /* ポイント（山吹色） */
+  --stat-legs: #f08a24;    /* 脚力：オレンジ */
+  --stat-arms: #2f7fd8;    /* 腕力：青 */
+  --stat-core: #8e55c9;    /* 体幹：紫 */
+  --font-album: 'Kaisei Decol', serif;
 }
 
 * {
@@ -23,18 +35,83 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+html, body {
+  height: 100%;
+}
+
 body {
-  font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Yu Gothic', sans-serif;
-  background: var(--bg-base);
-  max-width: 480px;
-  margin: 0 auto;
-  min-height: 100vh;
+  font-family: 'M PLUS Rounded 1c', 'Hiragino Maru Gothic ProN', 'Hiragino Kaku Gothic Pro', 'Yu Gothic', sans-serif;
+  font-weight: 700;
+  background: var(--beige);
   color: var(--text);
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 button, input {
   font-family: inherit;
+  font-weight: inherit;
+}
+
+/* ───────────── 横画面の枠 ─────────────
+   アプリ全体を .app-stage に描く。中の position: fixed（ポップアップなど）はこの枠が基準になる。
+   スクロールは内側の .app-scroll で行う（枠自体をスクロールさせると fixed の要素まで流れるため）。 */
+.app-stage {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  container-type: size;
+  background: var(--beige);
+}
+.app-scroll {
+  position: absolute;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* スマホ・タブレットを縦に持っているときは「横にしてね」だけ出して待つ */
+.rotate-notice { display: none; }
+@media (orientation: portrait) and (pointer: coarse) {
+  .app-stage { visibility: hidden; }
+  .rotate-notice {
+    position: fixed; inset: 0; z-index: 10000;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+    background: var(--beige);
+    color: var(--brown-text);
+    font-size: 22px; font-weight: 800;
+    text-align: center;
+  }
+}
+/* パソコンで縦長のウィンドウのときは、16:9 の枠を上下中央に置く */
+@media (orientation: portrait) and (pointer: fine) {
+  body { background: #3d3226; }
+  .app-stage {
+    inset: auto;
+    left: 0;
+    top: calc(50vh - 28.125vw);
+    width: 100vw;
+    height: 56.25vw;
+  }
+}
+
+/* まだ横画面向けに作り直していない画面は、中央の列に並べる */
+.legacy-page {
+  max-width: 600px;
+  min-height: 100cqh;
+  margin: 0 auto;
+  box-shadow: 0 0 40px rgba(60, 40, 20, 0.35);
+}
+
+/* アイコンの下の文字：白・太字・ダークベージュの光彩 */
+.icon-label {
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  text-shadow:
+    0 0 3px var(--beige-dark), 0 0 3px var(--beige-dark),
+    0 1px 2px var(--beige-dark), 0 0 8px rgba(138, 106, 69, 0.7);
 }
 
 /* ソシャゲ共通ボタン */

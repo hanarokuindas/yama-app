@@ -3,6 +3,7 @@
     "id": "yatsugatake",
     "name": "八ヶ岳連峰",
     "shortName": "八ヶ岳",
+    "callName": "ヤツガタケ",
     "unlocked": true,
     "greetings": {
       "am3_9": [
@@ -31,6 +32,7 @@
     "id": "takao",
     "name": "高尾山",
     "shortName": "高尾",
+    "callName": "タカオ",
     "unlocked": true,
     "greetings": {
       "am3_9": [
@@ -59,6 +61,7 @@
     "id": "hakone",
     "name": "箱根山",
     "shortName": "箱根",
+    "callName": "ハコネ",
     "unlocked": false,
     "greetings": {
       "am3_9": [

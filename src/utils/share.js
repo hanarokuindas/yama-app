@@ -7,7 +7,7 @@ export function buildSummitText({ playerName, mountainName, courseName, total, r
   const who = playerName ? `${playerName}は` : ''
   return [
     `${who}「${mountainName} ${courseName}」に登頂しました！`,
-    `総合体力 ${total} ／ 図鑑コンプ率 ${rate}%`,
+    `総合体力 ${total} ／ アルバムコンプ率 ${rate}%`,
     '',
     '#山アプリ',
     SITE,
@@ -18,7 +18,7 @@ export function buildAlbumText({ playerName, summitCount, rate, discovered, tota
   const who = playerName ? `${playerName}の` : ''
   return [
     `${who}登山記録：${summitCount}コース登頂`,
-    `図鑑 ${discovered} / ${total} 種（${rate}%）`,
+    `アルバム ${discovered} / ${total} 種（${rate}%）`,
     '',
     '#山アプリ',
     SITE,

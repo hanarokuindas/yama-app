@@ -16,11 +16,11 @@ export const TUTORIALS = {
     steps: [
       {
         id: 'welcome', route: '/', pose: 'smileCheer',
-        text: 'ここがホームだよ！\nマップのスポットをタップすると、いろんな場所に行けるんだ',
+        text: 'ここがホームだよ！\n右のアイコンをタップすると、いろんな場所に行けるんだ',
       },
       {
         id: 'stats', route: '/', target: 'home-stats', pose: 'glassesSmile',
-        text: '右上はキミのポイントと総合体力。\nポイントは装備や山の整備に使って、総合体力で登れる山が決まるよ',
+        text: '左上はキミのポイントと、炎の数字の総合体力。\nポイントは装備や山の整備に使って、総合体力で登れる山が決まるよ',
       },
       {
         id: 'climbLocked', route: '/', target: 'spot-climb', pose: 'armsCrossed',
@@ -42,8 +42,8 @@ export const TUTORIALS = {
         text: 'おつかれさま！ 体幹と腕力が上がって、ポイントももらえたね。\n体幹・脚力・腕力の平均が総合体力になるよ',
       },
       {
-        id: 'goExplore', route: null, target: 'nav-explore', action: true, pose: 'megaphone',
-        text: '次は山探索でポイントを集めよう。\n下の「探索」をタップしてね',
+        id: 'goExplore', route: '/', target: 'spot-explore', action: true, pose: 'megaphone',
+        text: '次は山探索でポイントを集めよう。\n右の「山探索」をタップしてね',
       },
       {
         id: 'pickArea', route: '/explore', target: 'explore-areas', action: true, waitFor: 'explored', pose: 'glassesWink',
@@ -51,11 +51,11 @@ export const TUTORIALS = {
       },
       {
         id: 'explored', route: '/explore', pose: 'smileCheer',
-        text: 'ターゲットをそろえると図鑑に登録されるんだ。うまくいかなくても、何度でも挑戦できるよ。\nアルバムの「図鑑」でいつでも見返せるよ',
+        text: 'ターゲットをそろえるとアルバムに載るんだ。うまくいかなくても、何度でも挑戦できるよ。\nアルバムでいつでも見返せるよ',
       },
       {
-        id: 'finish', route: null, target: 'nav-menu', pose: 'winkCheer', last: true,
-        text: '基本はこれでおしまい！ 総合体力20を目指して鍛えたら、いよいよ登山だよ。\n迷ったら「メニュー」のガイドブックを見てね',
+        id: 'finish', route: '/', target: 'home-menu', pose: 'winkCheer', last: true,
+        text: '基本はこれでおしまい！ 総合体力20を目指して鍛えたら、いよいよ登山だよ。\n迷ったら右上の「メニュー」のガイドを見てね',
       },
     ],
   },

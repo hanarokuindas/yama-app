@@ -8,8 +8,14 @@ import stageRocky from './bg_stage_rocky.webp'
 import stageTrail from './bg_stage_trail.webp'
 import training from './bg_training.webp'
 
+/* 横画面用に作り直した背景（届いたものから置き換わる）。
+   src/assets/backgrounds/bg_home.webp などを置くと、ここに自動で入る */
+const LANDSCAPE = import.meta.glob('./bg_*.webp', { eager: true, query: '?url', import: 'default' })
+const pick = (name, fallback) => LANDSCAPE[`./${name}.webp`] || fallback
+
 export const BG = {
   homeMap,
+  home: pick('bg_home', homeMap),
   intro,
   onsen,
   shop,

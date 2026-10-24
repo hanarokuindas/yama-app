@@ -8,7 +8,7 @@ import encyclopedia from '../data/encyclopedia.json'
 import { sfx } from '../utils/sound'
 import { buildAlbumText, shareText } from '../utils/share'
 
-const TABS = ['図鑑', '山神', '登頂記録', '所持装備']
+const TABS = ['山探索', '山神', '登頂記録', '所持装備']
 
 const CHAR_EMOJIS = {
   yatsugatake: 'mountain',
@@ -23,7 +23,7 @@ export default function Album() {
   const album = useGameStore((s) => s.album)
   const discovered = useGameStore((s) => s.discovered)
   const player = useGameStore((s) => s.player)
-  const [tab, setTab] = useState('図鑑')
+  const [tab, setTab] = useState('山探索')
   const [shareMsg, setShareMsg] = useState('')
 
   const handleShare = async () => {
@@ -65,7 +65,7 @@ export default function Album() {
       </div>
 
       {/* 図鑑タブ */}
-      {tab === '図鑑' && (
+      {tab === '山探索' && (
         <Encyclopedia
           discovered={discovered}
           encArea={encArea} setEncArea={setEncArea}

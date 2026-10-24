@@ -50,7 +50,8 @@ export default function Explore() {
 
   const start = (a) => {
     sfx.go()
-    window.scrollTo(0, 0) // 一覧を下までスクロールしていても、盤面の上（残り時間）から見せる
+    // 一覧を下までスクロールしていても、盤面の上（残り時間）から見せる（スクロールするのは .app-scroll）
+    document.querySelector('.app-scroll')?.scrollTo(0, 0)
     setSnapshot(discovered)
     setArea(a)
     setPhase('playing')
@@ -127,7 +128,7 @@ export default function Explore() {
           {ok && <p style={styles.levelUp}>探索レベル {result.nextLevel} に上昇！次はもっと種類が増えるよ</p>}
 
           <button className="btn-primary" onClick={() => { sfx.confirm(); setPhase('idle') }}>つづける</button>
-          <button style={styles.ghostBtn} onClick={() => navigate('/album')}>図鑑を見る</button>
+          <button style={styles.ghostBtn} onClick={() => navigate('/album')}>アルバムを見る</button>
         </div>
       </div>
     )
@@ -146,7 +147,7 @@ export default function Explore() {
         </div>
         <div style={styles.summaryDivider} />
         <div style={styles.summaryItem}>
-          <span style={styles.summaryLabel}>図鑑コンプ率</span>
+          <span style={styles.summaryLabel}>アルバムコンプ率</span>
           <span style={styles.summaryValue}>{rate}<span style={{ fontSize: 12 }}>%</span></span>
           <span style={styles.summarySub}>{discovered.length} / {total}</span>
         </div>
@@ -159,7 +160,7 @@ export default function Explore() {
       </div>
 
       <p style={styles.rule}>
-        上に出る<b style={{ color: '#f5c842' }}>ターゲット</b>を3つずつそろえるとクリア。図鑑に登録されるよ。<br />
+        上に出る<b style={{ color: '#f5c842' }}>ターゲット</b>を3つずつそろえるとクリア。アルバムに載るよ。<br />
         ほかの標本はおじゃま（{stage.hazure > 0 ? '3つそろわないハズレもあるよ' : '3つそろえれば消せる'}）。<br />
         上に重なっている標本は取れない。トレイ（7枠）があふれたら失敗！
       </p>

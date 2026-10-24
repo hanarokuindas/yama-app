@@ -7,8 +7,11 @@ import GameIcon from '../components/GameIcon'
 import CountUp from '../components/CountUp'
 import { Celebration, Confetti } from '../components/Celebration'
 import { BG } from '../assets/backgrounds'
+import { UI } from '../assets/ui'
 import { senpaiPose, senpaiMini } from '../assets/characters/senpai'
 import { takaoPose } from '../assets/characters/takao'
+import { yatsugatakePose } from '../assets/characters/yatsugatake'
+import { hakonePose } from '../assets/characters/hakone'
 import { sfx } from '../utils/sound'
 import IntroStory from '../components/IntroStory'
 import { maintenanceState } from '../data/maintenanceActivities'
@@ -49,46 +52,48 @@ function ProfileScreen({ onComplete }) {
 
   return (
     <div style={s.fullOverlay}>
-      <div style={s.introCard}>
-        <img src={senpaiMini.glassesSmile} alt="先輩" style={s.profileFace} draggable={false} />
-        <div style={s.profileBadge}>PROFILE</div>
-        <h2 style={s.profileTitle}>キミのことを教えてね</h2>
-        <label style={s.formLabel}>ニックネーム</label>
-        <input style={s.formInput} placeholder="例：やまびこ" value={name}
-          onChange={(e) => { setName(e.target.value); setError('') }} maxLength={12} />
-        <label style={s.formLabel}>体重 (kg)<span style={{ color: '#8a90a8', marginLeft: 8 }}>任意</span></label>
-        <input style={s.formInput} type="number" inputMode="decimal" placeholder="例：65" value={weight}
-          onChange={(e) => { setWeight(e.target.value); setError('') }} />
-        <p style={s.formNote}>あとからメニューで変更できるよ</p>
-        {error && <p style={s.formError}>{error}</p>}
-        <button className="btn-primary" style={{ marginTop: 18 }} onClick={handleSubmit}>決定！</button>
+      <div style={s.profileCard}>
+        <div style={s.profileSide}>
+          <img src={senpaiMini.glassesSmile} alt="先輩" style={s.profileFace} draggable={false} />
+          <h2 style={s.profileTitle}>キミのことを{'\n'}教えてね</h2>
+        </div>
+        <div style={s.profileForm}>
+          <label style={s.formLabel}>ニックネーム</label>
+          <input style={s.formInput} placeholder="例：やまびこ" value={name}
+            onChange={(e) => { setName(e.target.value); setError('') }} maxLength={12} />
+          <label style={s.formLabel}>体重 (kg)<span style={s.formOptional}>任意</span></label>
+          <input style={s.formInput} type="number" inputMode="decimal" placeholder="例：60" value={weight}
+            onChange={(e) => { setWeight(e.target.value); setError('') }} />
+          <p style={s.formNote}>
+            体重は、登山やトレーニングで使ったカロリーを計算するのに使うよ。
+            空欄なら60kgとして計算するね。あとからメニューで変えられるよ
+          </p>
+          {error && <p style={s.formError}>{error}</p>}
+          <button className="btn-primary" style={{ marginTop: 12 }} onClick={handleSubmit}>決定！</button>
+        </div>
       </div>
     </div>
   )
 }
 
-/* ─────────────────────── ログインボーナス ─────────────────────── */
+/* ─────────────────────── ログインボーナス（木の看板） ─────────────────────── */
 function LoginBonusModal({ streak, bonus, onClose }) {
   return (
-    <div style={{ ...s.popupOverlay, alignItems: 'center' }} onClick={() => { sfx.confirm(); onClose() }}>
+    <div style={s.popupOverlay} onClick={() => { sfx.confirm(); onClose() }}>
       <Confetti count={30} />
-      <div style={{ ...s.loginCard }} onClick={(e) => e.stopPropagation()}>
-        <div style={s.loginRibbon}>デイリーログインボーナス</div>
-        <div style={{ margin: '14px 0 6px', animation: 'popIn 0.5s ease' }}><GameIcon name="gift" size={64} /></div>
-        <div style={s.loginStreakRow}>
+      <div style={s.signboard} onClick={(e) => e.stopPropagation()}>
+        <div className="icon-label" style={s.signTitle}>ログインボーナス</div>
+        <div style={s.signDays}>
           {[1, 2, 3, 4, 5, 6, 7].map((d) => (
-            <div key={d} style={{
-              ...s.loginDay,
-              background: d <= streak ? 'linear-gradient(135deg,#f5c842,#e0a800)' : 'rgba(255,255,255,0.08)',
-              color: d <= streak ? '#1a0e00' : '#667',
-            }}>{d}</div>
+            <div key={d} style={{ ...s.signDay, ...(d <= streak ? s.signDayOn : null) }}>{d}</div>
           ))}
         </div>
-        <p style={{ color: '#aab', fontSize: 12, margin: '10px 0 4px' }}>{streak}日目のログイン！</p>
-        <p style={{ color: '#f5c842', fontSize: 26, fontWeight: 900, animation: 'popIn 0.5s 0.2s both' }}>
-          ★ +{bonus.toLocaleString()} pt
-        </p>
-        <button className="btn-primary" style={{ marginTop: 18 }}
+        <div className="icon-label" style={s.signStreak}>{streak}日目のログイン！</div>
+        <div style={s.signReward}>
+          <GameIcon name="pcoin" size={44} />
+          <span style={s.signAmount}>+{bonus.toLocaleString()}</span>
+        </div>
+        <button className="btn-primary" style={s.signBtn}
           onClick={() => { sfx.coin(); onClose() }}>うけとる！</button>
       </div>
     </div>
@@ -105,8 +110,7 @@ function MissionPanel({ onClose }) {
   return (
     <div style={s.popupOverlay} onClick={onClose}>
       <div style={s.popup} onClick={(e) => e.stopPropagation()}>
-        <div style={s.popupHandle} />
-        <div style={s.popupHeader}>DAILY MISSION</div>
+        <div style={s.popupHeader}>今日のミッション</div>
         {DAILY_MISSIONS.map((m) => {
           const cur = Math.min(progress[m.id] || 0, m.goal)
           const done = cur >= m.goal
@@ -119,20 +123,19 @@ function MissionPanel({ onClose }) {
                 <div style={s.missionBarBg}>
                   <div style={{ ...s.missionBarFill, width: `${(cur / m.goal) * 100}%` }} />
                 </div>
-                <div style={s.missionProgressText}>{cur}/{m.goal} 報酬 ★{m.reward}</div>
+                <div style={s.missionProgressText}>{cur}/{m.goal} ・ 報酬 {m.reward}P</div>
               </div>
               <button
                 style={{
                   ...s.missionBtn,
-                  background: claimed ? 'rgba(255,255,255,0.08)'
-                    : done ? 'linear-gradient(135deg,#f5c842,#e0a800)' : 'rgba(255,255,255,0.08)',
-                  color: claimed ? '#556' : done ? '#1a0e00' : '#667',
+                  background: done && !claimed ? 'linear-gradient(135deg,#f8c537,#e0a000)' : '#e6dccb',
+                  color: done && !claimed ? '#4a2e00' : '#a8977f',
                   cursor: done && !claimed ? 'pointer' : 'default',
                 }}
                 disabled={!done || claimed}
                 onClick={() => { if (claimMission(m.id, m.reward)) sfx.item() }}
               >
-                {claimed ? '受取済' : done ? '受取る' : '未達成'}
+                {claimed ? '受取済' : done ? 'うけとる' : '未達成'}
               </button>
             </div>
           )
@@ -143,34 +146,34 @@ function MissionPanel({ onClose }) {
   )
 }
 
-/* ─────────────────────── マップスポット ─────────────────────── */
-function MapSpot({ top, left, label, icon, color, badge, locked, onClick, size = 'md', tut }) {
-  const sz = size === 'sm' ? 42 : 52
+/* ─────────────────────── 丸太にのせたアイコン ─────────────────────── */
+function LogIcon({ label, icon, locked, badge, onClick, tut, small = false }) {
   return (
-    <button
-      style={{ ...s.spot, top, left }}
-      onClick={onClick}
-      data-tut={tut}
-    >
-      <div style={{
-        ...s.spotRing,
-        width: sz, height: sz,
-        background: locked ? 'rgba(80,80,80,0.7)' : `linear-gradient(135deg, ${color}ee, ${color}99)`,
-        boxShadow: locked ? 'none' : `0 4px 16px ${color}88, inset 0 1px 0 rgba(255,255,255,0.4)`,
-        animation: locked ? 'none' : 'spotPulse 2.4s ease-in-out infinite',
-        opacity: locked ? 0.45 : 1,
-      }}>
-        <GameIcon name={locked ? 'lock' : icon} size={size === 'sm' ? 20 : 26} style={{ filter: locked ? 'grayscale(0.6)' : 'none' }} />
-      </div>
-      <div style={s.spotTag}>
-        <span style={s.spotLabel}>{label}</span>
-        {badge && <span style={s.spotBadge}>!</span>}
-      </div>
+    <button style={s.logBtn} onClick={onClick} data-tut={tut}>
+      <span style={{ ...s.logDisk, ...(small ? s.logDiskSmall : null) }}>
+        <GameIcon name={locked ? 'lock' : icon} size={64}
+          style={{ width: '74%', height: '74%', ...(locked ? { filter: 'grayscale(1)', opacity: 0.75 } : null) }} />
+        {badge && <span style={s.badge}>!</span>}
+      </span>
+      <span className="icon-label" style={small ? s.logLabelSmall : s.logLabel}>{label}</span>
     </button>
   )
 }
 
+/* 名前やポイントをのせる長い看板 */
+function Plank({ children, style, onClick, tut }) {
+  const Tag = onClick ? 'button' : 'div'
+  return (
+    <Tag style={{ ...s.plank, ...(onClick ? { cursor: 'pointer' } : null), ...style }} onClick={onClick} data-tut={tut}>
+      {children}
+    </Tag>
+  )
+}
+
 /* ─────────────────────── ホームメイン ─────────────────────── */
+// ホームに出るキャラ。山神は、その山に初めて行ったあとから出る
+const HOME_POSES = { senpai: senpaiPose.home, takao: takaoPose.home, yatsugatake: yatsugatakePose.home, hakone: hakonePose.home }
+
 export default function Home() {
   const navigate = useNavigate()
   const player = useGameStore((st) => st.player)
@@ -188,16 +191,15 @@ export default function Home() {
   const [missionOpen, setMissionOpen] = useState(false)
   const [loginBonus, setLoginBonus] = useState(null)
 
-  const [{ charName, greeting, homePose }] = useState(() => {
-    // 絵のあるキャラだけ出す（八ヶ岳・箱根は絵がまだ無く、先輩の絵に別の名前が付いてしまうため）
-    const POSES = { senpai: senpaiPose.home, takao: takaoPose.home }
-    const ids = Object.keys(POSES).filter(
+  const [{ callName, greeting, homePose }] = useState(() => {
+    const ids = Object.keys(HOME_POSES).filter(
       (id) => id === 'senpai' || mountains[id]?.firstAccessed
     )
     const id = ids[Math.floor(Math.random() * ids.length)]
-    const poseSet = POSES[id]
+    const poseSet = HOME_POSES[id]
     const pose = poseSet[Math.floor(Math.random() * poseSet.length)]
-    return { charName: characters[id]?.shortName || '', greeting: getGreeting(id), homePose: pose }
+    // 吹き出しの名前は山神だけ（カタカナの呼び名）。先輩は名前を出さない
+    return { callName: characters[id]?.callName || '', greeting: getGreeting(id), homePose: pose }
   })
 
   useEffect(() => { applyMountainDecay() }, [applyMountainDecay])
@@ -238,72 +240,74 @@ export default function Home() {
     (m) => m.unlocked && m.firstAccessed && maintenanceState(m.maintenanceLevel).penalty > 0
   )
 
+  const today = new Date().toISOString().slice(0, 10)
+  const missionProg = daily.missionDate === today ? daily.missionProgress : {}
+  const missionReady = DAILY_MISSIONS.some(
+    (m) => (missionProg[m.id] || 0) >= m.goal && !daily.missionClaimed.includes(m.id)
+  )
+
+  const go = (path) => { sfx.confirm(); navigate(path) }
+
   if (!flags.introCompleted) return <IntroStory returning={flags.profileCompleted} onComplete={completeIntro} />
   if (!flags.profileCompleted) return <ProfileScreen onComplete={completeProfile} />
 
   return (
     <div style={s.root}>
+      <div style={s.bg} />
 
-      {/* ══════════ 背景（ワールドマップ） ══════════ */}
-      <div style={s.worldMap} />
-
-      {/* ══════════ 左上：プレイヤーバッジ ══════════ */}
-      <div style={s.playerBadge}>
-        <div style={s.lvChip}>Lv.{level}</div>
-        <span style={s.playerNameText}>{player.name || 'やまびこ'}</span>
+      {/* ══════════ 左上：Lv・名前・ポイント・炎・今日のミッション ══════════ */}
+      <div style={s.statusArea} data-tut="home-stats">
+        <Plank>
+          <span style={s.lvChip}>Lv.{level}</span>
+          <span className="icon-label" style={s.nameText}>{player.name || 'やまびこ'}さん</span>
+        </Plank>
+        <Plank>
+          <GameIcon name="pcoin" size={32} style={s.plankIcon} />
+          <CountUp value={player.points} style={s.pointNum} />
+          <GameIcon name="flame" size={32} style={{ ...s.plankIcon, marginLeft: 10, transform: 'scale(1.4)' }} />
+          <span className="icon-label" style={s.flameNum}>{total}</span>
+        </Plank>
       </div>
+      <Plank style={s.missionPlank} onClick={() => { sfx.tap(); setMissionOpen(true) }} tut="home-mission">
+        <GameIcon name="clipboard" size={28} style={s.plankIcon} />
+        <span className="icon-label" style={s.missionText}>今日のミッション</span>
+        {missionReady && <span style={{ ...s.badge, top: -4, right: -4 }}>!</span>}
+      </Plank>
 
-      {/* ══════════ 右上：ステータス ══════════ */}
-      <div style={s.statsPanel} data-tut="home-stats">
-        <div style={s.statItem}>
-          <GameIcon name="star" size={16} />
-          <CountUp value={player.points} style={s.statNum} />
-        </div>
-        <div style={s.statItem}>
-          <GameIcon name="muscle" size={16} />
-          <span style={s.statNum}>{total}</span>
-        </div>
-      </div>
-
-      {/* ══════════ ミッションボタン（左） ══════════ */}
-      <button style={s.missionFab} onClick={() => { sfx.tap(); setMissionOpen(true) }}>
-        <GameIcon name="clipboard" size={22} />
-        <span style={{ fontSize: 9, fontWeight: 900, color: '#fff' }}>ミッション</span>
-        {DAILY_MISSIONS.some((m) => {
-          const today = new Date().toISOString().slice(0, 10)
-          const prog = daily.missionDate === today ? daily.missionProgress : {}
-          return (prog[m.id] || 0) >= m.goal && !daily.missionClaimed.includes(m.id)
-        }) && <span style={s.spotBadge}>!</span>}
-      </button>
-
-      {/* ══════════ マップホットスポット ══════════ */}
-      <MapSpot top="17%" left="62%" label="登山" icon="mountain" color="#1d4ed8" tut="spot-climb"
-        locked={!flags.climbingUnlocked}
-        onClick={() => { if (flags.climbingUnlocked) { sfx.confirm(); navigate('/climbing') } else sfx.miss() }} />
-      <MapSpot top="27%" left="25%" label="山探索" icon="search" color="#7c3aed"
-        onClick={() => { sfx.confirm(); navigate('/explore') }} />
-      <MapSpot top="38%" left="76%" label="アルバム" icon="picture" color="#db2777"
-        onClick={() => { sfx.confirm(); navigate('/album') }} />
-      <MapSpot top="45%" left="18%" label="トレーニング" icon="muscle" color="#d97706" tut="spot-training"
-        onClick={() => { sfx.confirm(); navigate('/training') }} />
-      <MapSpot top="54%" left="58%" label="山整備" icon="saw" color="#059669"
-        badge={needsMaintenance} onClick={() => { sfx.confirm(); navigate('/maintenance') }} />
-      <MapSpot top="63%" left="26%" label="AR撮影" icon="camera" color="#0891b2"
-        locked={!flags.arUnlocked} size="sm"
-        onClick={() => { if (flags.arUnlocked) { sfx.confirm(); navigate('/ar') } else sfx.miss() }} />
-
-      {/* ══════════ キャラクター ══════════ */}
+      {/* ══════════ キャラクターと吹き出し ══════════ */}
       <div style={s.charWrap}>
-        <div style={{ animation: 'charFloat 3.4s ease-in-out infinite', flexShrink: 0, height: '100%' }}>
-          <img src={homePose} alt={charName} style={s.charImg} draggable={false} />
+        <div style={s.charFloat}>
+          <img src={homePose} alt={callName || '先輩'} style={s.charImg} draggable={false} />
         </div>
-        {greeting && (
-          <div style={s.bubble}>
-            <div style={s.bubbleName}>{charName}</div>
-            <p style={s.bubbleText}>{greeting}</p>
-            <div style={s.bubbleTail} />
-          </div>
-        )}
+      </div>
+      {greeting && (
+        <div style={s.bubble}>
+          {callName && <div style={s.bubbleName}>{callName}</div>}
+          <p style={s.bubbleText}>{greeting}</p>
+          <div style={s.bubbleTail} />
+        </div>
+      )}
+
+      {/* ══════════ 右上：AR撮影・メニュー ══════════ */}
+      <div style={s.topRight}>
+        <LogIcon small label="AR撮影" icon="camera" locked={!flags.arUnlocked}
+          onClick={() => { if (flags.arUnlocked) go('/ar'); else sfx.miss() }} />
+        <LogIcon small label="メニュー" icon="menu" tut="home-menu" onClick={() => go('/menu')} />
+      </div>
+
+      {/* ══════════ 右：山探索・トレーニング・登山・山整備 ══════════ */}
+      <div style={s.rightColumn}>
+        <LogIcon label="山探索" icon="search" tut="spot-explore" onClick={() => go('/explore')} />
+        <LogIcon label="トレーニング" icon="dumbbell" tut="spot-training" onClick={() => go('/training')} />
+        <LogIcon label="登山" icon="hikinggear" tut="spot-climb" locked={!flags.climbingUnlocked}
+          onClick={() => { if (flags.climbingUnlocked) go('/climbing'); else sfx.miss() }} />
+        <LogIcon label="山整備" icon="chainsaw" badge={needsMaintenance} onClick={() => go('/maintenance')} />
+      </div>
+
+      {/* ══════════ 右下：アルバム・装備 ══════════ */}
+      <div style={s.bottomRight}>
+        <LogIcon label="アルバム" icon="albumbook" onClick={() => go('/album')} />
+        <LogIcon label="装備" icon="trekkingshoes" onClick={() => go('/shop')} />
       </div>
 
       {missionOpen && <MissionPanel onClose={() => setMissionOpen(false)} />}
@@ -338,294 +342,256 @@ export default function Home() {
 
 /* ══════════════════════════════════════════════════════
    スタイル
+   大きさは画面の高さ（cqh）を基準にして、スマホでもパソコンでも同じ見た目にする
 ══════════════════════════════════════════════════════ */
+const ICON = 'clamp(44px, 14cqh, 104px)'       // 右の丸太アイコン
+const ICON_SM = 'clamp(36px, 10.5cqh, 78px)'   // 右上の小さい丸太アイコン
+const FS = (cqh, min, max) => `clamp(${min}px, ${cqh}cqh, ${max}px)`
+
 const s = {
   root: {
-    width: '100%',
-    height: '100vh',
-    overflow: 'hidden',
     position: 'relative',
+    width: '100%',
+    height: '100cqh',
+    overflow: 'hidden',
     userSelect: 'none',
   },
-
-  /* ─── プレイヤーバッジ（左上） ─── */
-  playerBadge: {
-    position: 'absolute', top: 10, left: 12,
-    display: 'flex', alignItems: 'center', gap: 6,
-    background: 'linear-gradient(135deg, rgba(10,20,60,0.82), rgba(30,10,80,0.78))',
-    border: '1.5px solid rgba(245,200,66,0.5)',
-    borderRadius: 24, padding: '6px 14px 6px 8px',
-    backdropFilter: 'blur(8px)',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
-    zIndex: 20,
-  },
-  lvChip: {
-    background: 'linear-gradient(135deg, #f5c842, #e0a800)',
-    color: '#1a0e00', fontWeight: 900, fontSize: 11,
-    borderRadius: 12, padding: '2px 8px',
-    boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
-  },
-  playerNameText: {
-    color: '#fff', fontWeight: 700, fontSize: 13,
-    textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+  bg: {
+    position: 'absolute', inset: 0,
+    backgroundImage: `url(${BG.home})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center 40%',
+    // 濃く鮮やかな新緑に寄せる（横長の背景が届くまで）
+    filter: BG.home === BG.homeMap ? 'saturate(1.35) contrast(1.05)' : 'none',
   },
 
-  /* ─── ステータスパネル（右上） ─── */
-  statsPanel: {
-    position: 'absolute', top: 10, right: 12,
-    display: 'flex', flexDirection: 'column', gap: 4,
-    background: 'linear-gradient(135deg, rgba(10,20,60,0.82), rgba(30,10,80,0.78))',
-    border: '1.5px solid rgba(245,200,66,0.5)',
-    borderRadius: 16, padding: '8px 14px',
-    backdropFilter: 'blur(8px)',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
-    zIndex: 20,
-    minWidth: 100,
+  /* ─── 左上 ─── */
+  statusArea: {
+    position: 'absolute', top: '2.5cqh', left: '1.5cqw', zIndex: 20,
+    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '1cqh',
   },
-  statItem: { display: 'flex', alignItems: 'center', gap: 6 },
-  statIcon: { fontSize: 14 },
-  statNum: { color: '#f5c842', fontWeight: 900, fontSize: 15, letterSpacing: 0.5 },
-
-  /* ─── マップスポット ─── */
-  spot: {
-    position: 'absolute',
-    transform: 'translate(-50%, -50%)',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-    background: 'none', border: 'none', cursor: 'pointer',
-    zIndex: 10, padding: 2,
-    WebkitTapHighlightColor: 'transparent',
-  },
-  spotRing: {
-    borderRadius: '50%',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    border: '2px solid rgba(255,255,255,0.5)',
-    transition: 'transform 0.15s',
+  plank: {
     position: 'relative',
-    overflow: 'hidden',
+    display: 'flex', alignItems: 'center', gap: 6,
+    height: 'clamp(34px, 10.5cqh, 66px)',
+    padding: '0 clamp(14px, 4cqh, 28px) 2px',
+    background: `url(${UI.plankLong}) center / 100% 100% no-repeat`,
+    border: 'none',
+    filter: 'drop-shadow(0 2px 3px rgba(60,40,20,0.35))',
   },
-  spotTag: {
-    display: 'flex', alignItems: 'center', gap: 3,
-    background: 'rgba(0,0,0,0.65)',
-    backdropFilter: 'blur(4px)',
-    border: '1px solid rgba(255,255,255,0.15)',
-    borderRadius: 8, padding: '2px 8px',
-    boxShadow: '0 1px 6px rgba(0,0,0,0.4)',
+  plankIcon: { width: 'clamp(22px, 7cqh, 42px)', height: 'clamp(22px, 7cqh, 42px)' },
+  lvChip: {
+    background: 'linear-gradient(135deg, #f8c537, #e0a000)',
+    color: '#4a2e00', fontWeight: 800, fontSize: FS(3.6, 12, 20),
+    borderRadius: 99, padding: '1px 9px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
   },
-  spotLabel: {
-    color: '#fff', fontSize: 11, fontWeight: 900,
-    whiteSpace: 'nowrap', letterSpacing: 0.3,
-    textShadow: '0 1px 2px rgba(0,0,0,0.6)',
+  nameText: { fontSize: FS(4.6, 15, 26) },
+  pointNum: {
+    color: 'var(--yamabuki)', fontWeight: 800, fontSize: FS(5, 16, 28),
+    textShadow: '0 0 2px #5a3a10, 0 0 2px #5a3a10, 0 1px 2px #5a3a10',
+    letterSpacing: 0.5,
   },
-  spotBadge: {
-    background: '#e74c3c', color: '#fff',
-    borderRadius: '50%', width: 14, height: 14,
-    fontSize: 9, fontWeight: 900,
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    boxShadow: '0 0 4px rgba(231,76,60,0.8)',
+  flameNum: { fontSize: FS(5, 16, 28) },
+  missionPlank: {
+    position: 'absolute', top: 'calc(2.5cqh + 2 * clamp(34px, 10.5cqh, 66px) + 3cqh)', left: '1.5cqw', zIndex: 20,
+    height: 'clamp(32px, 9.5cqh, 60px)',
   },
+  missionText: { fontSize: FS(4, 13, 22) },
 
   /* ─── キャラクター ─── */
   charWrap: {
-    position: 'absolute', bottom: 'calc(var(--nav-h) + 10px)', left: 0, right: 0,
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-    zIndex: 15, padding: '0 16px',
-    pointerEvents: 'none', // 装飾要素。背後のマップスポットのタップを妨げない
+    position: 'absolute', bottom: 0, left: '46%', transform: 'translateX(-50%)',
+    height: '90cqh', zIndex: 10,
+    pointerEvents: 'none',
   },
+  charFloat: { height: '100%', animation: 'charFloat 3.4s ease-in-out infinite' },
   charImg: {
-    height: 'min(26vh, 190px)', width: 'auto',
-    display: 'block',
-    filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.35))',
-  },
-  charFigure: {
-    width: 80, height: 80,
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    filter: 'drop-shadow(0 6px 16px rgba(0,0,0,0.5))',
-    marginBottom: 0,
+    height: '100%', width: 'auto', display: 'block',
+    filter: 'drop-shadow(0 8px 16px rgba(40,30,10,0.35))',
   },
   bubble: {
-    background: '#fff',
-    borderRadius: 16, padding: '10px 15px',
-    position: 'relative', width: '100%', maxWidth: 340,
-    boxShadow: '0 4px 24px rgba(0,0,0,0.25), 0 1px 0 rgba(255,255,255,0.8)',
-    border: '1.5px solid rgba(200,200,200,0.6)',
+    position: 'absolute', left: '2cqw', bottom: '5cqh', zIndex: 15,
+    width: 'min(31cqw, 400px)',
+    background: '#fffdf7',
+    borderRadius: 18, padding: 'clamp(8px, 3cqh, 18px) clamp(12px, 4cqh, 22px)',
+    boxShadow: '0 4px 18px rgba(60,40,20,0.25)',
+    border: '2px solid var(--beige-edge)',
   },
   bubbleName: {
-    color: '#7c3aed', fontSize: 11, fontWeight: 900,
-    marginBottom: 4, letterSpacing: 0.5,
+    color: 'var(--brown-text)', fontSize: FS(3.6, 12, 18), fontWeight: 800,
+    marginBottom: 2, letterSpacing: 1,
   },
   bubbleText: {
-    color: '#222', fontSize: 13, lineHeight: 1.65,
+    color: 'var(--brown-text)', fontSize: FS(4.4, 14, 22), fontWeight: 700, lineHeight: 1.6,
     whiteSpace: 'pre-wrap', margin: 0,
   },
   bubbleTail: {
-    position: 'absolute', top: -9, left: '50%', transform: 'translateX(-50%)',
-    width: 0, height: 0,
-    borderLeft: '9px solid transparent',
-    borderRight: '9px solid transparent',
-    borderBottom: '10px solid #fff',
-    filter: 'drop-shadow(0 -2px 2px rgba(0,0,0,0.1))',
+    position: 'absolute', right: -10, bottom: '32%',
+    width: 16, height: 16,
+    background: '#fffdf7',
+    borderTop: '2px solid var(--beige-edge)',
+    borderRight: '2px solid var(--beige-edge)',
+    transform: 'rotate(45deg)',
   },
 
-  /* ─── ミッションFAB（左側） ─── */
-  missionFab: {
-    position: 'absolute', top: 56, left: 12,
-    display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 5,
-    background: 'linear-gradient(135deg, rgba(10,20,60,0.82), rgba(30,10,80,0.78))',
-    border: '1.5px solid rgba(245,200,66,0.5)',
-    borderRadius: 20, padding: '7px 13px',
-    cursor: 'pointer', zIndex: 20,
-    boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
-    backdropFilter: 'blur(8px)',
-    WebkitTapHighlightColor: 'transparent',
+  /* ─── 右のアイコン ─── */
+  topRight: {
+    position: 'absolute', top: '2cqh', right: '1.5cqw', zIndex: 20,
+    display: 'flex', gap: '1.5cqw',
+  },
+  rightColumn: {
+    position: 'absolute', top: '22cqh', bottom: '2cqh', right: '1.5cqw', zIndex: 20,
+    display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center',
+    width: `calc(${ICON} + 4cqw)`,
+  },
+  bottomRight: {
+    position: 'absolute', bottom: '2cqh', right: `calc(${ICON} + 7cqw)`, zIndex: 20,
+    display: 'flex', gap: '2cqw',
+  },
+  logBtn: {
+    position: 'relative',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0,
+    background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+  },
+  logDisk: {
+    position: 'relative',
+    width: ICON, height: ICON,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    background: `url(${UI.logRound}) center / contain no-repeat`,
+    filter: 'drop-shadow(0 3px 4px rgba(60,40,20,0.35))',
+  },
+  logDiskSmall: { width: ICON_SM, height: ICON_SM },
+  logLabel: { fontSize: FS(3.8, 12, 20), marginTop: '-0.6cqh' },
+  logLabelSmall: { fontSize: FS(3.2, 11, 17), marginTop: '-0.4cqh' },
+  badge: {
+    position: 'absolute', top: 0, right: 0,
+    background: '#e74c3c', color: '#fff',
+    borderRadius: '50%', width: 20, height: 20,
+    fontSize: 13, fontWeight: 800,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxShadow: '0 0 0 2px #fff, 0 0 6px rgba(231,76,60,0.8)',
   },
 
-  /* ─── ログインボーナス ─── */
-  loginCard: {
-    background: 'linear-gradient(180deg, #1e1e40 0%, #12122a 100%)',
-    border: '2px solid rgba(245,200,66,0.55)',
-    borderRadius: 24, padding: '0 24px 28px',
-    width: 'calc(100% - 56px)', maxWidth: 330,
-    textAlign: 'center',
-    boxShadow: '0 12px 60px rgba(0,0,0,0.7), 0 0 40px rgba(245,200,66,0.15)',
+  /* ─── ログインボーナス（木の看板） ─── */
+  signboard: {
+    position: 'relative',
+    width: 'min(64cqw, 150cqh, 640px)', aspectRatio: '1400 / 818',
+    background: `url(${UI.signboard}) center / 100% 100% no-repeat`,
+    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+    gap: '2.2cqh',
+    padding: '6% 8%',
+    filter: 'drop-shadow(0 10px 24px rgba(40,25,10,0.5))',
     animation: 'popIn 0.45s cubic-bezier(.22,1,.36,1)',
     margin: 'auto',
-    alignSelf: 'center',
   },
-  loginRibbon: {
-    display: 'inline-block',
-    background: 'linear-gradient(135deg, #f5c842, #e0a800)',
-    color: '#1a0e00', fontSize: 13, fontWeight: 900, letterSpacing: 1,
-    borderRadius: '0 0 14px 14px', padding: '8px 22px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-  },
-  loginStreakRow: {
-    display: 'flex', justifyContent: 'center', gap: 6, marginTop: 8,
-  },
-  loginDay: {
-    width: 32, height: 32, borderRadius: 10,
+  signTitle: { fontSize: FS(6.4, 20, 40), letterSpacing: 3 },
+  signDays: { display: 'flex', gap: 'clamp(4px, 1.4cqh, 10px)' },
+  signDay: {
+    width: 'clamp(26px, 8.5cqh, 52px)', height: 'clamp(26px, 8.5cqh, 52px)', borderRadius: '50%',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 13, fontWeight: 900,
-    border: '1px solid rgba(255,255,255,0.1)',
+    fontSize: FS(4, 13, 22), fontWeight: 800,
+    background: 'rgba(250,244,232,0.85)', color: '#a8977f',
+    border: '2px solid rgba(90,60,30,0.35)',
   },
+  signDayOn: {
+    background: 'linear-gradient(135deg, #f8c537, #e0a000)', color: '#4a2e00',
+    border: '2px solid #fff3c4',
+  },
+  signStreak: { fontSize: FS(4, 13, 22) },
+  signReward: { display: 'flex', alignItems: 'center', gap: 8, animation: 'popIn 0.5s 0.2s both' },
+  signAmount: {
+    color: 'var(--yamabuki)', fontSize: FS(8, 26, 48), fontWeight: 800,
+    textShadow: '0 0 3px #5a3a10, 0 0 3px #5a3a10, 0 2px 3px #5a3a10',
+  },
+  signBtn: { width: 'auto', padding: '10px 40px', fontSize: FS(4.4, 14, 22) },
 
   /* ─── ミッション ─── */
   missionRow: {
     display: 'flex', alignItems: 'center', gap: 12,
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.09)',
-    borderRadius: 14, padding: '12px 14px', marginBottom: 10,
+    background: 'var(--beige-light)',
+    border: '2px solid var(--beige-edge)',
+    borderRadius: 14, padding: '10px 14px', marginBottom: 8,
   },
-  missionLabel: { color: '#fff', fontSize: 13, fontWeight: 700, marginBottom: 6 },
+  missionLabel: { color: 'var(--brown-text)', fontSize: 14, fontWeight: 800, marginBottom: 6 },
   missionBarBg: {
-    height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 99, overflow: 'hidden',
+    height: 8, background: '#e6dccb', borderRadius: 99, overflow: 'hidden',
   },
   missionBarFill: {
-    height: '100%', background: 'linear-gradient(90deg, #2ecc71, #7ee8a5)',
+    height: '100%', background: 'linear-gradient(90deg, #f8b500, #ffd65c)',
     borderRadius: 99, transition: 'width 0.5s ease',
-    boxShadow: '0 0 6px rgba(46,204,113,0.7)',
   },
-  missionProgressText: { color: '#889', fontSize: 10, marginTop: 4 },
+  missionProgressText: { color: '#8b7a66', fontSize: 11.5, marginTop: 4 },
   missionBtn: {
     border: 'none', borderRadius: 12,
-    padding: '9px 14px', fontSize: 12, fontWeight: 900,
+    padding: '9px 14px', fontSize: 13, fontWeight: 800,
     flexShrink: 0, letterSpacing: 0.5,
   },
 
-  /* ─── メニューポップアップ ─── */
+  /* ─── ポップアップ ─── */
   popupOverlay: {
     position: 'fixed', inset: 0,
-    background: 'rgba(0,0,0,0.55)',
-    backdropFilter: 'blur(4px)',
-    display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+    background: 'rgba(40,28,14,0.45)',
+    backdropFilter: 'blur(3px)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
     zIndex: 200,
   },
   popup: {
-    background: 'linear-gradient(180deg, #1a1a35 0%, #0d0d22 100%)',
-    border: '1px solid rgba(245,200,66,0.3)',
-    borderRadius: '28px 28px 0 0',
-    padding: '12px 20px 40px',
-    width: '100%', maxWidth: 480,
-    animation: 'slideUp 0.3s cubic-bezier(.22,1,.36,1)',
-    boxShadow: '0 -8px 40px rgba(0,0,0,0.6)',
-  },
-  popupHandle: {
-    width: 40, height: 4, background: 'rgba(255,255,255,0.25)',
-    borderRadius: 99, margin: '0 auto 16px',
+    background: 'var(--beige)',
+    border: '3px solid var(--beige-edge)',
+    borderRadius: 22,
+    padding: '14px 18px 16px',
+    width: 'min(560px, 92cqw)', maxHeight: '94cqh', overflowY: 'auto',
+    animation: 'popIn 0.3s cubic-bezier(.22,1,.36,1)',
+    boxShadow: '0 10px 40px rgba(40,25,10,0.45)',
   },
   popupHeader: {
-    color: '#f5c842', fontSize: 12, fontWeight: 700, letterSpacing: 4,
-    textAlign: 'center', marginBottom: 20,
-  },
-  popupGrid: {
-    display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10,
-    marginBottom: 16,
-  },
-  popupItem: {
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 16, padding: '16px 8px',
-    cursor: 'pointer',
-    transition: 'background 0.15s',
-  },
-  popupItemLabel: {
-    color: '#dde', fontSize: 12, fontWeight: 700, letterSpacing: 0.3,
-    textAlign: 'center',
+    color: 'var(--brown-text)', fontSize: 18, fontWeight: 800, letterSpacing: 2,
+    textAlign: 'center', marginBottom: 12,
   },
   popupCloseBtn: {
-    display: 'block', width: '100%',
-    background: 'none', border: '1px solid rgba(255,255,255,0.12)',
-    borderRadius: 14, padding: '13px',
-    color: 'rgba(255,255,255,0.45)', fontSize: 13, cursor: 'pointer',
-    letterSpacing: 1,
+    display: 'block', margin: '6px auto 0',
+    background: '#fff', border: '2px solid var(--beige-edge)',
+    borderRadius: 99, padding: '8px 28px',
+    color: 'var(--brown-text)', fontSize: 14, fontWeight: 800, cursor: 'pointer',
   },
 
-  /* ─── オーバーレイ（イントロ/プロフィール） ─── */
-  worldMap: {
-    position: 'absolute', inset: 0,
-    backgroundImage: `url(${BG.homeMap})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center top',
-  },
+  /* ─── プロフィール入力 ─── */
   fullOverlay: {
     position: 'fixed', inset: 0,
-    backgroundImage: `linear-gradient(rgba(8,10,24,0.62), rgba(8,10,24,0.72)), url(${BG.intro})`,
+    backgroundImage: `linear-gradient(rgba(40,28,14,0.35), rgba(40,28,14,0.45)), url(${BG.intro})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
   },
-  introCard: {
-    background: 'rgba(255,255,255,0.07)',
-    border: '1px solid rgba(245,200,66,0.3)',
-    borderRadius: 28, padding: '40px 30px',
-    width: 'calc(100% - 48px)', maxWidth: 340,
-    textAlign: 'center',
-    backdropFilter: 'blur(16px)',
-    boxShadow: '0 8px 48px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
+  profileCard: {
+    display: 'flex', alignItems: 'center', gap: 'clamp(10px, 4cqw, 40px)',
+    background: 'var(--beige)',
+    border: '3px solid var(--beige-edge)',
+    borderRadius: 24, padding: 'clamp(12px, 4cqh, 32px) clamp(16px, 4cqw, 40px)',
+    width: 'min(720px, 94cqw)', maxHeight: '96cqh', overflowY: 'auto',
+    boxShadow: '0 10px 40px rgba(40,25,10,0.45)',
   },
+  profileSide: { flex: '0 0 34%', textAlign: 'center' },
   profileFace: {
-    height: 96, width: 'auto', display: 'block', margin: '-78px auto 6px',
-    filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.45))',
-  },
-  profileBadge: {
-    display: 'inline-block',
-    background: 'linear-gradient(135deg, #f5c842, #e0a800)',
-    color: '#1a0e00', fontSize: 11, fontWeight: 900, letterSpacing: 2,
-    borderRadius: 20, padding: '3px 12px', marginBottom: 10,
+    height: 'clamp(90px, 38cqh, 240px)', width: 'auto', display: 'block', margin: '0 auto 6px',
+    filter: 'drop-shadow(0 6px 14px rgba(60,40,20,0.3))',
   },
   profileTitle: {
-    color: '#fff', fontSize: 20, fontWeight: 900, marginBottom: 20,
+    color: 'var(--brown-text)', fontSize: FS(5.4, 18, 28), fontWeight: 800, whiteSpace: 'pre-wrap',
   },
+  profileForm: { flex: 1, minWidth: 0 },
   formLabel: {
-    display: 'block', textAlign: 'left', color: '#aab',
-    fontSize: 12, marginBottom: 6, marginTop: 16,
+    display: 'block', textAlign: 'left', color: 'var(--brown-text)',
+    fontSize: 13, fontWeight: 800, marginBottom: 4, marginTop: 10,
   },
+  formOptional: { color: '#a8977f', marginLeft: 8, fontSize: 12 },
   formInput: {
-    width: '100%', padding: '13px 14px',
-    background: 'rgba(255,255,255,0.09)',
-    border: '1px solid rgba(255,255,255,0.2)',
-    borderRadius: 12, color: '#fff', fontSize: 16, outline: 'none',
+    width: '100%', padding: '10px 12px',
+    background: '#fff',
+    border: '2px solid var(--beige-edge)',
+    borderRadius: 12, color: 'var(--brown-text)', fontSize: 16, outline: 'none',
   },
-  formNote: { color: '#8a90a8', fontSize: 11, textAlign: 'left', margin: '8px 0 0' },
-  formError: { color: '#ff8a80', fontSize: 12.5, fontWeight: 700, margin: '10px 0 0' },
+  formNote: { color: '#7a6a5c', fontSize: 12, lineHeight: 1.6, textAlign: 'left', margin: '8px 0 0' },
+  formError: { color: '#d0402b', fontSize: 13, fontWeight: 800, margin: '8px 0 0' },
 }
