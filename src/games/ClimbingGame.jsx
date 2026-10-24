@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import GameIcon from '../components/GameIcon'
-import { senpaiPose } from '../assets/characters/senpai'
+import { sfx } from '../utils/sound'
 import { BG } from '../assets/backgrounds'
 
 // ステージ定義
@@ -44,35 +44,44 @@ function buildStages(difficulty) {
   return ['rocky', 'trail', 'meadow', 'rocky', 'trail']
 }
 
+const ITEM_COUNT = 14   // 1ステージに散らばる数
+const MISS_PENALTY = 3  // ちがうものをタップしたら減る秒数
+
 // ステータスに基づく制限時間
 function calcTimeLimit(stageType, player) {
-  const base = 20
+  const base = 15
   const stat = player[stageType.statKey] || 0
-  const bonus = Math.min(20, Math.floor(stat / 10))
+  const bonus = Math.min(15, Math.floor(stat / 10))
   return base + bonus
 }
 
 // ランダムなアイテム配置
-function generateItems(stage, count = 8) {
+function generateItems(stage, count = ITEM_COUNT) {
   const nonTargets = stage.items.filter((e) => e !== stage.target)
   const arr = []
-  // ターゲットを2〜3個含める
-  const targetCount = 2 + Math.floor(Math.random() * 2)
+  // ターゲットを3〜4個含める
+  const targetCount = 3 + Math.floor(Math.random() * 2)
   for (let i = 0; i < targetCount; i++) arr.push(stage.target)
   while (arr.length < count) {
     arr.push(nonTargets[Math.floor(Math.random() * nonTargets.length)])
   }
-  // シャッフル＋座標
+  // 4×4 のマスに1つずつ置き、マスの中で少しずらす（重なって目印が隠れないように）
+  const COLS = 4, ROWS = 4
+  const cells = Array.from({ length: COLS * ROWS }, (_, i) => i).sort(() => Math.random() - 0.5)
   return arr
     .sort(() => Math.random() - 0.5)
-    .map((emoji, idx) => ({
-      id: idx,
-      emoji,
-      isTarget: emoji === stage.target,
-      x: 10 + Math.random() * 80,
-      y: 15 + Math.random() * 70,
-      tapped: false,
-    }))
+    .map((emoji, idx) => {
+      const cell = cells[idx]
+      const col = cell % COLS, row = Math.floor(cell / COLS)
+      return {
+        id: idx,
+        emoji,
+        isTarget: emoji === stage.target,
+        x: 12 + (col + 0.5) * (76 / COLS) + (Math.random() - 0.5) * 8,
+        y: 8 + (row + 0.5) * (84 / ROWS) + (Math.random() - 0.5) * 8,
+        tapped: false,
+      }
+    })
 }
 
 // ──────────────────────────────────────────
@@ -83,38 +92,40 @@ function StagePlay({ stage, player, onClear, onFail }) {
   const [items] = useState(() => generateItems(stage))
   const [timeLeft, setTimeLeft] = useState(timeLimit)
   const [tapped, setTapped] = useState([])
-  const [message, setMessage] = useState('')
+  const [message, setMessage] = useState(null) // { text, good }
+  const doneRef = useRef(false)
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(id)
-          onFail('time')
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    const id = setInterval(() => setTimeLeft((prev) => Math.max(0, prev - 1)), 1000)
     return () => clearInterval(id)
   }, [])
 
+  // 時間切れ。state の更新関数の中で親を更新しないよう、ここで判定する
+  useEffect(() => {
+    if (timeLeft === 0 && !doneRef.current) { doneRef.current = true; onFail('time') }
+  }, [timeLeft, onFail])
+
   const handleTap = (item) => {
-    if (tapped.includes(item.id)) return
-    const newTapped = [...tapped, item.id]
-    setTapped(newTapped)
+    if (doneRef.current || tapped.includes(item.id)) return
 
     if (item.isTarget) {
-      setMessage('+OK!')
+      const newTapped = [...tapped, item.id]
+      setTapped(newTapped)
+      sfx.tap()
+      setMessage({ text: 'OK!', good: true })
       // 全ターゲット取得でクリア
       const remainTargets = items.filter((i) => i.isTarget && !newTapped.includes(i.id))
       if (remainTargets.length === 0) {
+        doneRef.current = true
         setTimeout(() => onClear(), 500)
       }
     } else {
-      setMessage('違う！')
+      // ちがうものは消えずに残り、時間が減る
+      sfx.miss()
+      setTimeLeft((t) => Math.max(0, t - MISS_PENALTY))
+      setMessage({ text: `ちがう！ -${MISS_PENALTY}秒`, good: false })
     }
-    setTimeout(() => setMessage(''), 800)
+    setTimeout(() => setMessage(null), 800)
   }
 
   const targets = items.filter((i) => i.isTarget && !tapped.includes(i.id))
@@ -134,7 +145,7 @@ function StagePlay({ stage, player, onClear, onFail }) {
       {/* 指示 */}
       <div style={stageStyles.instr}>
         <GameIcon name={stage.target} size={32} />
-        <span style={{ color: '#fff', fontSize: 14 }}>{stage.desc}</span>
+        <span style={{ color: '#fff', fontSize: 14, flex: 1 }}>{stage.desc}<br /><span style={{ color: '#aab', fontSize: 11 }}>ちがうものをタップすると -{MISS_PENALTY}秒</span></span>
         <span style={{ color: '#ffd700', fontSize: 13 }}>残り {targets.length}個</span>
       </div>
       {/* ゲームフィールド */}
@@ -164,7 +175,7 @@ function StagePlay({ stage, player, onClear, onFail }) {
           )
         })}
         {message && (
-          <div style={stageStyles.floatMsg}>{message}</div>
+          <div style={{ ...stageStyles.floatMsg, color: message.good ? '#ffd700' : '#ff6b6b' }}>{message.text}</div>
         )}
       </div>
     </div>
@@ -174,12 +185,11 @@ function StagePlay({ stage, player, onClear, onFail }) {
 // ──────────────────────────────────────────
 // 登山ゲーム全体制御
 // ──────────────────────────────────────────
-export default function ClimbingGame({ course, player, blessingPct = 0, onComplete }) {
+export default function ClimbingGame({ course, player, blessingPct = 0, onComplete, onCancel }) {
   const stages = buildStages(course.difficulty)
   const [stageIdx, setStageIdx] = useState(0)
   const [cleared, setCleared] = useState([])
-  const [phase, setPhase] = useState('intro') // intro / playing / between / summit / fail
-  const [failReason, setFailReason] = useState('')
+  const [phase, setPhase] = useState('intro') // intro / playing / between
 
   const baseTotal = Math.floor((player.core + player.legs + player.arms) / 3)
   // ご利益のぶんだけ総合体力を底上げして判定する
@@ -204,26 +214,18 @@ export default function ClimbingGame({ course, player, blessingPct = 0, onComple
     setCleared(newCleared)
     const check = checkStamina(stageIdx)
     if (check && stageIdx < stages.length - 1) {
-      setFailReason(check)
-      setPhase('fail')
+      onComplete(check, newCleared.length)
       return
     }
     if (stageIdx >= stages.length - 1) {
-      if (total >= reqTotal) {
-        setPhase('summit')
-      } else {
-        setFailReason('mid_fail')
-        setPhase('fail')
-      }
+      onComplete(total >= reqTotal ? 'success' : 'mid_fail', newCleared.length)
     } else {
       setPhase('between')
     }
   }
 
-  const handleStageFail = () => {
-    setFailReason('early_fail')
-    setPhase('fail')
-  }
+  // 結果は登山画面（Climbing）の結果画面でまとめて見せる
+  const handleStageFail = (reason) => onComplete(reason || 'early_fail', cleared.length)
 
   const handleNextStage = () => {
     setStageIdx(stageIdx + 1)
@@ -244,15 +246,25 @@ export default function ClimbingGame({ course, player, blessingPct = 0, onComple
             <p style={styles.infoRow}>消費 約{course.calories}kcal</p>
             <p style={styles.infoRow}>全 {stages.length}ステージ</p>
           </div>
-          <p style={{ color: '#ffd700', fontSize: 13 }}>あなたの総合体力: {total} / 推奨: {reqTotal}</p>
+          <p style={{ color: total >= reqTotal ? '#7ee8a5' : '#ffd700', fontSize: 13, margin: 0 }}>あなたの総合体力: {total} / 推奨: {reqTotal}</p>
+          {total < reqTotal && (
+            <p style={styles.warn}>
+              推奨体力に {reqTotal - total} 足りないよ。山頂まで登りきれずに脱落するかも。
+              脱落すると体力とポイントが減るから、鍛えてから来るのがおすすめ！
+            </p>
+          )}
+          <p style={{ color: '#aab', fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+            各ステージで、指示された目印を時間内に全部タップしよう。ちがうものをタップすると時間が減るよ
+          </p>
           {blessingPct > 0 && (
             <p style={{ color: '#7ee8a5', fontSize: 12, fontWeight: 700 }}>
               ご利益で +{Math.round(blessingPct * 100)}%（{baseTotal} → {total}）
             </p>
           )}
           <button style={styles.primaryBtn} onClick={() => setPhase('playing')}>
-            登山スタート！
+            {total >= reqTotal ? '登山スタート！' : 'それでも登る'}
           </button>
+          {onCancel && <button style={styles.subBtn} onClick={onCancel}>やめておく</button>}
         </div>
       </div>
     )
@@ -266,7 +278,7 @@ export default function ClimbingGame({ course, player, blessingPct = 0, onComple
             const st = STAGE_TYPES.find((t) => t.key === s)
             return (
               <div key={i} style={{ ...styles.progressStep, background: i <= stageIdx ? '#27ae60' : 'rgba(255,255,255,0.2)' }}>
-                {st?.emoji}
+                <GameIcon name={st?.emoji} size={22} />
               </div>
             )
           })}
@@ -288,46 +300,11 @@ export default function ClimbingGame({ course, player, blessingPct = 0, onComple
         <div style={styles.card}>
           <GameIcon name="check" size={44} />
           <h3 style={styles.title}>{currentStage?.name} クリア！</h3>
-          <p style={{ color: '#ccc', fontSize: 14 }}>次のエリア: {nextStage?.emoji} {nextStage?.name}</p>
+          <p style={{ color: '#ccc', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>次のエリア: <GameIcon name={nextStage?.emoji} size={20} /> {nextStage?.name}</p>
           <p style={{ color: '#aaa', fontSize: 13 }}>
             ステージ {stageIdx + 1}/{stages.length}
           </p>
           <button style={styles.primaryBtn} onClick={handleNextStage}>次へ進む</button>
-        </div>
-      </div>
-    )
-  }
-
-  if (phase === 'summit') {
-    return (
-      <div style={styles.container}>
-        <div style={styles.card}>
-          <GameIcon name="trophy" size={60} />
-          <h3 style={styles.title}>登頂成功！</h3>
-          <p style={{ color: '#ffd700', fontSize: 16 }}>全{stages.length}ステージ完走！</p>
-          <p style={{ color: '#2ecc71', fontSize: 20, fontWeight: 'bold' }}>+{course.reward}pt</p>
-          <button style={styles.primaryBtn} onClick={() => onComplete('success', cleared.length)}>結果へ</button>
-        </div>
-      </div>
-    )
-  }
-
-  if (phase === 'fail') {
-    const msgs = {
-      early_fail: '疲労によりこれ以上は進めない…体力レベルを上げてね！',
-      mid_fail: 'もう一息だった！もっとトレーニングしてリベンジだ！',
-      balance_fail: 'バランスが崩れて転んだ…苦手なトレーニングを補強しよう！',
-      time: '時間切れ…もっと素早く行動しよう！',
-    }
-    return (
-      <div style={styles.container}>
-        <div style={styles.card}>
-          <img src={senpaiPose.think[2]} alt="先輩" style={{ height: 100 }} draggable={false} />
-          <h3 style={styles.title}>脱落…</h3>
-          <p style={{ color: '#e74c3c', fontSize: 14, lineHeight: 1.6 }}>
-            {msgs[failReason] || 'またチャレンジしてね！'}
-          </p>
-          <button style={styles.primaryBtn} onClick={() => onComplete(failReason, cleared.length)}>戻る</button>
         </div>
       </div>
     )
@@ -399,6 +376,17 @@ const styles = {
     textAlign: 'center',
   },
   title: { color: '#fff', fontSize: 22, margin: 0 },
+  warn: {
+    color: '#ffb4a8', fontSize: 12.5, lineHeight: 1.65, margin: 0,
+    background: 'rgba(231,76,60,0.14)', border: '1px solid rgba(231,76,60,0.45)',
+    borderRadius: 10, padding: '8px 12px', textAlign: 'left',
+  },
+  subBtn: {
+    width: '100%', padding: '10px 0',
+    background: 'rgba(255,255,255,0.08)', color: '#aab',
+    border: '1px solid rgba(255,255,255,0.2)', borderRadius: 24,
+    fontSize: 14, fontWeight: 700, cursor: 'pointer',
+  },
   infoBox: { width: '100%', background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '8px 16px' },
   infoRow: { color: '#ddd', fontSize: 14, margin: '4px 0' },
   primaryBtn: {

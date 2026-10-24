@@ -15,6 +15,7 @@ export default function Shop() {
   const [cat, setCat] = useState('すべて')
   const [preview, setPreview] = useState(null)
   const [bought, setBought] = useState(null)
+  const [error, setError] = useState('')
 
   const ownedIds = new Set(inventory.map((i) => i.id))
 
@@ -22,9 +23,10 @@ export default function Shop() {
 
   const handleBuy = (item) => {
     if (item.price > 0 && !spendPoints(item.price)) {
-      alert('ポイントが足りません')
+      setError(`ポイントが足りないよ（あと ${(item.price - player.points).toLocaleString()}pt）`)
       return
     }
+    setError('')
     addItem(item)
     setBought(item.name)
     setPreview(null)
@@ -49,9 +51,12 @@ export default function Shop() {
           {owned ? (
             <p style={{ color: '#27ae60', fontSize: 15, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}><GameIcon name="check" size={18} /> 購入済み</p>
           ) : (
-            <button style={styles.primaryBtn} onClick={() => handleBuy(preview)}>購入する</button>
+            <>
+              {error && <p style={{ color: '#ff8a80', fontSize: 13, margin: 0 }}>{error}</p>}
+              <button style={styles.primaryBtn} onClick={() => handleBuy(preview)}>購入する</button>
+            </>
           )}
-          <button style={styles.backBtn} onClick={() => setPreview(null)}>戻る</button>
+          <button style={styles.backBtn} onClick={() => { setError(''); setPreview(null) }}>戻る</button>
         </div>
       </div>
     )
@@ -230,8 +235,7 @@ const styles = {
   toast: {
     position: 'fixed',
     bottom: 90,
-    left: '50%',
-    transform: 'translateX(-50%)',
+    left: 0, right: 0, margin: '0 auto', width: 'fit-content',
     background: 'linear-gradient(135deg, #2ecc71, #1a8a47)',
     color: '#fff',
     padding: '10px 20px',

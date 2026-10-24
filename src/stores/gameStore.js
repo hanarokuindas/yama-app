@@ -103,16 +103,17 @@ export const useGameStore = create(
         const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
         const streak = d.lastLoginDate === yesterday ? Math.min(d.streak + 1, 7) : 1
         const bonus = 300 + (streak - 1) * 200 // 300/500/700/…最大1500
+        // ミッションは日替わりでリセット。ただし今日すでに進めた分（ボーナスより先に遊んだ分）は残す
+        const sameDay = d.missionDate === today
         set((state) => ({
           player: { ...state.player, points: state.player.points + bonus },
           daily: {
             ...state.daily,
             lastLoginDate: today,
             streak,
-            // ミッションも日替わりリセット
             missionDate: today,
-            missionProgress: {},
-            missionClaimed: [],
+            missionProgress: sameDay ? state.daily.missionProgress : {},
+            missionClaimed: sameDay ? state.daily.missionClaimed : [],
           },
         }))
         return { streak, bonus }

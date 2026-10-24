@@ -13,14 +13,15 @@ export default function Menu() {
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(player.name)
-  const [weight, setWeight] = useState(player.weight)
+  const [weight, setWeight] = useState(player.weight ?? '')
 
   const total = Math.floor((player.core + player.legs + player.arms) / 3)
 
   const saveProfile = () => {
     if (name.trim()) setPlayerName(name.trim())
     const w = parseFloat(weight)
-    if (!isNaN(w) && w > 0) setPlayerWeight(w)
+    if (!String(weight).trim()) setPlayerWeight(null)
+    else if (!isNaN(w) && w > 0) setPlayerWeight(w)
     setEditing(false)
   }
 
@@ -47,9 +48,9 @@ export default function Menu() {
               <GameIcon name="climber" size={40} />
               <div>
                 <p style={styles.profileName}>{player.name || 'プレイヤー'}</p>
-                <p style={styles.profileSub}>体重: {player.weight}kg</p>
+                <p style={styles.profileSub}>体重: {player.weight ? `${player.weight}kg` : '未入力'}</p>
               </div>
-              <button style={styles.editBtn} onClick={() => { setName(player.name); setWeight(player.weight); setEditing(true) }}>
+              <button style={styles.editBtn} onClick={() => { setName(player.name); setWeight(player.weight ?? ''); setEditing(true) }}>
                 編集
               </button>
             </div>

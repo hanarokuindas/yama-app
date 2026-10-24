@@ -73,10 +73,11 @@ button, input {
 
 /* ───────────── 演出アニメーション ───────────── */
 
-/* 画面遷移：フェード＋スライドアップ */
+/* 画面遷移：フェード。transform を使うと、その間だけ中の position: fixed（ポップアップ等）が
+   画面ではなくこの枠を基準に置かれてずれるので、不透明度だけで切り替える */
 @keyframes pageIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 .page-transition {
   animation: pageIn 0.35s cubic-bezier(.22,1,.36,1);

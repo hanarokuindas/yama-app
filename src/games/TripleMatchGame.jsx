@@ -20,7 +20,8 @@ import { FX } from '../assets/fx'
 
 const TRAY_SIZE = 7
 const MATCH = 3
-const FIELD_H = 400
+const FIELD_H = 400     // 盤面の高さの上限。小さい画面では画面に収まるよう縮める
+const FIELD_W = 378     // 基準の盤面の幅。盤面が小さいときは標本も同じ割合で小さくして、重なり具合（難しさ）をそろえる
 const PIECE_R = 21      // 標本の見た目の半径(px)。scale を掛けて使う
 const COVER = 0.85      // 中心同士がこの割合より近いと「上に重なっている」とみなす
 const TARGET_POINT = 300
@@ -103,14 +104,14 @@ function buildPieces({ targets, decoys, hazure }, stage, rng) {
 }
 
 /* 上に別の標本が重なっていて取れない標本の uid */
-function coveredSet(pieces, fieldW) {
+function coveredSet(pieces, fieldW, fieldH, k) {
   const covered = new Set()
   for (const a of pieces) {
     for (const b of pieces) {
       if (b.depth <= a.depth) continue
       const dx = ((a.x - b.x) / 100) * fieldW
-      const dy = ((a.y - b.y) / 100) * FIELD_H
-      const lim = COVER * PIECE_R * (a.scale + b.scale)
+      const dy = ((a.y - b.y) / 100) * fieldH
+      const lim = COVER * PIECE_R * k * (a.scale + b.scale)
       if (dx * dx + dy * dy < lim * lim) { covered.add(a.uid); break }
     }
   }
@@ -141,7 +142,7 @@ export default function TripleMatchGame({ area, mountainId, level, onClear, onGa
   const popupRef = useRef(null)
   const cbRef = useRef({ onClear, onGameOver })
   const fieldRef = useRef(null)
-  const [fieldW, setFieldW] = useState(400)
+  const [field, setField] = useState({ w: 400, h: FIELD_H })
 
   useEffect(() => { cbRef.current = { onClear, onGameOver } })
   useEffect(() => { popupRef.current = popup }, [popup])
@@ -150,14 +151,15 @@ export default function TripleMatchGame({ area, mountainId, level, onClear, onGa
   useEffect(() => {
     const el = fieldRef.current
     if (!el) return
-    const update = () => setFieldW(el.clientWidth || 400)
+    const update = () => setField({ w: el.clientWidth || 400, h: el.clientHeight || FIELD_H })
     update()
     const ro = new ResizeObserver(update)
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
 
-  const covered = useMemo(() => coveredSet(pieces, fieldW), [pieces, fieldW])
+  const k = Math.min(1, Math.sqrt((field.w * field.h) / (FIELD_W * FIELD_H))) // 標本の縮小率（盤面の面積に合わせる）
+  const covered = useMemo(() => coveredSet(pieces, field.w, field.h, k), [pieces, field, k])
   // 重なり順（depth の小さい順に 1, 2, …）
   const layer = useMemo(() => {
     const order = [...pieces].sort((a, b) => a.depth - b.depth)
@@ -330,7 +332,7 @@ export default function TripleMatchGame({ area, mountainId, level, onClear, onGa
                 ...st.piece,
                 left: `${p.x}%`, top: `${p.y}%`,
                 zIndex: layer.get(p.uid),
-                transform: `translate(-50%,-50%) rotate(${p.rot}deg) scale(${p.scale})`,
+                transform: `translate(-50%,-50%) rotate(${p.rot}deg) scale(${p.scale * k})`,
                 filter: blocked ? 'brightness(0.5) saturate(0.6)' : `brightness(${0.95 + p.depth * 0.12})`,
                 cursor: blocked ? 'default' : 'pointer',
               }}
@@ -437,7 +439,8 @@ const st = {
   },
   timeBarFill: { height: '100%', borderRadius: 99, transition: 'width 0.9s linear' },
 
-  field: { position: 'relative', zIndex: 0, height: FIELD_H, margin: '2px 6px 0' },  // zIndex で重なり順をこの中に閉じる
+  // zIndex で重なり順をこの中に閉じる。高さは画面から上下の部品（約330px）を引いた分（260〜400px）
+  field: { position: 'relative', zIndex: 0, height: `clamp(260px, calc(100dvh - 330px), ${FIELD_H}px)`, margin: '2px 6px 0' },
   piece: {
     position: 'absolute', background: 'none', border: 'none',
     padding: 0, cursor: 'pointer', lineHeight: 0,

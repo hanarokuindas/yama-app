@@ -112,7 +112,7 @@ export default function TutorialOverlay() {
   }
   // 照らす要素が今は無い（トレーニング中・探索プレイ中など）ときは小さな案内だけ
   if (step.target && !rect) {
-    return step.hint ? <Pill text={step.hint} /> : null
+    return step.hint ? <Pill text={step.hint} top={step.hintAt === 'top'} /> : null
   }
 
   const vh = window.innerHeight
@@ -206,10 +206,10 @@ export default function TutorialOverlay() {
   )
 }
 
-function Pill({ text, onClick }) {
+function Pill({ text, onClick, top = false }) {
   return (
     <button
-      style={{ ...st.pill, pointerEvents: onClick ? 'auto' : 'none' }}
+      style={{ ...st.pill, ...(top ? st.pillTop : {}), pointerEvents: onClick ? 'auto' : 'none' }}
       onClick={onClick}
     >
       <img src={senpaiMini.smileCheer} alt="" style={{ height: 28, marginLeft: -4 }} draggable={false} />
@@ -292,6 +292,8 @@ const st = {
     borderRadius: 20, padding: '8px 0', fontSize: 12.5, fontWeight: 900, cursor: 'pointer',
   },
 
+  // 画面下のボタンと重なる場面では上に出す
+  pillTop: { bottom: 'auto', top: 10 },
   pill: {
     position: 'fixed', left: 0, right: 0, margin: '0 auto', width: 'fit-content',
     bottom: 'calc(var(--nav-h) + 10px)', zIndex: 180,

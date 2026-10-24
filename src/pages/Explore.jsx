@@ -50,6 +50,7 @@ export default function Explore() {
 
   const start = (a) => {
     sfx.go()
+    window.scrollTo(0, 0) // 一覧を下までスクロールしていても、盤面の上（残り時間）から見せる
     setSnapshot(discovered)
     setArea(a)
     setPhase('playing')

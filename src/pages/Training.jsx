@@ -255,8 +255,10 @@ export default function Training() {
             </div>
           )}
 
-          <button style={styles.startBtn} onClick={begin}>スタート！</button>
-          <button style={styles.backBtn} onClick={() => { sfx.cancel(); setScreen('list') }}>戻る</button>
+          <div style={styles.stickyActions}>
+            <button style={styles.startBtn} onClick={begin}>スタート！</button>
+            <button style={styles.backBtn} onClick={() => { sfx.cancel(); setScreen('list') }}>戻る</button>
+          </div>
         </div>
       </div>
     )
@@ -506,6 +508,13 @@ const styles = {
     fontSize: 14, fontWeight: 700, cursor: 'pointer',
   },
 
+  // 準備画面のボタンは、説明が長くても画面下に出しておく
+  stickyActions: {
+    position: 'sticky', bottom: 'calc(var(--nav-h) + 8px)', zIndex: 5,
+    width: '100%', display: 'flex', flexDirection: 'column', gap: 8,
+    padding: '10px 0 0',
+    background: 'linear-gradient(180deg, rgba(20,22,40,0) 0%, rgba(20,22,40,0.92) 30%)',
+  },
   progressBg: { width: '100%', height: 5, background: 'rgba(255,255,255,0.1)', borderRadius: 99, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 99, transition: 'width 0.2s linear' },
   phaseRow: { display: 'flex', gap: 6, justifyContent: 'center', marginTop: -4 },

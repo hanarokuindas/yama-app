@@ -39,10 +39,10 @@ function ProfileScreen({ onComplete }) {
   const handleSubmit = () => {
     if (!name.trim()) { sfx.miss(); return setError('ニックネームを入れてね') }
     const w = parseFloat(weight)
-    if (isNaN(w) || w <= 0) { sfx.miss(); return setError('体重を数字で入れてね') }
+    if (weight.trim() && (isNaN(w) || w <= 0)) { sfx.miss(); return setError('体重は数字で入れてね（空欄でもOK）') }
     sfx.confirm()
     setPlayerName(name.trim())
-    setPlayerWeight(w)
+    setPlayerWeight(weight.trim() ? w : null)
     onComplete()
   }
 
@@ -55,7 +55,7 @@ function ProfileScreen({ onComplete }) {
         <label style={s.formLabel}>ニックネーム</label>
         <input style={s.formInput} placeholder="例：やまびこ" value={name}
           onChange={(e) => { setName(e.target.value); setError('') }} maxLength={12} />
-        <label style={s.formLabel}>体重 (kg)</label>
+        <label style={s.formLabel}>体重 (kg)<span style={{ color: '#8a90a8', marginLeft: 8 }}>任意</span></label>
         <input style={s.formInput} type="number" inputMode="decimal" placeholder="例：65" value={weight}
           onChange={(e) => { setWeight(e.target.value); setError('') }} />
         <p style={s.formNote}>あとからメニューで変更できるよ</p>
@@ -221,11 +221,14 @@ export default function Home() {
 
   // 登山解禁: 総合体力20以上で1回限り解禁演出（企画書p25）
   const CLIMB_UNLOCK_REQ = 20
+  // 描画中にストアを書き換えると他の画面部品も更新されて React が警告するので、描画後に行う
+  const reachedClimb = !flags.climbingUnlocked && total >= CLIMB_UNLOCK_REQ
   const [climbUnlockShow, setClimbUnlockShow] = useState(false)
-  if (!flags.climbingUnlocked && total >= CLIMB_UNLOCK_REQ) {
+  useEffect(() => {
+    if (!reachedClimb) return
     unlockClimbing()
-    setClimbUnlockShow(true)
-  }
+    setClimbUnlockShow(true) // eslint-disable-line react-hooks/set-state-in-effect -- 解禁した瞬間に1回だけ出す演出
+  }, [reachedClimb, unlockClimbing])
 
   const needsMaintenance = Object.values(mountains).some(
     (m) => m.unlocked && m.maintenanceLevel < 50
@@ -249,7 +252,7 @@ export default function Home() {
       {/* ══════════ 右上：ステータス ══════════ */}
       <div style={s.statsPanel} data-tut="home-stats">
         <div style={s.statItem}>
-          <GameIcon name="heart" size={16} />
+          <GameIcon name="star" size={16} />
           <CountUp value={player.points} style={s.statNum} />
         </div>
         <div style={s.statItem}>
@@ -309,7 +312,7 @@ export default function Home() {
         <Celebration
           icon={<GameIcon name="mountain" size={80} />}
           title="登山が解禁された！"
-          subtitle="装備を整えて、最初の山に挑戦しよう！"
+          subtitle="まずは高尾山「いろはの森コース」（推奨体力100）を目指そう！"
           onClose={() => {
             setClimbUnlockShow(false)
             if (!climbTutorialSeen && !tutorialActive) startTutorial('climb')

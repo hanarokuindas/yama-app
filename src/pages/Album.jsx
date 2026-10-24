@@ -143,7 +143,7 @@ export default function Album() {
           ) : (
             inventory.map((item, i) => (
               <div key={i} style={styles.itemRow}>
-                <span style={{ fontSize: 28 }}>{item.icon}</span>
+                <GameIcon name={item.icon} size={30} />
                 <div style={{ flex: 1 }}>
                   <p style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>{item.name}</p>
                   <p style={{ color: '#aaa', fontSize: 11 }}>{item.category}</p>

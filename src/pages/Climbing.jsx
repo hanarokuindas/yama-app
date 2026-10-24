@@ -28,6 +28,9 @@ const ONSEN_RATE = 0.7
 
 // お土産一覧
 // blessing は次の登山で総合体力に乗る割合（ご利益）
+// 登山の解禁条件（ホームの登山スポットと同じ。企画書p25）
+const CLIMB_UNLOCK_REQ = 20
+
 const SOUVENIRS = [
   { id: 'takao_manju', name: '高尾まんじゅう', price: 200, mountainId: 'takao', emoji: 'dango', blessing: 0.05 },
   { id: 'yatsu_beer', name: '八ヶ岳地ビール', price: 500, mountainId: 'yatsugatake', emoji: 'beer', blessing: 0.10 },
@@ -39,9 +42,26 @@ const SOUVENIRS = [
 // ──────────────────────────────────────────
 function EquipmentCheck({ course, onReady, onBack }) {
   const inventory = useGameStore((s) => s.inventory)
+  const points = useGameStore((s) => s.player.points)
+  const spendPoints = useGameStore((s) => s.spendPoints)
+  const addItem = useGameStore((s) => s.addItem)
   const ownedIds = new Set(inventory.map((i) => i.id))
   const required = course.requiredItems || []
   const allOk = required.every((id) => ownedIds.has(id))
+  const missing = required.filter((id) => !ownedIds.has(id)).map((id) => itemsData.find((i) => i.id === id)).filter(Boolean)
+  const missingCost = missing.reduce((sum, i) => sum + i.price, 0)
+  const [msg, setMsg] = useState('')
+
+  const buyMissing = () => {
+    if (!spendPoints(missingCost)) {
+      sfx.miss()
+      setMsg(`ポイントが足りないよ（あと ${(missingCost - points).toLocaleString()}pt）。山探索やトレーニングでためよう`)
+      return
+    }
+    sfx.coin()
+    missing.forEach((item) => addItem(item))
+    setMsg('')
+  }
 
   return (
     <div style={styles.card}>
@@ -60,9 +80,16 @@ function EquipmentCheck({ course, onReady, onBack }) {
         })}
       </div>
       {!allOk && (
-        <p style={{ color: '#e74c3c', fontSize: 13, margin: '8px 0' }}>
-          装備が足りません。ショップで揃えてから来てね！
-        </p>
+        <>
+          <p style={{ color: '#e74c3c', fontSize: 13, margin: '4px 0' }}>
+            装備が {missing.length} 個足りないよ
+          </p>
+          <button style={styles.buyAllBtn} onClick={buyMissing}>
+            足りない装備をまとめて買う（{missingCost.toLocaleString()}pt）
+          </button>
+          <p style={{ color: '#aab', fontSize: 11.5, margin: 0 }}>所持 {points.toLocaleString()}pt</p>
+          {msg && <p style={{ color: '#ff8a80', fontSize: 12.5, margin: 0, lineHeight: 1.6 }}>{msg}</p>}
+        </>
       )}
       <button
         style={{ ...styles.primaryBtn, opacity: allOk ? 1 : 0.5 }}
@@ -84,15 +111,18 @@ function OnsenScreen({ onNext, onSkip }) {
   const recover = useGameStore((s) => s.recover)
   const lastFatigue = useGameStore((s) => s.lastFatigue)
   const [used, setUsed] = useState(false)
+  const [msg, setMsg] = useState('')
   // 直前の登山で失った分の7割まで回復する
   const recoverAmount = Math.max(ONSEN_RECOVER, Math.ceil(lastFatigue * ONSEN_RATE))
 
   const handleOnsen = () => {
     if (spendPoints(ONSEN_COST)) {
+      sfx.item()
       recover(recoverAmount)
       setUsed(true)
     } else {
-      alert('ポイントが足りません')
+      sfx.miss()
+      setMsg('ポイントが足りないよ')
     }
   }
 
@@ -108,6 +138,7 @@ function OnsenScreen({ onNext, onSkip }) {
               登山で失った {lastFatigue} のうち {recoverAmount} ぶん戻るよ
             </span>
           </p>
+          {msg && <p style={{ color: '#ff8a80', fontSize: 13, margin: 0 }}>{msg}</p>}
           <button style={styles.primaryBtn} onClick={handleOnsen}>
             入湯する（{ONSEN_COST}pt）
           </button>
@@ -135,12 +166,14 @@ function SouvenirScreen({ mountainId, mountainName, onDone }) {
   const grantBlessing = useGameStore((s) => s.grantBlessing)
   const [bought, setBought] = useState([])
   const [granted, setGranted] = useState(null)
+  const [msg, setMsg] = useState('')
 
   const souvenirs = SOUVENIRS.filter((s) => s.mountainId === mountainId)
 
   const handleBuy = (s) => {
     if (bought.includes(s.id)) return
-    if (!spendPoints(s.price)) return alert('ポイントが足りません')
+    if (!spendPoints(s.price)) { sfx.miss(); setMsg('ポイントが足りないよ'); return }
+    setMsg('')
     sfx.item()
     // お供えボーナス（ポイントの一部が戻る）
     addPoints(Math.floor(s.price * 0.3))
@@ -184,6 +217,7 @@ function SouvenirScreen({ mountainId, mountainName, onDone }) {
           </div>
         ))}
       </div>
+      {msg && <p style={{ color: '#ff8a80', fontSize: 13, margin: '-8px 0 0' }}>{msg}</p>}
       <button style={styles.primaryBtn} onClick={onDone}>ホームへ戻る</button>
     </div>
   )
@@ -210,6 +244,7 @@ export default function Climbing() {
   const discovered = useGameStore((s) => s.discovered)
   const [shareMsg, setShareMsg] = useState('')
   const consumeBlessing = useGameStore((s) => s.consumeBlessing)
+  const lastFatigue = useGameStore((s) => s.lastFatigue)
 
   const [phase, setPhase] = useState('mountain') // mountain / course / intro / equip / game / result / onsen / souvenir
   const [selectedMountain, setSelectedMountain] = useState(null)
@@ -280,6 +315,23 @@ export default function Climbing() {
   const courses = coursesData.filter((c) => c.mountainId === selectedMountain?.id)
   const summited = mountains[selectedMountain?.id]?.summitedCourses || []
 
+  // 下のナビやメニューからも来られるので、ここでも解禁を確かめる（ホームのスポットと同じ条件）
+  if (!flags.climbingUnlocked) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <GameIcon name="lock" size={56} />
+          <h3 style={styles.cardTitle}>登山はまだ解禁されていないよ</h3>
+          <p style={{ color: '#ccc', fontSize: 14, lineHeight: 1.7, textAlign: 'center', margin: 0 }}>
+            総合体力が <b style={{ color: '#f5c842' }}>{CLIMB_UNLOCK_REQ}</b> になると解禁されるよ。<br />
+            いまの総合体力は <b style={{ color: '#f5c842' }}>{total}</b>（あと {Math.max(0, CLIMB_UNLOCK_REQ - total)}）
+          </p>
+          <button style={styles.primaryBtn} onClick={() => navigate('/training')}>トレーニングへ</button>
+        </div>
+      </div>
+    )
+  }
+
   // ── 山選択 ──
   if (phase === 'mountain') {
     return (
@@ -340,7 +392,10 @@ export default function Climbing() {
     return (
       <div style={styles.container}>
         <h2 style={{ color: '#fff', fontSize: 20, fontWeight: 900, padding: '18px 0 4px' }}>{selectedMountain.name}</h2>
-        <p style={{ color: '#aaa', fontSize: 13, marginBottom: 8 }}>総合体力: {total}</p>
+        <p style={{ color: '#aaa', fontSize: 13, marginBottom: 4 }}>あなたの総合体力: {total}</p>
+        <p style={{ color: '#8a90a8', fontSize: 11.5, margin: '0 16px 8px', textAlign: 'center', lineHeight: 1.6 }}>
+          推奨体力に届いていないと、途中で脱落してポイントと体力が減るよ
+        </p>
         {blessing && (
           <p style={styles.blessingChip}>
             <GameIcon name="sparkle" size={14} /> {blessing.name}のご利益 +{Math.round(blessing.pct * 100)}%
@@ -350,11 +405,11 @@ export default function Climbing() {
           {courses.map((c) => {
             const done = summited.includes(c.id)
             const reqTotal = c.requiredStamina * 5
-            const canTry = total >= reqTotal * 0.5
+            const enough = total >= reqTotal
             return (
               <button
                 key={c.id}
-                style={{ ...styles.courseCard, opacity: canTry ? 1 : 0.6 }}
+                style={{ ...styles.courseCard, opacity: enough ? 1 : 0.75 }}
                 onClick={() => { setSelectedCourse(c); setPhase('equip') }}
               >
                 <div style={styles.courseHeader}>
@@ -363,7 +418,9 @@ export default function Climbing() {
                 </div>
                 <div style={{ color: '#ccc', fontSize: 12 }}>{c.description}</div>
                 <div style={styles.courseFooter}>
-                  <span style={{ color: '#aaa', fontSize: 12 }}>推奨体力: {reqTotal}</span>
+                  <span style={{ color: enough ? '#7ee8a5' : '#ff8a80', fontSize: 12, fontWeight: 700 }}>
+                    推奨体力 {reqTotal}{enough ? '（OK）' : `（あと ${reqTotal - total}）`}
+                  </span>
                   <span style={{ color: '#ffd700', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}><GameIcon name="trophy" size={14} /> {c.reward}pt</span>
                 </div>
               </button>
@@ -397,6 +454,7 @@ export default function Climbing() {
           player={player}
           blessingPct={blessing?.pct ?? 0}
           onComplete={handleGameComplete}
+          onCancel={() => setPhase('course')}
         />
       </div>
     )
@@ -406,11 +464,13 @@ export default function Climbing() {
   if (phase === 'result') {
     const success = gameResult === 'success'
     const messages = {
-      success: `登頂成功！ +${selectedCourse.reward}pt`,
+      success: `+${selectedCourse.reward}pt 獲得！`,
       early_fail: '体力不足でここまでが限界だった…トレーニングを積もう！',
-      mid_fail: 'もう一息だった！もっとトレーニングしてリベンジだ！',
-      balance_fail: 'バランスが崩れて転倒！苦手なトレーニングを補強しよう！',
+      mid_fail: '最後まで歩いたけど、山頂までの体力が足りなかった…もう一息！',
+      balance_fail: 'バランスが崩れて転倒！体幹か脚力が足りないよ。苦手なトレーニングを補強しよう！',
+      time: '時間切れで日が暮れてしまった…目印をもっと素早く見つけよう！',
     }
+    const penalty = Math.min(Math.floor(selectedCourse.reward * 0.1), 500)
     return (
       <div style={styles.container}>
         {success && <Confetti count={50} />}
@@ -423,7 +483,7 @@ export default function Climbing() {
           <p style={{ color: '#aab', fontSize: 12 }}>
             {success
               ? `疲労で総合体力が ${Math.ceil(selectedCourse.requiredStamina * 5 * 0.1)} 減少。温泉で回復しよう！`
-              : `疲労で体力が減少し、ポイントペナルティも発生…。`}
+              : `疲労で体力が ${lastFatigue} 減って、${penalty}pt 失った…`}
           </p>
           {success && album.length === 1 && (
             <p style={{ color: '#f5c842', fontSize: 13, fontWeight: 700, animation: 'popIn 0.5s 0.3s both' }}>
@@ -439,7 +499,10 @@ export default function Climbing() {
               {shareMsg && <p style={{ color: '#7ee8a5', fontSize: 12 }}>{shareMsg}</p>}
             </>
           ) : (
-            <button style={styles.primaryBtn} onClick={() => setPhase('mountain')}>ホームへ</button>
+            <>
+              <button style={styles.primaryBtn} onClick={() => navigate('/training')}>トレーニングへ</button>
+              <button style={styles.backBtn} onClick={() => setPhase('mountain')}>山選択へ</button>
+            </>
           )}
         </div>
       </div>
@@ -585,6 +648,11 @@ const styles = {
     background: 'rgba(245,200,66,0.12)', border: '1px solid rgba(245,200,66,0.4)',
     borderRadius: 12, padding: '10px 14px', margin: '0 16px 10px',
     animation: 'popIn 0.3s ease',
+  },
+  buyAllBtn: {
+    width: '100%', padding: '11px 0',
+    background: 'linear-gradient(135deg, #f5c842, #e0a800)', color: '#1a0e00',
+    border: 'none', borderRadius: 24, fontSize: 13.5, fontWeight: 900, cursor: 'pointer',
   },
   shopLink: {
     color: '#f5c842',

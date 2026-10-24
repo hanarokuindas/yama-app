@@ -5,7 +5,7 @@
    target  : 照らす要素の data-tut 名（なければ画面中央に吹き出しだけ出す）
    action  : true なら照らした要素を実際にタップすると次へ進む
    waitFor : 画面側から tutorialEvent(名前) が届くまで待つ（その間は要素を自由に操作できる）
-   hint    : 照らす要素が今は画面にないときに、下に小さく出す案内
+   hint    : 照らす要素が今は画面にないときに、下に小さく出す案内（hintAt: 'top' なら上に出す）
    skipIf  : (state) => true ならこのステップを飛ばす */
 
 export const TUTORIALS = {
@@ -35,6 +35,7 @@ export const TUTORIALS = {
         id: 'pickTraining', route: '/training', target: 'train-plank', action: true, waitFor: 'trained', pose: 'winkCheer',
         text: '最初はプランクがおすすめ。\n30秒だけ、ひじとつま先で体をまっすぐ支えてみよう！',
         hint: 'プランクを最後までやってみよう',
+        hintAt: 'top', // 画面下には「スタート！」「戻る」があるので
       },
       {
         id: 'trained', route: '/training', target: 'train-stats', pose: 'armsCrossedLaugh',
@@ -47,11 +48,10 @@ export const TUTORIALS = {
       {
         id: 'pickArea', route: '/explore', target: 'explore-areas', action: true, waitFor: 'explored', pose: 'glassesWink',
         text: '上に出るターゲットの標本を3つずつそろえるとクリア。\n上に重なっている標本は取れないから、おじゃまをどかしながら探してね。好きなエリアを選んでね',
-        hint: 'ターゲットを3つずつそろえよう！',
       },
       {
         id: 'explored', route: '/explore', pose: 'smileCheer',
-        text: 'そろえた標本は図鑑に登録されるんだ。\nアルバムの「図鑑」でいつでも見返せるよ',
+        text: 'ターゲットをそろえると図鑑に登録されるんだ。うまくいかなくても、何度でも挑戦できるよ。\nアルバムの「図鑑」でいつでも見返せるよ',
       },
       {
         id: 'finish', route: null, target: 'nav-menu', pose: 'winkCheer', last: true,

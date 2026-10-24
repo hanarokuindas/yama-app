@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { BG } from '../assets/backgrounds'
 import GameIcon from '../components/GameIcon'
 import { useGameStore } from '../stores/gameStore'
@@ -8,19 +8,28 @@ export default function AR() {
   const album = useGameStore((s) => s.album)
   const [active, setActive] = useState(false)
   const [photo, setPhoto] = useState(null)
+  const [error, setError] = useState('')
   const videoRef = useRef(null)
   const streamRef = useRef(null)
 
   const startCamera = async () => {
+    setError('')
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       streamRef.current = stream
-      if (videoRef.current) videoRef.current.srcObject = stream
       setActive(true)
     } catch {
-      alert('カメラへのアクセスができませんでした。ブラウザの設定を確認してください。')
+      setError('カメラを使えませんでした。ブラウザの設定でカメラの使用を許可してから、もう一度ためしてね。')
     }
   }
+
+  // video 要素は active になってから描かれるので、映像はそのあとでつなぐ
+  useEffect(() => {
+    if (active && videoRef.current && streamRef.current) videoRef.current.srcObject = streamRef.current
+  }, [active])
+
+  // 画面を離れたらカメラを止める
+  useEffect(() => () => streamRef.current?.getTracks().forEach((t) => t.stop()), [])
 
   const stopCamera = () => {
     if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop())
@@ -74,6 +83,7 @@ export default function AR() {
           <p style={{ color: '#ccc', fontSize: 13, textAlign: 'center', lineHeight: 1.7 }}>
             カメラを起動して登頂スタンプ付きの写真を撮ろう。
           </p>
+          {error && <p style={{ color: '#ff8a80', fontSize: 12.5, lineHeight: 1.6, margin: 0 }}>{error}</p>}
           <button style={styles.primaryBtn} onClick={startCamera}>カメラを起動</button>
         </div>
       )}
