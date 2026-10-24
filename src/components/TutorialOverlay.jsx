@@ -9,6 +9,7 @@ import { sfx } from '../utils/sound'
 
 const PAD = 6          // 照らす枠と要素のすき間
 const BUBBLE_H = 176   // 吹き出しの高さの見込み（上下どちらに出すかの判定用）
+const SIDE_MIN = 280   // 吹き出しを要素の横に出すのに要る幅
 
 // 照らす要素の位置を追いかける。画面遷移やアニメーションで動くので一定間隔で測り直す
 function useTargetRect(name) {
@@ -124,17 +125,20 @@ export default function TutorialOverlay() {
   const radius = hole ? (step.target.startsWith('spot-') ? Math.min(hole.width, hole.height) / 2 : 16) : 0
 
   // 吹き出しは要素の下、入らなければ上、それも無理なら横（横画面では上下の余裕が少ない）
+  // 横に出すのは、吹き出しが入る幅（SIDE_MIN）があるときだけ。どこにも入らなければ、要素と反対側の画面の端に重ねて出す
   let place = 'bottom'
   if (hole && hole.top + hole.height + gap + BUBBLE_H < vh) place = 'below'
   else if (hole && hole.top - gap - BUBBLE_H > 0) place = 'above'
-  else if (hole && hole.left > vw / 2) place = 'left'
-  else if (hole) place = 'right'
+  else if (hole && hole.left - gap - 12 >= SIDE_MIN) place = 'left'
+  else if (hole && vw - hole.left - hole.width - gap - 12 >= SIDE_MIN) place = 'right'
+  else if (hole && hole.top + hole.height / 2 > vh / 2) place = 'top'
   const sideTop = hole && Math.max(8, Math.min(vh - BUBBLE_H - 8, hole.top + hole.height / 2 - BUBBLE_H / 2))
   const bubblePos =
     place === 'below' ? { top: hole.top + hole.height + gap }
     : place === 'above' ? { bottom: vh - hole.top + gap }
     : place === 'left' ? { top: sideTop, left: 'auto', right: vw - hole.left + gap, margin: 0, width: Math.min(420, hole.left - gap - 12) }
     : place === 'right' ? { top: sideTop, right: 'auto', left: hole.left + hole.width + gap, margin: 0, width: Math.min(420, vw - hole.left - hole.width - gap - 12) }
+    : place === 'top' ? { top: 8 }
     : { bottom: 14 }
 
   return (

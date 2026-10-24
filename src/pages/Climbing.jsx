@@ -12,7 +12,7 @@ import { takaoPose } from '../assets/characters/takao'
 import { senpaiPose } from '../assets/characters/senpai'
 import { isUnderMaintenance, remainingMinutes, formatDuration, maintenanceState, requiredStaminaFor } from '../data/maintenanceActivities'
 import { buildSummitText, shareText } from '../utils/share'
-import encyclopedia from '../data/encyclopedia.json'
+import { albumProgress } from '../data/album'
 import characters from '../data/characters.json'
 
 const MOUNTAINS = [
@@ -315,7 +315,7 @@ export default function Climbing() {
       mountainName: selectedMountain.name,
       courseName: selectedCourse.name,
       total,
-      rate: Math.round((discovered.length / encyclopedia.length) * 100),
+      rate: albumProgress(discovered).rate,
     })
     const r = await shareText('山アプリ 登頂記録', text)
     setShareMsg(

@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { TUTORIALS, nextStepIndex } from '../data/tutorial'
 import { itemUses } from '../data/equipment'
 import { pickMissionMountain, todayString } from '../data/missions'
+import { matchesNeeded } from '../data/album'
 
 const DEFAULT_MOUNTAINS = {
   // 架空の練習用の山。登山解禁（総合体力20）から高尾山（推奨100）までの間を埋める
@@ -95,8 +96,10 @@ export const useGameStore = create(
       // アルバム（登頂写真）
       album: [],
 
-      // 図鑑（発見済みの標本ID）と山探索の進行度
+      // アルバムに載った標本のID と、山探索の進行度
       discovered: [],
+      // 標本ごとの「そろえた回数」（ゲームをまたいで合算。アルバムに載る条件に使う）
+      matchCounts: {},
       exploreLevel: 1,
 
       // 直前の登山で失った体力。温泉の回復量の基準に使う
@@ -359,10 +362,25 @@ export const useGameStore = create(
         }
       })),
 
-      // 図鑑に登録（重複は無視）
+      // アルバムに直接載せる（重複は無視）
       discover: (id) => set((state) => (
         state.discovered.includes(id) ? state : { discovered: [...state.discovered, id] }
       )),
+
+      // 標本を1回そろえた。条件を満たせばアルバムに載せる。
+      // { registered: 今回載った, already: 前から載っていた, count: そろえた回数, need: 載るのに要る回数 }
+      recordMatch: (id) => {
+        const s = get()
+        const count = (s.matchCounts[id] || 0) + 1
+        const already = s.discovered.includes(id)
+        const need = matchesNeeded(s.discovered.length)
+        const registered = !already && count >= need
+        set({
+          matchCounts: { ...s.matchCounts, [id]: count },
+          ...(registered ? { discovered: [...s.discovered, id] } : null),
+        })
+        return { registered, already, count, need }
+      },
 
       setExploreLevel: (lv) => set({ exploreLevel: lv }),
 

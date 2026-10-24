@@ -46,11 +46,11 @@ function Inner() {
           <PageTransition>
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/explore" element={<Legacy><Explore /></Legacy>} />
+              <Route path="/explore" element={<Explore />} />
               <Route path="/training" element={<Legacy><Training /></Legacy>} />
               <Route path="/climbing" element={<Legacy><Climbing /></Legacy>} />
               <Route path="/maintenance" element={<Legacy><Maintenance /></Legacy>} />
-              <Route path="/album" element={<Legacy><Album /></Legacy>} />
+              <Route path="/album" element={<Album />} />
               <Route path="/shop" element={<Shop />} />
               <Route path="/guide" element={<Guide />} />
               <Route path="/ar" element={<Legacy><AR /></Legacy>} />

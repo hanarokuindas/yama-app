@@ -47,11 +47,11 @@ export const TUTORIALS = {
       },
       {
         id: 'pickArea', route: '/explore', target: 'explore-areas', action: true, waitFor: 'explored', pose: 'glassesWink',
-        text: '上に出るターゲットの標本を3つずつそろえるとクリア。\n上に重なっている標本は取れないから、おじゃまをどかしながら探してね。好きなエリアを選んでね',
+        text: '同じ山の仲間を3つそろえると消えるよ。ぜんぶ消せたらクリア！\n上に重なっているものは取れないから、上から順に取ってね。好きなエリアを選んでね',
       },
       {
         id: 'explored', route: '/explore', pose: 'smileCheer',
-        text: 'ターゲットをそろえるとアルバムに載るんだ。うまくいかなくても、何度でも挑戦できるよ。\nアルバムでいつでも見返せるよ',
+        text: 'そろえた山の仲間はアルバムに載るよ。最初の2種は1回で、そのあとは3回そろえると載るんだ。\nレベルが上がると「お題」が出てくるよ。アルバムでいつでも見返せるよ',
       },
       {
         id: 'finish', route: '/', target: 'home-menu', pose: 'winkCheer', last: true,

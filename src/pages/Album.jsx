@@ -1,381 +1,478 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { BG } from '../assets/backgrounds'
+import { UI } from '../assets/ui'
+import { ROUTE } from '../assets/route'
 import GameIcon from '../components/GameIcon'
 import Specimen from '../components/Specimen'
+import { CloseButton } from '../components/ui'
+import { FS } from '../components/uiStyles'
 import { useGameStore } from '../stores/gameStore'
-import charactersData from '../data/characters.json'
-import encyclopedia from '../data/encyclopedia.json'
+import characters from '../data/characters.json'
+import { EXPLORE_AREAS, AREA_BY_ID, ALBUM_MOUNTAINS, exploreSpecies, limitedSpecies, mountainCourses } from '../data/album'
+import { yatsugatakeMini, yatsugatakeFull } from '../assets/characters/yatsugatake'
+import { takaoMini, takaoFull } from '../assets/characters/takao'
+import { hakoneMini, hakoneFull } from '../assets/characters/hakone'
 import { sfx } from '../utils/sound'
 
-const TABS = ['山探索', '山神', '登頂記録', '所持装備']
+/* アルバム（修正指示：本の見開き。目次 → 山探索の3エリア／登った山／マップ → 各アイテムのページ）。
+   中の文字は Kaisei Decol。先輩と所持装備は載せない */
 
-const CHAR_EMOJIS = {
-  yatsugatake: 'mountain',
-  takao: 'forest',
-  hakone: 'volcano',
-  senpai: 'user',
+const GOD_IMG = {
+  yatsugatake: { mini: yatsugatakeMini.laugh, full: yatsugatakeFull.stand1 },
+  takao: { mini: takaoMini.smile, full: takaoFull.armsCrossed1 },
+  hakone: { mini: hakoneMini.grin, full: hakoneFull.stand1 },
+}
+const PER_PAGE = 24 // エリアのページ1枚に並べるマスの数（8列×3段）
+// 日本地図のデータは大きいので、マップを開いたときに読み込む
+const JapanMap = lazy(() => import('../components/JapanMap'))
+
+const dateText = (iso) => {
+  const d = new Date(iso)
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`
 }
 
 export default function Album() {
-  const inventory = useGameStore((s) => s.inventory)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const discovered = useGameStore((s) => s.discovered)
   const mountains = useGameStore((s) => s.mountains)
   const album = useGameStore((s) => s.album)
-  const discovered = useGameStore((s) => s.discovered)
-  const [tab, setTab] = useState('山探索')
-  // 記録の共有はメニューの「SNS」へ移した（修正指示）
-  const [encArea, setEncArea] = useState('rock')
+  // 山探索の終了画面から来たときは、そのエリアのページを開く
+  const [view, setView] = useState(() => (
+    location.state?.area ? { name: 'area', area: location.state.area, page: 0 } : { name: 'toc' }
+  ))
   const [detail, setDetail] = useState(null)
 
-  return (
-    <div style={styles.container}>
-      <div style={styles.title}>ALBUM</div>
+  const open = (v) => { sfx.tap(); setView(v) }
+  const toToc = () => setView({ name: 'toc' })
+  // そのコースに初めて登った日（登頂写真の記録から）
+  const firstClimb = (courseId) => album.filter((a) => a.courseId === courseId).map((a) => a.date).sort()[0]
 
-      {/* タブ */}
-      <div style={styles.tabs}>
-        {TABS.map((t) => (
-          <button
-            key={t}
-            style={{ ...styles.tabBtn, borderBottom: tab === t ? '2px solid #f5c842' : '2px solid transparent', color: tab === t ? '#f5c842' : '#667' }}
-            onClick={() => setTab(t)}
-          >
-            {t}
+  let body
+  if (view.name === 'area') {
+    body = <AreaPage view={view} setView={setView} discovered={discovered} onDetail={setDetail} onClose={toToc} />
+  } else if (view.name === 'mountain') {
+    body = <MountainPage view={view} setView={setView} discovered={discovered} mountains={mountains}
+      firstClimb={firstClimb} onDetail={setDetail} onClose={toToc} />
+  } else if (view.name === 'map') {
+    const climbed = ALBUM_MOUNTAINS.filter((m) => mountains[m.id]?.summitedCourses?.length).map((m) => m.id)
+    body = (
+      <Paper title="マップ" onClose={toToc}>
+        <div style={st.mapArea}>
+          <Suspense fallback={<p style={st.note}>地図を読み込んでいます…</p>}><JapanMap climbed={climbed} /></Suspense>
+        </div>
+      </Paper>
+    )
+  } else {
+    body = (
+      <Book>
+        <div style={{ ...st.pageLeft, ...st.tocPage }}>
+          <span style={st.tag}>目次</span>
+          <div style={st.tocLabel}>山探索</div>
+          <div style={st.tocList}>
+            {EXPLORE_AREAS.map((a, i) => {
+              const list = exploreSpecies(a.id)
+              const got = list.filter((e) => discovered.includes(e.id)).length
+              return (
+                <button key={a.id} style={st.tocItem} onClick={() => open({ name: 'area', area: a.id, page: 0 })}>
+                  <span style={st.tocNo}>{i + 1}．</span>
+                  <span style={st.tocName}>{a.label}</span>
+                  <span style={st.tocCount}>{got}/{list.length}</span>
+                  <GameIcon name={a.icon} size={48} style={st.tocIcon} />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <div style={{ ...st.pageRight, ...st.tocPage }}>
+          <button style={{ ...st.tag, ...st.tagBtn, alignSelf: 'flex-end' }} onClick={() => { sfx.cancel(); navigate('/') }}>ホーム</button>
+          <div style={st.tocLabel}>登った山</div>
+          <div style={st.tocList}>
+            {ALBUM_MOUNTAINS.map((m, i) => {
+              const released = mountains[m.id]?.unlocked
+              const climbed = mountains[m.id]?.summitedCourses?.length > 0
+              return (
+                <button key={m.id} style={{ ...st.tocItem, ...(released ? null : st.tocLocked) }}
+                  onClick={() => (released ? open({ name: 'mountain', id: m.id, tab: 'course' }) : sfx.miss())}>
+                  <span style={st.tocNo}>{i + 1}座．</span>
+                  <span style={st.tocName}>{released ? m.name : '？？？'}</span>
+                  {climbed && <GameIcon name="flagGoal" size={28} style={st.tocFlag} />}
+                </button>
+              )
+            })}
+          </div>
+          <button style={st.mapBtn} onClick={() => open({ name: 'map' })}>
+            <GameIcon name="mappin" size={40} style={{ width: 'clamp(24px, 8cqh, 44px)', height: 'clamp(24px, 8cqh, 44px)' }} />
+            <span style={st.mapLabel}>マップ</span>
           </button>
-        ))}
+        </div>
+      </Book>
+    )
+  }
+
+  return (
+    <div style={st.root}>
+      {body}
+      {detail && <DetailSpread detail={detail} onClose={() => { sfx.cancel(); setDetail(null) }} />}
+    </div>
+  )
+}
+
+/* 本の見開き（背景の本の絵に合わせて、左右のページの位置に中身を置く） */
+function Book({ children }) {
+  return (
+    <div style={st.bookStage}>
+      <div style={st.book}>{children}</div>
+    </div>
+  )
+}
+
+/* 古い紙のページ（一覧・マップ） */
+function Paper({ title, tabs, onClose, children }) {
+  return (
+    <div style={st.paper}>
+      <div style={st.paperHead}>
+        <div style={st.labelFrame}>{title}</div>
+        {tabs}
       </div>
+      <div style={st.paperBody}>{children}</div>
+      <div style={st.paperFoot}><CloseButton onClick={onClose} /></div>
+    </div>
+  )
+}
 
-      {/* 図鑑タブ */}
-      {tab === '山探索' && (
-        <Encyclopedia
-          discovered={discovered}
-          encArea={encArea} setEncArea={setEncArea}
-          detail={detail} setDetail={setDetail}
-        />
+/* ───────── 山探索のエリア ───────── */
+function AreaPage({ view, setView, discovered, onDetail, onClose }) {
+  const area = AREA_BY_ID[view.area]
+  const list = exploreSpecies(view.area)
+  const pages = Math.max(1, Math.ceil(list.length / PER_PAGE))
+  const page = Math.min(view.page, pages - 1)
+  const items = list.slice(page * PER_PAGE, (page + 1) * PER_PAGE)
+  const got = list.filter((e) => discovered.includes(e.id)).length
+
+  const tabs = (
+    <div style={st.tabs}>
+      {EXPLORE_AREAS.filter((a) => a.id !== view.area).map((a) => (
+        <button key={a.id} style={st.tab} onClick={() => { sfx.tap(); setView({ name: 'area', area: a.id, page: 0 }) }}>
+          {a.label}
+        </button>
+      ))}
+      <span style={st.count}>{got} / {list.length}</span>
+    </div>
+  )
+  return (
+    <Paper title={area.label} tabs={tabs} onClose={onClose}>
+      <div style={st.grid}>
+        {items.map((e) => {
+          const found = discovered.includes(e.id)
+          return (
+            <button key={e.id} style={{ ...st.cell, ...(found ? null : st.cellLocked) }}
+              onClick={() => { if (found) { sfx.tap(); onDetail({ type: 'species', sp: e }) } else sfx.miss() }}>
+              {found ? (
+                <>
+                  <Specimen sp={e} size={64} style={st.cellPic} />
+                  <span style={st.cellName}>{e.name}</span>
+                </>
+              ) : <GameIcon name="lock" size={40} style={st.lock} />}
+            </button>
+          )
+        })}
+      </div>
+      {pages > 1 && (
+        <div style={st.pager}>
+          {page > 0 && <button style={st.pageBtn} onClick={() => { sfx.tap(); setView({ ...view, page: page - 1 }) }}>‹ 前のページ</button>}
+          <span style={st.pageNo}>{page + 1} / {pages}</span>
+          {page < pages - 1 && <button style={st.pageBtn} onClick={() => { sfx.tap(); setView({ ...view, page: page + 1 }) }}>次のページ ›</button>}
+        </div>
       )}
+    </Paper>
+  )
+}
 
-      {/* 山神タブ */}
-      {tab === '山神' && (
-        <div style={styles.list}>
-          {Object.values(charactersData).map((char) => {
-            const mt = mountains[char.id]
-            const unlocked = char.id === 'senpai' || mt?.unlocked
-            const accessed = char.id === 'senpai' || mt?.firstAccessed
+/* ───────── 登った山 ───────── */
+function MountainPage({ view, setView, discovered, mountains, firstClimb, onDetail, onClose }) {
+  const m = ALBUM_MOUNTAINS.find((x) => x.id === view.id)
+  const summited = mountains[m.id]?.summitedCourses || []
+  const courses = mountainCourses(m.id)
+  const items = limitedSpecies(m.id)
+
+  const tabs = (
+    <div style={st.tabs}>
+      {[['course', 'コース情報'], ['limited', '限定アイテム']].map(([id, label]) => (
+        <button key={id} style={{ ...st.tab, ...(view.tab === id ? st.tabOn : null) }}
+          onClick={() => { sfx.tap(); setView({ ...view, tab: id }) }}>{label}</button>
+      ))}
+    </div>
+  )
+  return (
+    <Paper title={m.name} tabs={tabs} onClose={onClose}>
+      <div style={st.mountainBody}>
+        <button style={st.godBtn} onClick={() => { sfx.tap(); onDetail({ type: 'god', mountainId: m.id }) }}>
+          <img src={GOD_IMG[m.id].mini} alt="" style={st.godMini} draggable={false} />
+          <span style={st.godAsk}>どんな神様？</span>
+        </button>
+        <div style={st.mountainScroll}>
+        <div style={st.mountainGrid}>
+          {view.tab === 'course' && courses.map((c) => {
+            const done = summited.includes(c.id)
+            const date = done && firstClimb(c.id)
             return (
-              <div key={char.id} style={{ ...styles.charCard, opacity: unlocked ? 1 : 0.4 }}>
-                <div style={{ ...styles.charIcon, background: accessed ? '#27ae60' : '#555' }}>
-                  <GameIcon name={accessed ? CHAR_EMOJIS[char.id] || 'user' : 'lock'} size={34} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={styles.charName}>{accessed ? char.name : '？？？'}</p>
-                  <p style={styles.charSub}>{accessed ? char.intro?.[0] : '未解禁'}</p>
-                  {mt && accessed && (
-                    <p style={{ color: '#27ae60', fontSize: 11, marginTop: 2 }}>
-                      登頂済：{mt.summitedCourses.length}コース
-                    </p>
-                  )}
-                </div>
-              </div>
+              <button key={c.id} style={{ ...st.cell, ...(done ? null : st.cellLocked) }}
+                onClick={() => { if (done) { sfx.tap(); onDetail({ type: 'course', course: c, date }) } else sfx.miss() }}>
+                {done ? (
+                  <>
+                    <GameIcon name="flagGoal" size={40} style={st.flag} />
+                    <span style={st.courseName}>{c.name}</span>
+                    {date && <span style={st.courseDate}>{dateText(date)}</span>}
+                  </>
+                ) : <GameIcon name="lock" size={40} style={st.lock} />}
+              </button>
+            )
+          })}
+          {view.tab === 'limited' && items.map((e) => {
+            const found = discovered.includes(e.id)
+            return (
+              <button key={e.id} style={{ ...st.cell, ...(found ? null : st.cellLocked) }}
+                onClick={() => { if (found) { sfx.tap(); onDetail({ type: 'species', sp: e }) } else sfx.miss() }}>
+                {found ? (
+                  <>
+                    <Specimen sp={e} size={64} style={st.cellPic} />
+                    <span style={st.cellName}>{e.name}</span>
+                  </>
+                ) : <GameIcon name="lock" size={40} style={st.lock} />}
+              </button>
             )
           })}
         </div>
-      )}
-
-      {/* 登頂記録タブ */}
-      {tab === '登頂記録' && (
-        <div style={styles.list}>
-          {album.length === 0 && (
-            <div style={styles.empty}>
-              <GameIcon name="mountain" size={52} />
-              <p>まだ登頂記録がないよ！</p>
-              <p style={{ fontSize: 12, color: '#888' }}>登山に挑戦してみよう！</p>
-            </div>
-          )}
-          {[...album].reverse().map((entry, i) => (
-            <div key={i} style={styles.albumCard}>
-              <div style={styles.albumTop}>
-                <span style={{ color: '#aaa', fontSize: 12 }}>{entry.mountainName}</span>
-                <span style={{ color: '#27ae60', fontSize: 12 }}>登頂済</span>
-              </div>
-              <p style={styles.courseName}>{entry.courseName}</p>
-              <p style={{ color: '#888', fontSize: 11 }}>{new Date(entry.date).toLocaleDateString('ja-JP')}</p>
-            </div>
-          ))}
         </div>
+      </div>
+      {view.tab === 'limited' && (
+        <p style={st.note}>限定アイテムは、この山の登山でまれに見つかるよ</p>
       )}
-
-      {/* 所持装備タブ */}
-      {tab === '所持装備' && (
-        <div style={styles.list}>
-          {inventory.length === 0 ? (
-            <div style={styles.empty}>
-              <GameIcon name="backpack" size={52} />
-              <p>まだ装備がないよ！</p>
-              <p style={{ fontSize: 12, color: '#888' }}>ショップで揃えよう！</p>
-            </div>
-          ) : (
-            inventory.map((item, i) => (
-              <div key={i} style={styles.itemRow}>
-                <GameIcon name={item.icon} size={30} />
-                <div style={{ flex: 1 }}>
-                  <p style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>{item.name}</p>
-                  <p style={{ color: '#aaa', fontSize: 11 }}>{item.category}</p>
-                </div>
-                <GameIcon name="check" size={18} />
-              </div>
-            ))
-          )}
-        </div>
-      )}
-    </div>
+    </Paper>
   )
 }
 
-
-/* ─────────────── 図鑑 ─────────────── */
-const ENC_AREAS = [
-  { id: 'rock', name: '岩場', sub: '鉱物', icon: 'gem', color: '#7c3aed' },
-  { id: 'trail', name: '登山道', sub: '動物', icon: 'paw', color: '#059669' },
-  { id: 'meadow', name: '草原', sub: '植物', icon: 'blossom', color: '#db2777' },
-  { id: 'bounty', name: '山の恵み', sub: '山菜・ジビエ', icon: 'onigiri', color: '#d97706' },
-]
-
-function Encyclopedia({ discovered, encArea, setEncArea, detail, setDetail }) {
-  const list = encyclopedia.filter((e) => e.area === encArea)
-  const got = list.filter((e) => discovered.includes(e.id)).length
-  const totalAll = encyclopedia.length
-  const gotAll = discovered.length
-
+/* ───────── 各アイテムのページ（アルバム風の見開き） ───────── */
+function DetailSpread({ detail, onClose }) {
+  let left, right
+  if (detail.type === 'species') {
+    const sp = detail.sp
+    left = (
+      <>
+        <div style={st.photo}>
+          <span style={st.photoPaper}><Specimen sp={sp} size={200} style={st.photoPic} /></span>
+        </div>
+        <div style={st.photoCaption}>{sp.name}{sp.reading ? `／${sp.reading}` : ''}</div>
+        <div style={st.metaRow}>
+          <span style={st.meta}>{sp.areaName}</span>
+          {sp.mountain && <span style={st.meta}>限定アイテム</span>}
+          {sp.course && <span style={st.meta}>{sp.course}</span>}
+        </div>
+      </>
+    )
+    right = <p style={st.desc}>{sp.desc}</p>
+  } else if (detail.type === 'course') {
+    const c = detail.course
+    left = (
+      <>
+        <div style={{ ...st.photo, aspectRatio: '1.3 / 1' }}>
+          <span style={st.photoPaper}><img src={ROUTE.map} alt="" style={st.photoImg} draggable={false} /></span>
+        </div>
+        <div style={st.photoCaption}>{`${c.mountainName} ${c.name}`}</div>
+        {detail.date && <div style={st.metaRow}><span style={st.meta}>はじめて登った日 {dateText(detail.date)}</span></div>}
+      </>
+    )
+    right = (
+      <div>
+        <div style={st.courseTitle}>{c.name}</div>
+        <InfoRow label="むずかしさ" value={'★'.repeat(c.difficulty) + '☆'.repeat(Math.max(0, 3 - c.difficulty))} />
+        <InfoRow label="きょり" value={`${c.distance}km`} />
+        <InfoRow label="時間" value={c.duration} />
+        <InfoRow label="消費カロリー" value={`約${c.calories}kcal`} />
+        <p style={{ ...st.desc, marginTop: 10 }}>{c.description}</p>
+      </div>
+    )
+  } else {
+    const ch = characters[detail.mountainId]
+    left = <img src={GOD_IMG[detail.mountainId].full} alt="" style={st.godFull} draggable={false} />
+    right = (
+      <div>
+        <div style={st.courseTitle}>どんな神様？</div>
+        <div style={st.godName}>{ch.callName}（{ch.name}）</div>
+        <p style={st.desc}>{ch.intro.join('\n')}</p>
+        <p style={st.pending}>くわしい紹介は準備中です</p>
+      </div>
+    )
+  }
   return (
-    <div style={styles.encWrap}>
-      {/* 全体のコンプ率 */}
-      <div style={styles.encHeader}>
-        <div>
-          <div style={styles.encHeaderLabel}>コンプリート率</div>
-          <div style={styles.encHeaderValue}>
-            {Math.round((gotAll / totalAll) * 100)}<span style={{ fontSize: 13 }}>%</span>
-            <span style={styles.encHeaderSub}> {gotAll} / {totalAll} 種</span>
-          </div>
-        </div>
-        <div style={styles.encHeaderBarBg}>
-          <div style={{ ...styles.encHeaderBarFill, width: `${(gotAll / totalAll) * 100}%` }} />
-        </div>
-      </div>
-
-      {/* エリア切替 */}
-      <div style={styles.encTabs}>
-        {ENC_AREAS.map((a) => {
-          const on = encArea === a.id
-          return (
-            <button key={a.id}
-              style={{
-                ...styles.encTab,
-                background: on ? `${a.color}33` : 'rgba(255,255,255,0.05)',
-                borderColor: on ? `${a.color}aa` : 'rgba(255,255,255,0.1)',
-              }}
-              onClick={() => { sfx.tap(); setEncArea(a.id) }}>
-              <GameIcon name={a.icon} size={22} />
-              <span style={{ color: on ? '#fff' : '#aab', fontSize: 11, fontWeight: 700 }}>{a.name}</span>
-              <span style={{ color: '#8a90a8', fontSize: 9 }}>{a.sub}</span>
-            </button>
-          )
-        })}
-      </div>
-
-      <div style={styles.encCount}>このエリア {got} / {list.length} 種</div>
-
-      {/* グリッド */}
-      <div style={styles.encGrid}>
-        {list.map((e) => {
-          const found = discovered.includes(e.id)
-          return (
-            <button key={e.id}
-              style={{ ...styles.encCell, opacity: found ? 1 : 0.5 }}
-              onClick={() => { if (found) { sfx.tap(); setDetail(e) } else sfx.miss() }}>
-              {found
-                ? <Specimen sp={e} size={34} />
-                : <GameIcon name="lock" size={22} style={{ filter: 'grayscale(1)' }} />}
-              <span style={styles.encCellName}>{found ? e.name : '???'}</span>
-              {e.mountain && found && <span style={styles.encCellTag}>固有</span>}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* 詳細 */}
-      {detail && (
-        <button style={styles.encDetailOverlay} onClick={() => setDetail(null)}>
-          <div style={styles.encDetailCard} onClick={(ev) => ev.stopPropagation()}>
-            <div style={{ margin: '4px 0 8px' }}><Specimen sp={detail} size={68} style={{ margin: '0 auto' }} /></div>
-            <h3 style={styles.encDetailName}>{detail.name}</h3>
-            {detail.reading && <p style={styles.encDetailReading}>{detail.reading}</p>}
-            <div style={styles.encDetailMeta}>
-              <span style={styles.encDetailChip}>{detail.areaName}</span>
-              {detail.mountain && <span style={styles.encDetailChip}>固有種</span>}
-              {detail.course && <span style={styles.encDetailChip}>{detail.course}</span>}
-            </div>
-            <p style={styles.encDetailDesc}>{detail.desc}</p>
-            <button style={styles.encDetailClose} onClick={() => setDetail(null)}>閉じる</button>
-          </div>
-        </button>
-      )}
+    <div style={st.detailOverlay}>
+      <Book>
+        <div style={{ ...st.pageLeft, ...st.detailLeft }}>{left}</div>
+        <div style={{ ...st.pageRight, ...st.detailRight }}>{right}</div>
+      </Book>
+      <div style={st.detailClose}><CloseButton onClick={onClose} /></div>
     </div>
   )
 }
 
-const styles = {
-  shareBtn: {
-    width: '100%', padding: '11px 0', marginBottom: 4,
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-    background: 'rgba(255,255,255,0.08)', color: '#dde',
-    border: '1px solid rgba(255,255,255,0.22)', borderRadius: 24,
-    fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
-  },
+function InfoRow({ label, value }) {
+  return (
+    <div style={st.infoRow}>
+      <span style={st.infoLabel}>{label}</span>
+      <span style={st.infoValue}>{value}</span>
+    </div>
+  )
+}
 
-  /* ── 図鑑 ── */
-  encWrap: { width: 'calc(100% - 32px)', maxWidth: 380, paddingBottom: 20 },
-  encHeader: {
-    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(245,200,66,0.25)',
-    borderRadius: 14, padding: '12px 14px', marginBottom: 12,
-  },
-  encHeaderLabel: { color: '#8a90a8', fontSize: 10, fontWeight: 700 },
-  encHeaderValue: { color: '#f5c842', fontSize: 24, fontWeight: 900, lineHeight: 1.2 },
-  encHeaderSub: { color: '#aab', fontSize: 11, fontWeight: 700, marginLeft: 6 },
-  encHeaderBarBg: { height: 6, background: 'rgba(255,255,255,0.12)', borderRadius: 99, overflow: 'hidden', marginTop: 8 },
-  encHeaderBarFill: { height: '100%', background: 'linear-gradient(90deg,#f5c842,#ffe98a)', borderRadius: 99, transition: 'width 0.6s ease' },
+// 本の絵（1920x1072）の中のページの位置（％）
+const PAGE = { top: 13, bottom: 14, leftL: 12.5, leftR: 52, width: 36 }
 
-  encTabs: { display: 'flex', gap: 8, marginBottom: 10 },
-  encTab: {
-    flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-    border: '1.5px solid', borderRadius: 12, padding: '9px 4px', cursor: 'pointer',
-  },
-  encCount: { color: '#aab', fontSize: 11, marginBottom: 8, textAlign: 'right' },
+const st = {
+  root: { position: 'relative', height: '100cqh', overflow: 'hidden', fontFamily: 'var(--font-album)', color: 'var(--brown-text)' },
 
-  encGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 7 },
-  encCell: {
-    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 12, padding: '10px 4px 8px', cursor: 'pointer',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-    position: 'relative', minHeight: 76,
-  },
-  encCellName: {
-    color: '#dde', fontSize: 8.5, fontWeight: 700, lineHeight: 1.25,
-    textAlign: 'center', wordBreak: 'break-all',
-    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-  },
-  encCellTag: {
-    position: 'absolute', top: 3, right: 3,
-    background: 'rgba(245,200,66,0.9)', color: '#1a0e00',
-    fontSize: 7, fontWeight: 900, borderRadius: 4, padding: '1px 3px',
-  },
-
-  encDetailOverlay: {
-    position: 'fixed', inset: 0, zIndex: 500,
-    background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+  bookStage: {
+    position: 'absolute', inset: 0,
+    background: `url(${BG.albumBook}) center / cover no-repeat`,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    border: 'none', cursor: 'pointer', padding: 20,
   },
-  encDetailCard: {
-    background: 'linear-gradient(180deg,#1e1e3c 0%,#12122a 100%)',
-    border: '2px solid rgba(245,200,66,0.5)',
-    borderRadius: 20, padding: '20px 20px 16px',
-    width: '100%', maxWidth: 330, maxHeight: '78vh', overflowY: 'auto',
-    textAlign: 'center', cursor: 'default',
-    animation: 'popIn 0.35s cubic-bezier(.22,1,.36,1)',
+  book: {
+    position: 'relative', height: 'min(100cqh, calc(100cqw * 1072 / 1920))', aspectRatio: '1920 / 1072',
+    background: `url(${BG.albumBook}) center / 100% 100% no-repeat`,
+    containerType: 'size',
   },
-  encDetailName: { color: '#fff', fontSize: 19, fontWeight: 900, margin: 0 },
-  encDetailReading: { color: '#f5c842', fontSize: 12, margin: '3px 0 0' },
-  encDetailMeta: { display: 'flex', gap: 5, justifyContent: 'center', flexWrap: 'wrap', margin: '10px 0' },
-  encDetailChip: {
-    background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.16)',
-    borderRadius: 8, padding: '3px 9px', color: '#ccd', fontSize: 10, fontWeight: 700,
-  },
-  encDetailDesc: {
-    color: '#ccd', fontSize: 12, lineHeight: 1.85, whiteSpace: 'pre-wrap',
-    textAlign: 'left', margin: '0 0 14px',
-  },
-  encDetailClose: {
-    width: '100%', background: 'none', border: '1px solid rgba(255,255,255,0.2)',
-    borderRadius: 12, padding: '10px', color: '#aab', fontSize: 13, cursor: 'pointer',
-  },
+  pageLeft: { position: 'absolute', top: `${PAGE.top}%`, bottom: `${PAGE.bottom}%`, left: `${PAGE.leftL}%`, width: `${PAGE.width}%` },
+  pageRight: { position: 'absolute', top: `${PAGE.top}%`, bottom: `${PAGE.bottom}%`, left: `${PAGE.leftR}%`, width: `${PAGE.width}%` },
 
-  container: {
-    minHeight: '100vh',
-    backgroundImage: `linear-gradient(rgba(8,10,24,0.74), rgba(8,10,24,0.86)), url(${BG.intro})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundAttachment: 'fixed',
-    paddingBottom: 80,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
+  tocPage: { display: 'flex', flexDirection: 'column', alignItems: 'center' },
+  tag: {
+    alignSelf: 'flex-start',
+    border: '2px solid #8a6a45', borderRadius: 4, padding: '1px 14px',
+    fontSize: 'clamp(11px, 3.6cqh, 20px)', fontWeight: 700, letterSpacing: 4, color: '#6b4f33',
+    background: 'rgba(255,255,255,0.35)',
   },
-  title: { color: '#f5c842', fontSize: 12, fontWeight: 700, letterSpacing: 3, padding: '18px 0 10px' },
-  tabs: {
-    display: 'flex',
-    width: '100%',
-    borderBottom: '1px solid rgba(255,255,255,0.1)',
-    marginBottom: 12,
+  tagBtn: { cursor: 'pointer', fontFamily: 'inherit' },
+  tocLabel: {
+    marginTop: '3cqh',
+    padding: '0.5em 1.6em',
+    background: `url(${UI.labelFrame}) center / 100% 100% no-repeat`,
+    fontSize: 'clamp(14px, 5.6cqh, 30px)', fontWeight: 700, letterSpacing: 4, color: '#5a4030',
   },
-  tabBtn: {
-    flex: 1,
-    padding: '10px 4px',
-    background: 'none',
-    border: 'none',
-    fontSize: 13,
-    cursor: 'pointer',
-    transition: 'color 0.2s',
+  tocList: { marginTop: '3cqh', width: '86%', display: 'flex', flexDirection: 'column', gap: '2.4cqh' },
+  tocItem: {
+    position: 'relative', display: 'flex', alignItems: 'baseline', gap: 6,
+    background: 'none', border: 'none', borderBottom: '2px solid rgba(110,80,50,0.55)',
+    padding: '0 0 2px', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--brown-text)', textAlign: 'left',
   },
-  list: {
-    width: 'calc(100% - 32px)',
-    maxWidth: 380,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 10,
+  tocLocked: { opacity: 0.5 },
+  tocNo: { fontSize: 'clamp(12px, 4.2cqh, 24px)', fontWeight: 700 },
+  tocName: { flex: 1, fontSize: 'clamp(12px, 4.5cqh, 26px)', fontWeight: 700, whiteSpace: 'nowrap' },
+  tocCount: { fontSize: 'clamp(9px, 3cqh, 18px)', color: '#8b7a66', marginRight: 'clamp(28px, 10cqh, 66px)', whiteSpace: 'nowrap' },
+  tocIcon: { position: 'absolute', right: 0, bottom: 2, width: 'clamp(30px, 11cqh, 64px)', height: 'clamp(30px, 11cqh, 64px)' },
+  tocFlag: { width: 'clamp(18px, 6cqh, 34px)', height: 'clamp(18px, 6cqh, 34px)', alignSelf: 'center' },
+  mapBtn: {
+    marginTop: 'auto', alignSelf: 'flex-end',
+    display: 'flex', alignItems: 'center', gap: 4,
+    background: 'rgba(255,255,255,0.4)', border: '2px solid #8a6a45', borderRadius: 10,
+    padding: '2px 12px 2px 6px', cursor: 'pointer', fontFamily: 'inherit',
   },
-  charCard: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 14,
-    background: 'rgba(255,255,255,0.07)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 14,
-    padding: '14px 16px',
+  mapLabel: { fontSize: 'clamp(12px, 4.4cqh, 24px)', fontWeight: 700, color: 'var(--brown-text)' },
+
+  paper: {
+    position: 'absolute', inset: 0,
+    background: `url(${BG.albumPaper}) center / cover no-repeat`,
+    display: 'flex', flexDirection: 'column',
+    padding: '2cqh 3cqw 1.5cqh',
   },
-  charIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 24,
-    flexShrink: 0,
+  paperHead: { display: 'flex', alignItems: 'center', gap: '2cqw', flexShrink: 0 },
+  labelFrame: {
+    padding: '0.5em 2em',
+    background: `url(${UI.labelFrame}) center / 100% 100% no-repeat`,
+    fontSize: FS(4.6, 14, 26), fontWeight: 700, letterSpacing: 2, color: '#5a4030', whiteSpace: 'nowrap',
   },
-  charName: { color: '#fff', fontSize: 16, fontWeight: 'bold', margin: 0 },
-  charSub: { color: '#aaa', fontSize: 12, margin: '2px 0 0' },
-  albumCard: {
-    background: 'rgba(255,255,255,0.07)',
-    border: '1px solid rgba(39,174,96,0.3)',
-    borderRadius: 12,
-    padding: '12px 14px',
+  tabs: { flex: 1, display: 'flex', alignItems: 'center', gap: '1.6cqw' },
+  tab: {
+    background: 'none', border: 'none', borderBottom: '3px solid rgba(110,80,50,0.4)',
+    padding: '2px 10px', cursor: 'pointer', fontFamily: 'inherit',
+    fontSize: FS(3.8, 12, 20), fontWeight: 700, color: '#7a6450',
   },
-  albumTop: { display: 'flex', justifyContent: 'space-between', marginBottom: 4 },
-  courseName: { color: '#fff', fontSize: 15, fontWeight: 'bold', margin: 0 },
-  itemRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    background: 'rgba(255,255,255,0.07)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 12,
-    padding: '10px 14px',
+  tabOn: { color: '#3d5a1e', borderBottom: '3px solid #6b8e3a' },
+  count: { marginLeft: 'auto', fontSize: FS(3.4, 11, 18), color: '#8b7a66' },
+  paperBody: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', paddingTop: '2cqh' },
+  paperFoot: { display: 'flex', justifyContent: 'center', flexShrink: 0, paddingTop: '1cqh' },
+
+  // 8列×3段のマスが、上下の帯を除いた高さに収まる幅
+  grid: {
+    display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 'clamp(5px, 1.4cqh, 12px)',
+    width: 'min(100%, calc((100cqh - 30cqh) * 8 / 3))', margin: '0 auto', alignContent: 'start',
   },
-  empty: {
-    textAlign: 'center',
-    padding: 40,
-    color: '#aaa',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 8,
+  cell: {
+    position: 'relative', aspectRatio: '1 / 1',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
+    background: 'rgba(250,244,232,0.85)', border: '2px solid rgba(160,130,95,0.55)', borderRadius: 6,
+    boxShadow: '0 2px 4px rgba(90,60,30,0.2)', cursor: 'pointer', fontFamily: 'inherit', padding: 3,
+    overflow: 'hidden',
   },
+  cellLocked: { background: 'rgba(230,220,200,0.7)', cursor: 'default' },
+  cellPic: { width: '64%', height: '64%' },
+  cellName: { fontSize: FS(2.5, 8.5, 13), fontWeight: 700, lineHeight: 1.15, textAlign: 'center', color: 'var(--brown-text)' },
+  lock: { width: '46%', height: '46%', filter: 'grayscale(1)', opacity: 0.55 },
+  flag: { width: '40%', height: '40%' },
+  courseName: { fontSize: FS(2.6, 9, 14), fontWeight: 700, lineHeight: 1.2, textAlign: 'center', color: 'var(--brown-text)' },
+  courseDate: { fontSize: FS(2, 7.5, 11), color: '#8b7a66' },
+  pager: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 14, marginTop: 'auto', paddingTop: 4 },
+  pageBtn: {
+    background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+    fontSize: FS(3.6, 12, 20), fontWeight: 700, color: '#5a4030',
+  },
+  pageNo: { fontSize: FS(3, 11, 16), color: '#8b7a66' },
+
+  mountainBody: { flex: 1, minHeight: 0, display: 'flex', gap: '2cqw', alignItems: 'flex-start' },
+  // 限定アイテムが多い山もあるので、マスの欄だけ縦にスクロールする
+  mountainScroll: { flex: 1, alignSelf: 'stretch', minHeight: 0, overflowY: 'auto', padding: '2px 4px 6px 2px' },
+  mountainGrid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 'clamp(5px, 1.4cqh, 12px)' },
+  godBtn: {
+    flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+    display: 'flex', flexDirection: 'column', alignItems: 'center',
+  },
+  godMini: { height: 'clamp(90px, 46cqh, 300px)', width: 'auto', filter: 'drop-shadow(0 4px 6px rgba(60,40,20,0.3))' },
+  godAsk: { fontSize: FS(3.6, 12, 20), fontWeight: 700, color: '#5a4030', transform: 'rotate(-6deg)', marginTop: -6 },
+  note: { fontSize: FS(3, 10.5, 16), color: '#8b7a66', textAlign: 'center', margin: '4px 0 0' },
+
+  mapArea: { flex: 1, minHeight: 0 },
+
+  detailOverlay: { position: 'absolute', inset: 0, zIndex: 50, animation: 'overlayFade 0.25s ease' },
+  detailClose: { position: 'absolute', left: 0, right: 0, bottom: '1.5cqh', display: 'flex', justifyContent: 'center', zIndex: 2 },
+  detailLeft: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2cqh' },
+  detailRight: { overflowY: 'auto', paddingRight: 6 },
+  photo: {
+    position: 'relative', height: '62%', aspectRatio: '444 / 512',
+    background: `url(${UI.photoFrame}) center / 100% 100% no-repeat`,
+    filter: 'drop-shadow(0 4px 6px rgba(60,40,20,0.3))', transform: 'rotate(-3deg)',
+  },
+  photoPaper: {
+    position: 'absolute', left: '11%', right: '11%', top: '8%', bottom: '21%',
+    background: 'linear-gradient(160deg, #fffdf6, #efe6d2)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+  },
+  photoPic: { width: '86%', height: '86%' },
+  photoImg: { width: '100%', height: '100%', objectFit: 'cover' },
+  photoCaption: { fontSize: 'clamp(13px, 5.4cqh, 30px)', fontWeight: 700, textAlign: 'center', color: '#3e3028' },
+  metaRow: { display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' },
+  meta: {
+    fontSize: 'clamp(9px, 3cqh, 15px)', border: '1.5px solid rgba(110,80,50,0.5)', borderRadius: 99,
+    padding: '0 10px', color: '#6b4f33',
+  },
+  desc: {
+    fontSize: 'clamp(12px, 4.4cqh, 24px)', lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0,
+    color: '#3e3028', fontWeight: 500,
+  },
+  courseTitle: { fontSize: 'clamp(15px, 6cqh, 32px)', fontWeight: 700, color: '#3e3028', marginBottom: '2cqh' },
+  infoRow: { display: 'flex', gap: 12, borderBottom: '1.5px dashed rgba(110,80,50,0.35)', padding: '0.8cqh 0' },
+  infoLabel: { width: '38%', fontSize: 'clamp(11px, 3.8cqh, 20px)', color: '#8b7a66' },
+  infoValue: { fontSize: 'clamp(12px, 4.2cqh, 22px)', fontWeight: 700, color: '#3e3028' },
+  godFull: { height: '100%', width: 'auto', filter: 'drop-shadow(0 6px 10px rgba(60,40,20,0.3))' },
+  godName: { fontSize: 'clamp(12px, 4.4cqh, 24px)', fontWeight: 700, marginBottom: '2cqh', color: '#6b4f33' },
+  pending: { fontSize: 'clamp(10px, 3.2cqh, 16px)', color: '#a8977f', marginTop: '2cqh' },
 }

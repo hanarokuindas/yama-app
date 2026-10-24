@@ -9,6 +9,7 @@ import { useGameStore } from '../stores/gameStore'
 import { senpaiPose } from '../assets/characters/senpai'
 import { sfx } from '../utils/sound'
 import encyclopedia from '../data/encyclopedia.json'
+import { albumProgress, exploreSpecies } from '../data/album'
 
 const TABS = ['遊び方', 'アルバムの手引き']
 
@@ -20,7 +21,7 @@ const FLOW = [
   },
   {
     icon: 'search', color: '#7c3aed', title: '山を探索してポイントを稼ぐ',
-    body: '上に出る「ターゲット」の標本を3つずつそろえるとクリア。そろえたターゲットはアルバムに載って、ポイントがもらえる。\n上に重なっている標本は取れないし、トレイ（7枠）があふれたら失敗。ポイントは装備や整備に使うよ。',
+    body: '同じ山の仲間を3つそろえると消える。Lv1 はぜんぶ消せばクリア、Lv2 からは上に出る「お題」をそろえるとクリア。\n上に重なっているものは取れないし、右の写真フレーム（7枠）があふれたら失敗。そろえた仲間はアルバムに載って（最初の2種は1回、そのあとは3回）、ポイントは装備や整備に使うよ。',
   },
   {
     icon: 'cart', color: '#1d4ed8', title: '装備をそろえる',
@@ -42,10 +43,9 @@ const FLOW = [
 
 /* ───────── アルバムの手引き ───────── */
 const AREA_GUIDE = [
-  { id: 'rock', name: '岩場', sub: '鉱物・化石', icon: 'gem', color: '#7c3aed' },
-  { id: 'trail', name: '登山道', sub: '動物・鳥・昆虫', icon: 'paw', color: '#059669' },
-  { id: 'meadow', name: '草原', sub: '植物・キノコ', icon: 'blossom', color: '#db2777' },
-  { id: 'bounty', name: '山の恵み', sub: '山菜・ジビエ', icon: 'onigiri', color: '#d97706' },
+  { id: 'rock', name: '岩場', sub: '鉱物・化石', icon: 'area_rock', color: '#7c3aed' },
+  { id: 'trail', name: '登山道', sub: '動物・鳥・昆虫', icon: 'area_trees', color: '#059669' },
+  { id: 'meadow', name: '草原', sub: '植物・キノコ', icon: 'area_flowers', color: '#db2777' },
 ]
 
 export default function Guide() {
@@ -54,8 +54,7 @@ export default function Guide() {
   const replayTutorial = useGameStore((s) => s.replayTutorial)
   const [tab, setTab] = useState('遊び方')
 
-  const total = encyclopedia.length
-  const got = discovered.length
+  const { got, total } = albumProgress(discovered)
   const newest = encyclopedia.filter((e) => discovered.includes(e.id)).slice(-6)
 
   return (
@@ -124,11 +123,11 @@ export default function Guide() {
                 </div>
                 <p style={styles.lead}>
                   アルバムは<b>山探索</b>で埋まっていくよ。
-                  ターゲットの標本を3つそろえるとアルバムに載って、その種の解説が読めるようになる。
+                  同じ仲間を3つそろえるとアルバムに載って、その種の解説が読めるようになる（最初の2種は1回、そのあとは合わせて3回）。
                 </p>
                 <div style={styles.areaRow}>
                   {AREA_GUIDE.map((a) => {
-                    const pool = encyclopedia.filter((e) => e.area === a.id)
+                    const pool = exploreSpecies(a.id)
                     const n = pool.filter((e) => discovered.includes(e.id)).length
                     return (
                       <div key={a.id} style={{ ...ui.bubble, ...styles.areaCard, border: `2px solid ${a.color}88` }}>
@@ -143,11 +142,10 @@ export default function Guide() {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ ...ui.bubble, ...styles.tipCard }}>
-                  <div style={styles.tipTitle}>固有種の集め方</div>
+                  <div style={styles.tipTitle}>限定アイテムの集め方</div>
                   <p style={styles.tipBody}>
-                    山ごとにしかいない種が全部で118種ある。
-                    <b>登山でその山を一度訪れる</b>と、
-                    山探索の行き先にその山が出てきて、固有種を探せるようになるよ。
+                    山ごとにしかいない「限定アイテム」は、<b>その山の登山</b>でまれに見つかるよ。
+                    アルバムの「登った山」から、山ごとに見られるよ。
                   </p>
                 </div>
                 {newest.length > 0 && (

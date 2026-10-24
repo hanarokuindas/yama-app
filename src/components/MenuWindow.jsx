@@ -6,7 +6,7 @@ import { Window, Tile } from './ui'
 import { ui, FS } from './uiStyles'
 import { STAT } from '../data/stats'
 import { MOUNTAINS } from '../data/mountains'
-import encyclopedia from '../data/encyclopedia.json'
+import { albumProgress } from '../data/album'
 import { buildRecordText, shareText } from '../utils/share'
 import { sfx } from '../utils/sound'
 
@@ -183,13 +183,13 @@ function SnsPage() {
   const climbedList = MOUNTAINS.filter((m) => m.id !== 'satoyama' && mountains[m.id]?.summitedCourses?.length)
   const climbed = climbedList.map((m) => m.name)
   const courseCount = climbedList.reduce((n, m) => n + mountains[m.id].summitedCourses.length, 0)
-  const rate = Math.round((discovered.length / encyclopedia.length) * 100)
+  const { got, total: totalSpecimens, rate } = albumProgress(discovered)
 
   const share = async () => {
     sfx.tap()
     const text = buildRecordText({
       playerName: player.name, level, total, climbed, courseCount,
-      discovered: discovered.length, totalSpecimens: encyclopedia.length,
+      discovered: got, totalSpecimens,
     })
     const r = await shareText('山アプリ 山の記録', text)
     setMsg(
@@ -207,7 +207,7 @@ function SnsPage() {
         <div style={st.recordTitle}>{player.name || 'やまびこ'}さんの山の記録</div>
         <RecordRow icon="flame" label="総合体力" value={`${total}（Lv.${level}）`} />
         <RecordRow icon="hikinggear" label="登った山" value={climbed.length ? `${climbed.join('・')}（${courseCount}コース）` : 'まだこれから！'} />
-        <RecordRow icon="albumbook" label="アルバム" value={`${discovered.length} / ${encyclopedia.length} 種（コンプ率 ${rate}%）`} />
+        <RecordRow icon="albumbook" label="アルバム" value={`${got} / ${totalSpecimens} 種（コンプ率 ${rate}%）`} />
       </div>
       <button className="btn-primary" style={st.shareBtn} onClick={share}>記録を共有する</button>
       {msg && <p style={st.shareMsg}>{msg}</p>}

@@ -1,317 +1,283 @@
-import { useState, useCallback } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BG } from '../assets/backgrounds'
+import { UI } from '../assets/ui'
 import GameIcon from '../components/GameIcon'
 import Specimen from '../components/Specimen'
+import { HomeButton } from '../components/PlankButton'
+import { Tile, CloseButton } from '../components/ui'
+import { ui, FS } from '../components/uiStyles'
 import { useGameStore } from '../stores/gameStore'
 import TripleMatchGame from '../games/TripleMatchGame'
-import { buildStage } from '../games/stageConfig'
 import { Confetti } from '../components/Celebration'
 import { sfx } from '../utils/sound'
-import { senpaiPose } from '../assets/characters/senpai'
-import encyclopedia from '../data/encyclopedia.json'
+import { EXPLORE_AREAS, AREA_BY_ID, albumProgress } from '../data/album'
 
-const MOUNT_NAMES = {
-  yatsugatake: '八ヶ岳', takao: '高尾山', hakone: '箱根山', ashitaka: '愛鷹山',
-  bukou: '武甲山', misaka: '御坂山地', okuchichibu: '奥秩父', kiso: '木曽',
-  akaishi: '赤石山脈', izu: '伊豆',
-}
-
-const AREAS = [
-  { id: 'rock', name: '岩場', sub: '鉱物をさがす', icon: 'gem', color: '#7c3aed' },
-  { id: 'trail', name: '登山道', sub: '動物をさがす', icon: 'paw', color: '#059669' },
-  { id: 'meadow', name: '草原', sub: '植物をさがす', icon: 'blossom', color: '#db2777' },
-  { id: 'bounty', name: '山の恵み', sub: '山菜・果実・ジビエ・天然水', icon: 'onigiri', color: '#d97706' },
+const NEW_BONUS = 200 // アルバムに新しく載った種ごとのボーナス
+// 「探索成功！」の帯のまわりのキラキラ（位置と大きさ）
+const SPARKLES = [
+  { left: '-4%', top: '-18%', fontSize: '3.2em' }, { left: '8%', top: '62%', fontSize: '1.6em' },
+  { right: '-2%', top: '-22%', fontSize: '3.8em' }, { right: '10%', top: '70%', fontSize: '1.8em' },
+  { left: '46%', top: '-30%', fontSize: '2em' },
 ]
 
 export default function Explore() {
   const navigate = useNavigate()
+  const points = useGameStore((s) => s.player.points)
   const addPoints = useGameStore((s) => s.addPoints)
   const recordMission = useGameStore((s) => s.recordMission)
-  const discover = useGameStore((s) => s.discover)
+  const recordMatch = useGameStore((s) => s.recordMatch)
   const discovered = useGameStore((s) => s.discovered)
   const exploreLevel = useGameStore((s) => s.exploreLevel)
   const setExploreLevel = useGameStore((s) => s.setExploreLevel)
   const tutorialEvent = useGameStore((s) => s.tutorialEvent)
 
-  const mountains = useGameStore((s) => s.mountains)
-  const [phase, setPhase] = useState('idle')   // idle / playing / clear / gameover
+  const [phase, setPhase] = useState('idle')   // idle / playing / result
   const [area, setArea] = useState(null)
   const [result, setResult] = useState(null)
-  const [spot, setSpot] = useState(null)       // null=共通の山道 / 山ID=その山を探索
-
-  // 登山で一度アクセスした山だけ探索先に出る（固有種はそこでしか見つからない）
-  const spots = [
-    { id: null, name: '一般の山道' },
-    ...Object.keys(MOUNT_NAMES)
-      .filter((m) => mountains[m]?.firstAccessed)
-      .map((m) => ({ id: m, name: MOUNT_NAMES[m] })),
-  ]
+  const [popupOpen, setPopupOpen] = useState(false)
+  const matchInfo = useRef({}) // 種ID → recordMatch の結果（そのゲームで最後にそろえたとき）
 
   const start = (a) => {
     sfx.go()
-    // 一覧を下までスクロールしていても、盤面の上（残り時間）から見せる（スクロールするのは .app-scroll）
-    document.querySelector('.app-scroll')?.scrollTo(0, 0)
-    setSnapshot(discovered)
+    matchInfo.current = {}
     setArea(a)
     setPhase('playing')
   }
 
-  // 揃った瞬間に図鑑へ登録。新種だったかは開始時のスナップショットで判定する
-  const [snapshot, setSnapshot] = useState([])
-  const handleDiscover = useCallback((sp) => discover(sp.id), [discover])
+  // そろえた瞬間にアルバムの回数を数える（失敗しても記録は残る）
+  const handleMatch = (sp) => { matchInfo.current[sp.id] = recordMatch(sp.id) }
 
-  const handleEnd = (ok) => ({ score, found, reason }) => {
-    const newOnes = found.filter((sp) => !snapshot.includes(sp.id))
-    const bonus = newOnes.length * 200
-    const gained = ok ? score + bonus : Math.floor(score / 2)
+  const handleEnd = ({ ok, reason, score, matched }) => {
+    const rows = matched.map((sp) => ({ sp, info: matchInfo.current[sp.id] }))
+    const newCount = rows.filter((r) => r.info?.registered).length
+    const gained = ok ? score + newCount * NEW_BONUS : Math.floor(score / 2)
     addPoints(gained)
     recordMission('explore') // ミッションは「山探索5回」なので、クリアできなくても1回と数える
     if (ok) setExploreLevel(exploreLevel + 1)
-    setResult({ score, gained, found, reason, newCount: newOnes.length, nextLevel: exploreLevel + 1 })
-    setPhase(ok ? 'clear' : 'gameover')
+    setResult({ ok, reason, gained, rows, newCount, level: exploreLevel, nextLevel: ok ? exploreLevel + 1 : exploreLevel })
+    setPopupOpen(newCount > 0)
+    setPhase('result')
     tutorialEvent('explored')
   }
-
-  const total = encyclopedia.length
-  const rate = Math.round((discovered.length / total) * 100)
 
   /* ───────── プレイ中 ───────── */
   if (phase === 'playing') {
     return (
-      <div style={styles.container}>
-        <div style={{ height: 12 }} />
-        <TripleMatchGame
-          area={area.id}
-          mountainId={spot}
-          level={exploreLevel}
-          onClear={handleEnd(true)}
-          onGameOver={handleEnd(false)}
-          onDiscover={handleDiscover}
-        />
-        <button style={styles.quitBtn} onClick={() => { sfx.cancel(); setPhase('idle') }}>やめる</button>
-      </div>
+      <TripleMatchGame
+        area={area.id}
+        level={exploreLevel}
+        onMatch={handleMatch}
+        onEnd={handleEnd}
+        onQuit={() => setPhase('idle')}
+      />
     )
   }
 
-  /* ───────── 結果 ───────── */
-  if ((phase === 'clear' || phase === 'gameover') && result) {
-    const ok = phase === 'clear'
+  /* ───────── 終了 ───────── */
+  if (phase === 'result' && result) {
+    const a = AREA_BY_ID[area.id]
+    const newOnes = result.rows.filter((r) => r.info?.registered)
     return (
-      <div style={styles.container}>
-        {ok && <Confetti count={44} />}
-        <div style={styles.card}>
-          {ok
-            ? <GameIcon name="trophy" size={62} style={{ animation: 'popIn 0.5s ease' }} />
-            : <img src={senpaiPose.think[2]} alt="先輩" style={{ height: 96 }} draggable={false} />}
-          <h3 style={styles.cardTitle}>{ok ? 'エリア踏破！' : result.reason === 'time' ? '時間切れ…' : 'トレイがいっぱい…'}</h3>
+      <div style={{ ...st.root, backgroundImage: `linear-gradient(rgba(239,228,207,0.3), rgba(239,228,207,0.3)), url(${BG.stage[{ rock: 'rocky', trail: 'trail', meadow: 'meadow' }[area.id]]})` }}>
+        {result.ok && <Confetti count={44} />}
+        <div style={st.topLeft}>
+          <div style={st.chip}>探索Lv.{result.nextLevel}</div>
+          <div style={st.chip}><GameIcon name="pcoin" size={22} /><span style={st.pointNum}>{points.toLocaleString()}</span></div>
+        </div>
 
-          <div style={styles.resultRows}>
-            <Row label="スコア" value={result.score.toLocaleString()} />
-            <Row label="発見した種" value={`${result.found.length} 種`} />
-            {result.newCount > 0 && <Row label="新種ボーナス" value={`${result.newCount} 種`} gold />}
-            <Row label="獲得ポイント" value={`+${result.gained.toLocaleString()}`} gold />
+        <div style={st.resultMain}>
+          <div style={{ ...st.ribbon, ...(result.ok ? null : { filter: 'grayscale(0.6) brightness(0.95)' }) }}>
+            {result.ok && SPARKLES.map((p, i) => (
+              <span key={i} style={{ ...st.sparkle, ...p, animationDelay: `${i * 0.25}s` }}>✦</span>
+            ))}
+            <span className="icon-label" style={st.ribbonText}>
+              {result.ok ? '探索成功！' : result.reason === 'tray' ? 'フレームがいっぱい…' : '時間切れ…'}
+            </span>
+          </div>
+          <div className="icon-label" style={st.subtitle}>
+            {result.rows.length > 0 ? `今回の探索で${a.verb}山の仲間たち！` : '今回は山の仲間をそろえられなかった…'}
           </div>
 
-          {result.found.length > 0 && (
-            <div style={styles.foundStrip}>
-              {result.found.slice(0, 8).map((sp) => (
-                <div key={sp.id} style={styles.foundChip} title={sp.name}>
-                  <Specimen sp={sp} size={26} />
+          {result.rows.length > 0 && (
+            <div style={st.found}>
+              {result.rows.map(({ sp, info }) => (
+                <div key={sp.id} style={st.foundItem}>
+                  <Specimen sp={sp} size={96} style={st.foundPic} />
+                  <div className="icon-label" style={st.foundName}>{sp.name}</div>
+                  <div style={{ ...st.foundStatus, ...(info?.registered ? st.foundNew : null) }}>
+                    {info?.registered ? 'アルバムに収まった！'
+                      : info?.already ? 'アルバムにのってるよ'
+                      : info ? `あと${Math.max(1, info.need - info.count)}回でアルバムに` : ''}
+                  </div>
                 </div>
               ))}
             </div>
           )}
 
-          {ok && <p style={styles.levelUp}>探索レベル {result.nextLevel} に上昇！次はもっと種類が増えるよ</p>}
-
-          <button className="btn-primary" onClick={() => { sfx.confirm(); setPhase('idle') }}>つづける</button>
-          <button style={styles.ghostBtn} onClick={() => navigate('/album')}>アルバムを見る</button>
+          <div style={st.bottomRow}>
+            <div style={st.gainRow}>
+              <span style={st.gainLabel}>獲得ポイント</span>
+              <span style={st.gainNum}>{result.gained.toLocaleString()}pt</span>
+              {result.ok && <span style={st.levelUp}>探索Lv.{result.nextLevel} にアップ！</span>}
+            </div>
+            <CloseButton onClick={() => setPhase('idle')} />
+          </div>
         </div>
+
+        {/* アルバムに収まったお知らせ（センター） */}
+        {popupOpen && newOnes.length > 0 && (
+          <div style={st.popupOverlay} onClick={() => { sfx.tap(); setPopupOpen(false) }}>
+            <div style={{ ...ui.bubble, ...st.popup }} onClick={(e) => e.stopPropagation()}>
+              <Specimen sp={newOnes[0].sp} size={120} style={st.popupPic} />
+              <div style={st.popupText}>
+                {newOnes[0].sp.name}{newOnes.length > 1 ? `ほか${newOnes.length - 1}種` : ''}が{'\n'}アルバムに収まったよ！
+              </div>
+              <button style={st.popupBtn} onClick={() => { sfx.confirm(); navigate('/album', { state: { area: area.id } }) }}>
+                <GameIcon name="albumbook" size={26} /> アルバムを見てみる
+              </button>
+              <button style={st.popupClose} onClick={() => { sfx.cancel(); setPopupOpen(false) }}>とじる</button>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
 
-  /* ───────── エリア選択 ───────── */
-  const stage = buildStage(exploreLevel)
+  /* ───────── 山探索トップ ───────── */
+  const { rate } = albumProgress(discovered)
   return (
-    <div style={styles.container}>
-      <div style={styles.title}>EXPLORE</div>
-
-      <div style={styles.summary}>
-        <div style={styles.summaryItem}>
-          <span style={styles.summaryLabel}>探索レベル</span>
-          <span style={styles.summaryValue}>{exploreLevel}</span>
-        </div>
-        <div style={styles.summaryDivider} />
-        <div style={styles.summaryItem}>
-          <span style={styles.summaryLabel}>アルバムコンプ率</span>
-          <span style={styles.summaryValue}>{rate}<span style={{ fontSize: 12 }}>%</span></span>
-          <span style={styles.summarySub}>{discovered.length} / {total}</span>
-        </div>
-        <div style={styles.summaryDivider} />
-        <div style={styles.summaryItem}>
-          <span style={styles.summaryLabel}>ターゲット</span>
-          <span style={styles.summaryValue}>{stage.targetKinds}<span style={{ fontSize: 12 }}>種</span></span>
-          <span style={styles.summarySub}>制限 {stage.time}秒</span>
-        </div>
+    <div style={{ ...st.root, backgroundImage: `linear-gradient(rgba(239,228,207,0.25), rgba(239,228,207,0.25)), url(${BG.home})` }}>
+      <div style={st.topBar}>
+        <div style={st.chip}>探索Lv.{exploreLevel}</div>
+        <div style={st.chip}>アルバムコンプ率 <span style={st.rateNum}>{rate}%</span></div>
+        <div style={{ flex: 1 }} />
+        <HomeButton />
       </div>
 
-      <p style={styles.rule}>
-        上に出る<b style={{ color: '#f5c842' }}>ターゲット</b>を3つずつそろえるとクリア。アルバムに載るよ。<br />
-        ほかの標本はおじゃま（{stage.hazure > 0 ? '3つそろわないハズレもあるよ' : '3つそろえれば消せる'}）。<br />
-        上に重なっている標本は取れない。トレイ（7枠）があふれたら失敗！
-      </p>
-
-      <div style={styles.spotRow}>
-        {spots.map((sp) => (
-          <button key={sp.id || 'common'}
-            style={{
-              ...styles.spotChip,
-              background: spot === sp.id ? 'linear-gradient(135deg,#f5c842,#e0a800)' : 'rgba(255,255,255,0.07)',
-              color: spot === sp.id ? '#1a0e00' : '#aab',
-              borderColor: spot === sp.id ? 'transparent' : 'rgba(255,255,255,0.14)',
-            }}
-            onClick={() => { sfx.tap(); setSpot(sp.id) }}>
-            {sp.name}
-          </button>
-        ))}
-      </div>
-      {spots.length === 1 && (
-        <p style={styles.spotHint}>登山で山を訪れると、その山でしか見つからない固有種を探せるようになるよ</p>
-      )}
-
-      <div style={styles.areaList} data-tut="explore-areas">
-        {AREAS.map((a) => {
-          const pool = encyclopedia.filter((e) => e.area === a.id && (spot ? e.mountain === spot : !e.mountain))
-          const got = pool.filter((e) => discovered.includes(e.id)).length
-          return (
-            <button key={a.id}
-              style={{ ...styles.areaCard, borderColor: `${a.color}66`, opacity: pool.length ? 1 : 0.4 }}
-              disabled={!pool.length}
-              onClick={() => start(a)}>
-              <div style={{ ...styles.areaIcon, background: `${a.color}28`, border: `1.5px solid ${a.color}88` }}>
-                <GameIcon name={a.icon} size={30} />
-              </div>
-              <div style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
-                <div style={styles.areaName}>{a.name}</div>
-                <div style={styles.areaSub}>{a.sub}</div>
-                <div style={styles.areaBarBg}>
-                  <div style={{ ...styles.areaBarFill, width: `${pool.length ? (got / pool.length) * 100 : 0}%`, background: a.color }} />
-                </div>
-              </div>
-              <div style={styles.areaCount}>{got}/{pool.length || 0}</div>
-            </button>
-          )
-        })}
+      <div style={st.panel}>
+        <h2 style={st.title}>山の仲間たちを探索しよう！</h2>
+        <p style={st.lead}>
+          レベルクリアで“ポイント”が貯まるよ{'\n'}
+          探索を続けてアルバムを山の仲間たちでいっぱいにしよう
+        </p>
+        <p style={st.lead2}>制限時間内に山の仲間を探してタップ！</p>
+        <div style={st.areas} data-tut="explore-areas">
+          {EXPLORE_AREAS.map((a) => (
+            <div key={a.id} style={st.areaCol}>
+              <Tile onClick={() => start(a)} style={st.areaTile}>
+                <GameIcon name={a.icon} size={96} style={st.areaIcon} />
+                <span style={st.areaName}>{a.name}</span>
+              </Tile>
+              <span style={st.areaSub}>{a.sub}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
 }
 
-function Row({ label, value, gold }) {
-  return (
-    <div style={styles.row}>
-      <span style={{ color: '#aab', fontSize: 12 }}>{label}</span>
-      <span style={{ color: gold ? '#f5c842' : '#fff', fontSize: 15, fontWeight: 900 }}>{value}</span>
-    </div>
-  )
-}
+const st = {
+  root: {
+    position: 'relative', height: '100cqh', overflow: 'hidden',
+    backgroundSize: 'cover', backgroundPosition: 'center',
+    display: 'flex', flexDirection: 'column', alignItems: 'center',
+  },
+  topBar: {
+    alignSelf: 'stretch', display: 'flex', alignItems: 'center', gap: 10,
+    padding: '1.5cqh 1.5cqw 0',
+  },
+  chip: {
+    display: 'flex', alignItems: 'center', gap: 6,
+    background: 'rgba(250,244,232,0.94)', border: '2px solid var(--beige-edge)', borderRadius: 99,
+    padding: '4px 14px', color: 'var(--brown-text)', fontSize: FS(4, 13, 20), fontWeight: 800,
+    boxShadow: '0 2px 6px rgba(60,40,20,0.15)',
+  },
+  rateNum: { color: '#c58f00', fontSize: FS(4.6, 15, 24) },
+  pointNum: { color: 'var(--yamabuki)', textShadow: '0 0 2px #5a3a10, 0 0 2px #5a3a10', fontSize: FS(4.4, 15, 24) },
 
-const styles = {
-  container: {
-    minHeight: '100vh',
-    backgroundImage: `linear-gradient(rgba(8,10,24,0.72), rgba(8,10,24,0.82)), url(${BG.stage.meadow})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundAttachment: 'fixed',
-    paddingBottom: 80,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
+  panel: {
+    marginTop: '2.5cqh',
+    width: 'min(900px, 86cqw)', flex: '0 1 auto',
+    background: 'rgba(250,244,232,0.9)', border: '3px solid var(--beige-edge)', borderRadius: 24,
+    padding: 'clamp(10px, 3cqh, 26px) clamp(14px, 3cqw, 34px) clamp(12px, 3.6cqh, 28px)',
+    textAlign: 'center', boxShadow: '0 8px 30px rgba(40,25,10,0.3)',
   },
-  title: { color: '#f5c842', fontSize: 12, fontWeight: 700, letterSpacing: 3, padding: '18px 0 10px' },
+  title: { color: 'var(--brown-text)', fontSize: FS(6, 18, 32), fontWeight: 800, margin: 0 },
+  lead: { color: 'var(--brown-text)', fontSize: FS(3.8, 13, 19), lineHeight: 1.6, whiteSpace: 'pre-wrap', margin: '1cqh 0 0' },
+  lead2: { color: '#c58f00', fontSize: FS(4, 13, 20), fontWeight: 800, margin: '0.8cqh 0 0' },
+  areas: { display: 'flex', justifyContent: 'center', gap: 'clamp(14px, 5cqw, 60px)', marginTop: '2.5cqh' },
+  areaCol: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 },
+  areaTile: { width: 'clamp(84px, 30cqh, 200px)' },
+  areaIcon: { width: '66%', height: '66%' },
+  areaName: { fontSize: FS(4.6, 15, 24) },
+  areaSub: { color: 'var(--brown-text)', fontSize: FS(3.4, 12, 17), fontWeight: 800 },
 
-  summary: {
-    display: 'flex', alignItems: 'stretch',
-    width: 'calc(100% - 32px)', maxWidth: 360,
-    background: 'rgba(8,10,24,0.62)', backdropFilter: 'blur(8px)',
-    border: '1px solid rgba(245,200,66,0.28)',
-    borderRadius: 16, padding: '12px 8px', marginBottom: 12,
+  topLeft: { position: 'absolute', top: '1.5cqh', left: '1.5cqw', display: 'flex', gap: 8, zIndex: 3 },
+  resultMain: {
+    position: 'relative', zIndex: 2, flex: 1, width: '100%',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+    padding: '2cqh 2cqw',
   },
-  summaryItem: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 },
-  summaryLabel: { color: '#8a90a8', fontSize: 10, fontWeight: 700 },
-  summaryValue: { color: '#fff', fontSize: 20, fontWeight: 900, lineHeight: 1.1 },
-  summarySub: { color: '#8a90a8', fontSize: 9.5 },
-  summaryDivider: { width: 1, background: 'rgba(255,255,255,0.12)', margin: '2px 0' },
-
-  rule: {
-    width: 'calc(100% - 32px)', maxWidth: 360,
-    color: '#ccd', fontSize: 12, lineHeight: 1.8, textAlign: 'center',
-    marginBottom: 14, textShadow: '0 1px 4px rgba(0,0,0,0.8)',
-  },
-
-  spotRow: {
-    display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center',
-    width: 'calc(100% - 32px)', maxWidth: 360, marginBottom: 10,
-  },
-  spotChip: {
-    border: '1px solid', borderRadius: 16, padding: '6px 14px',
-    fontSize: 12, fontWeight: 700, cursor: 'pointer',
-  },
-  spotHint: {
-    color: '#8a90a8', fontSize: 10.5, textAlign: 'center', margin: '0 0 12px',
-    width: 'calc(100% - 48px)', maxWidth: 340, lineHeight: 1.6,
-  },
-  areaList: { width: 'calc(100% - 32px)', maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 10 },
-  areaCard: {
-    display: 'flex', alignItems: 'center', gap: 12,
-    background: 'rgba(8,10,24,0.6)', backdropFilter: 'blur(8px)',
-    border: '1.5px solid', borderRadius: 16, padding: '14px 16px',
-    cursor: 'pointer',
-  },
-  areaIcon: {
-    width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+  ribbon: {
+    position: 'relative', width: 'min(460px, 36cqw, 62cqh)', aspectRatio: '1400 / 632',
+    background: `url(${UI.ribbon}) center / 100% 100% no-repeat`,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
+    animation: 'popIn 0.5s cubic-bezier(.22,1,.36,1)',
+    marginBottom: '-2cqh',
   },
-  areaName: { color: '#fff', fontSize: 16, fontWeight: 900 },
-  areaSub: { color: '#aab', fontSize: 11, marginBottom: 6 },
-  areaBarBg: { height: 5, background: 'rgba(255,255,255,0.12)', borderRadius: 99, overflow: 'hidden' },
-  areaBarFill: { height: '100%', borderRadius: 99, transition: 'width 0.6s ease' },
-  areaCount: { color: '#f5c842', fontSize: 12, fontWeight: 900, flexShrink: 0 },
+  ribbonText: { fontSize: FS(6.6, 20, 40), letterSpacing: 2, transform: 'rotate(-4deg)', marginTop: '-4%' },
+  sparkle: {
+    position: 'absolute', color: '#ffd84a', lineHeight: 1, pointerEvents: 'none',
+    textShadow: '0 0 8px #fff3b0, 0 0 16px rgba(248,181,0,0.9)',
+    animation: 'glowPulse 1.4s ease-in-out infinite',
+  },
+  subtitle: { fontSize: FS(4.4, 14, 26), marginBottom: '1.5cqh' },
+  found: { display: 'flex', justifyContent: 'center', gap: 'clamp(6px, 2cqw, 36px)', flexWrap: 'wrap' },
+  foundItem: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: 'clamp(96px, 14cqw, 170px)' },
+  foundPic: {
+    width: 'clamp(46px, 16cqh, 130px)', height: 'clamp(46px, 16cqh, 130px)',
+    filter: 'drop-shadow(0 0 2px #fff) drop-shadow(0 6px 8px rgba(40,25,10,0.4))',
+    animation: 'popIn 0.5s ease both',
+  },
+  foundName: { fontSize: FS(3.8, 13, 20), textAlign: 'center' },
+  foundStatus: {
+    background: 'rgba(250,244,232,0.92)', borderRadius: 10, padding: '1px 6px',
+    color: 'var(--brown-text)', fontSize: FS(2.6, 9.5, 14), fontWeight: 800, whiteSpace: 'nowrap', letterSpacing: -0.2,
+  },
+  foundNew: { background: 'linear-gradient(135deg, #f8c537, #e0a000)', color: '#4a2e00' },
+  bottomRow: { display: 'flex', alignItems: 'center', gap: 14, marginTop: '2cqh' },
+  gainRow: {
+    display: 'flex', alignItems: 'baseline', gap: 12,
+    background: 'rgba(250,244,232,0.94)', border: '2px solid var(--beige-edge)', borderRadius: 99,
+    padding: '4px 22px',
+  },
+  gainLabel: { color: 'var(--brown-text)', fontSize: FS(4, 13, 20), fontWeight: 800 },
+  gainNum: { color: 'var(--yamabuki)', textShadow: '0 0 2px #5a3a10, 0 0 2px #5a3a10', fontSize: FS(5.4, 18, 30), fontWeight: 800 },
+  levelUp: { color: '#1a8a47', fontSize: FS(3.4, 12, 17), fontWeight: 800 },
 
-  quitBtn: {
-    marginTop: 12, background: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,255,255,0.2)', borderRadius: 20,
-    color: '#aab', fontSize: 13, padding: '8px 24px', cursor: 'pointer',
-  },
-
-  card: {
-    margin: '32px 16px',
-    background: 'rgba(8,10,24,0.72)',
-    border: '1px solid rgba(245,200,66,0.28)',
-    borderRadius: 24, padding: '28px 22px',
-    width: 'calc(100% - 32px)', maxWidth: 340,
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
-    textAlign: 'center', backdropFilter: 'blur(12px)',
-    boxShadow: '0 8px 44px rgba(0,0,0,0.5)',
-  },
-  cardTitle: { color: '#fff', fontSize: 21, fontWeight: 900, margin: 0 },
-  resultRows: { width: '100%', display: 'flex', flexDirection: 'column', gap: 6 },
-  row: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    background: 'rgba(255,255,255,0.05)', borderRadius: 10, padding: '8px 12px',
-  },
-  foundStrip: { display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center' },
-  foundChip: {
-    width: 38, height: 38, borderRadius: 10,
-    background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.16)',
+  popupOverlay: {
+    position: 'fixed', inset: 0, zIndex: 300,
+    background: 'rgba(40,28,14,0.35)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
+    animation: 'overlayFade 0.3s ease',
   },
-  levelUp: { color: '#7ee8a5', fontSize: 11.5, fontWeight: 700, margin: 0 },
-  ghostBtn: {
-    background: 'none', border: '1px solid rgba(255,255,255,0.2)',
-    borderRadius: 20, color: '#aab', fontSize: 13, padding: '9px 22px',
-    cursor: 'pointer', width: '100%',
+  popup: {
+    width: 'min(360px, 60cqw)', padding: 'clamp(10px, 3cqh, 22px) 18px',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.2cqh',
+    animation: 'popIn 0.45s cubic-bezier(.22,1,.36,1) 0.4s both',
+    border: '3px solid var(--beige-edge)',
+  },
+  popupPic: { width: 'clamp(60px, 24cqh, 140px)', height: 'clamp(60px, 24cqh, 140px)' },
+  popupText: { color: 'var(--brown-text)', fontSize: FS(4.6, 15, 22), fontWeight: 800, textAlign: 'center', whiteSpace: 'pre-wrap', lineHeight: 1.5 },
+  popupBtn: {
+    display: 'flex', alignItems: 'center', gap: 8,
+    background: 'linear-gradient(135deg, #2ecc71, #1a8a47)', border: 'none', borderRadius: 99,
+    padding: '8px 22px', color: '#fff', fontSize: FS(4, 14, 18), fontWeight: 800, cursor: 'pointer',
+    boxShadow: '0 3px 0 #136b37',
+  },
+  popupClose: {
+    background: 'none', border: 'none', color: '#8b7a66', fontSize: 13, fontWeight: 800, cursor: 'pointer',
   },
 }
