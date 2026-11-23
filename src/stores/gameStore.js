@@ -239,6 +239,16 @@ export const useGameStore = create(
         }
       })),
 
+      // 山整備の労力。疲労（温泉で戻る分）とは別に数える
+      spendLabor: (amount) => set((state) => ({
+        player: {
+          ...state.player,
+          core: Math.max(0, state.player.core - amount),
+          legs: Math.max(0, state.player.legs - amount),
+          arms: Math.max(0, state.player.arms - amount),
+        }
+      })),
+
       // 温泉回復（総合体力の一定割合を各ステータスに加算）
       recover: (amount) => set((state) => ({
         player: {

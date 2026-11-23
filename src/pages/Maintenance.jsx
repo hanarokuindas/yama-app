@@ -3,14 +3,14 @@ import { BG } from '../assets/backgrounds'
 import GameIcon from '../components/GameIcon'
 import { HomeButton } from '../components/PlankButton'
 import PlankButton from '../components/PlankButton'
-import { PointPlank, Window } from '../components/ui'
+import { PointPlank, Plank, Window } from '../components/ui'
 import { ui, FS } from '../components/uiStyles'
 import { useGameStore } from '../stores/gameStore'
 import { sfx } from '../utils/sound'
 import { withFurigana } from '../utils/furigana'
 import { MOUNTAINS } from '../data/mountains'
 import {
-  ACTIVITIES, getCost, getRestore, formatDuration, remainingMinutes, rushCost, maintenanceState, isClosed, CLOSED_BELOW,
+  ACTIVITIES, getCost, getLabor, getRestore, formatDuration, remainingMinutes, rushCost, maintenanceState, isClosed, CLOSED_BELOW,
 } from '../data/maintenanceActivities'
 import { senpaiFull, senpaiMini } from '../assets/characters/senpai'
 import { yatsugatakeMini } from '../assets/characters/yatsugatake'
@@ -25,7 +25,7 @@ import { hakoneMini } from '../assets/characters/hakone'
 const INTRO = [
   'だいぶ慣れてきたかな？\n山にはたくさんの自然と\nいろいろな生き物がいたね！',
   '定期的に山の手入れをして、山を快適な状態に保ってね！\nこれからも山が残って、人も安全に過ごせるように、\n手入れが必要なんだ！ 君も手伝ってくれるかな？？',
-  '山の整備には、資金と時間がかかるよ！\n“ポイント”をしっかり貯めていこう！',
+  '山の整備には、資金と労力と時間がかかるよ！\n“ポイント”と“体力レベル”をしっかり貯めていこう！',
 ]
 
 // 山神のミニキャラ（ラフ：ふつうは八ヶ岳④・高尾①・箱根①、荒れているときは八ヶ岳③・高尾②・箱根③）とひとこと
@@ -72,6 +72,7 @@ export default function Maintenance() {
   const rushMaintenance = useGameStore((s) => s.rushMaintenance)
   const introSeen = useGameStore((s) => !!s.tutorialSeen.maintenanceIntro)
   const markSeen = useGameStore((s) => s.markSeen)
+  const spendLabor = useGameStore((s) => s.spendLabor)
 
   const [selected, setSelected] = useState(null) // mountainId
   const [activity, setActivity] = useState(null) // 窓で開いている作業
@@ -114,13 +115,20 @@ export default function Maintenance() {
   const leftMin = remainingMinutes(mt)
   const working = mt?.workingActivity ? ACTIVITIES.find((a) => a.id === mt.workingActivity) : null
 
+  const total = Math.floor((player.core + player.legs + player.arms) / 3)
   const startWork = (a) => {
     const cost = getCost(a, level)
+    const labor = getLabor(a, level)
+    setActivity(null)
+    if (total < labor) {
+      sfx.miss(); flash(`体力が足りないよ（労力${labor}pw・いまの総合体力${total}）。トレーニングで鍛えよう`); return
+    }
     if (!spendPoints(cost)) {
       sfx.miss(); flash(`ポイントが足りないよ（必要：${cost.toLocaleString()}pt）`); return
     }
     sfx.confirm()
     setActivity(null)
+    spendLabor(labor)
     startMaintenance(selected, a.id, a.duration)
     recordMission('maintain')
   }
@@ -137,11 +145,14 @@ export default function Maintenance() {
       <div style={st.root}>
         <div style={{ ...st.bg, backgroundImage: `url(${BG.forestGood})` }} />
         <div style={st.topBar}>
-          <PointPlank points={player.points} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <PointPlank points={player.points} />
+            <Plank><GameIcon name="flame" size={30} /><span className="icon-label" style={st.flameNum}>{total}</span></Plank>
+          </div>
           <HomeButton />
         </div>
         <div style={st.notice}>
-          定期的に手入れをして安全快適に保ってあげてね！ ポイントを使うよ！{'\n'}
+          定期的に手入れをして安全快適に保ってあげてね！ ポイントと体力レベルを使うよ！{'\n'}
           整備不足（整備{CLOSED_BELOW}%未満）になると登山できなくなっちゃうから気を付けてね。整備中の山は登山ができないよ
         </div>
         <div style={st.mountainRow}>
@@ -179,7 +190,10 @@ export default function Maintenance() {
     <div style={st.root}>
       <div style={{ ...st.bg, backgroundImage: `url(${ruined ? BG.forestBad : BG.forestGood})` }} />
       <div style={st.topBar}>
-        <PointPlank points={player.points} />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <PointPlank points={player.points} />
+          <Plank><GameIcon name="flame" size={30} /><span className="icon-label" style={st.flameNum}>{total}</span></Plank>
+        </div>
         <div style={{ display: 'flex', gap: 6 }}>
           <PlankButton label="もどる" onClick={() => { sfx.cancel(); setSelected(null) }} />
           <HomeButton />
@@ -205,7 +219,7 @@ export default function Maintenance() {
         {isClosed(level)
           ? <div style={{ ...st.warn, color: '#c0392b' }}>整備不足で登山できないよ。{CLOSED_BELOW}%以上にしよう</div>
           : state.penalty > 0 && <div style={{ ...st.warn, color: state.color }}>道が荒れていて、登山の必要体力が +{Math.round(state.penalty * 100)}% になっているよ</div>}
-        {ruined && <div style={{ ...st.warn, color: '#c0392b' }}>荒れた山は、作業の費用が10倍・効果が半分になるよ</div>}
+        {ruined && <div style={{ ...st.warn, color: '#c0392b' }}>荒れた山は、作業の費用が10倍・労力が2倍・効果が半分になるよ</div>}
         {message && <div style={{ ...st.warn, color: '#c0392b' }}>{message}</div>}
 
         {working ? (
@@ -230,12 +244,13 @@ export default function Maintenance() {
           <div style={st.actGrid}>
             {ACTIVITIES.map((a) => {
               const cost = getCost(a, level)
+              const short = player.points < cost || total < getLabor(a, level)
               return (
-                <button key={a.id} style={{ ...st.actTile, ...(player.points < cost ? st.dim : null) }}
+                <button key={a.id} style={{ ...st.actTile, ...(short ? st.dim : null) }}
                   onClick={() => { sfx.tap(); setActivity(a) }}>
                   <GameIcon name={a.icon} size={44} />
                   <span style={st.actName}>{a.name}</span>
-                  <span style={st.actCost}>{cost.toLocaleString()}pt</span>
+                  <span style={st.actCost}>{cost.toLocaleString()}pt・{getLabor(a, level)}pw</span>
                 </button>
               )
             })}
@@ -251,6 +266,7 @@ export default function Maintenance() {
             <table style={st.winTable}>
               <tbody>
                 <tr><th style={st.th}>資金</th><td style={st.td}>{getCost(activity, level).toLocaleString()}pt</td></tr>
+                <tr><th style={st.th}>労力</th><td style={st.td}>{getLabor(activity, level)}pw（体幹・脚力・腕力が{getLabor(activity, level)}ずつ減る）</td></tr>
                 <tr><th style={st.th}>作業時間</th><td style={st.td}>{formatDuration(activity.duration)}</td></tr>
                 <tr><th style={st.th}>整備</th><td style={st.td}>+{getRestore(activity, level)}%</td></tr>
               </tbody>
@@ -274,6 +290,7 @@ const panel = {
 const st = {
   root: { position: 'relative', width: '100%', height: '100cqh', overflow: 'hidden', userSelect: 'none' },
   bg: { position: 'absolute', inset: 0, backgroundSize: 'cover', backgroundPosition: 'center' },
+  flameNum: { fontSize: FS(5, 16, 28) },
   dim: { filter: 'grayscale(0.6)', opacity: 0.6 },
 
   introChara: { position: 'absolute', left: '6cqw', bottom: 0, height: '90cqh', objectFit: 'contain', animation: 'popIn 0.5s ease' },
