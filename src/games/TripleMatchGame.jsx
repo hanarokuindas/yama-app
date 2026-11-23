@@ -15,12 +15,12 @@ import { specimenSprite } from '../utils/specimenAssets'
  *
  * 同じ標本を3つそろえると消える。Lv1 は盤面を全部消せばクリア、Lv2 からは上に出る「お題」を全部そろえるとクリア。
  *   おじゃま … 3個ずつあり、そろえれば消せる（アルバムの対象にならない）
- *   ハズレ   … 1〜2個しかなく、取ると写真フレームをふさいだままになる（Lv3から）
- * 上に別の標本が重なっている標本は取れない。右の写真フレーム（7枠）が埋まるか時間切れで失敗。
+ *   ハズレ   … 1〜2個しかなく、取るとフィルムをふさいだままになる（Lv3から）
+ * 上に別の標本が重なっている標本は取れない。右のフィルム（7枠）が埋まるか時間切れで失敗。
  * そろえるたびの説明のポップは出さない（修正指示）。そろえた標本は onMatch で親に知らせる。
  *
  * 登山のステージでも使う（コースのゲーム段取り）：
- *   match   … そろえる数（3〜6）。4以上はフレームの枠も増やす
+ *   match   … そろえる数（3〜6）。4以上はフィルムの枠も増やす
  *   short   … 時短（制限時間×0.8）
  *   many    … アイテム数多（おじゃまを増やす）
  *   limited … そのコースの限定アイテム（と山の恵み）。たまに1種だけ混ざり、そろえると onMatch(sp, { limited: true })
@@ -331,7 +331,7 @@ export default function TripleMatchGame({
     setPieces((prev) => [...prev, last])
   }
 
-  const endText = result && (result.ok ? okText : result.reason === 'tray' ? 'フレームがいっぱい…' : '時間切れ…')
+  const endText = result && (result.ok ? okText : result.reason === 'tray' ? 'フィルムがいっぱい…' : '時間切れ…')
 
   return (
     <div style={st.root}>
@@ -400,7 +400,7 @@ export default function TripleMatchGame({
         {endText && <div style={st.endMsg}>{endText}</div>}
       </div>
 
-      {/* 右：写真フレーム（7枠） */}
+      {/* 右：フィルム（7枠） */}
       <div style={st.tray}>
         {Array.from({ length: TRAY_SIZE }).map((_, i) => {
           const t = tray[i]
@@ -467,7 +467,7 @@ function Booster({ label, icon, n, onClick, disabled = false }) {
   )
 }
 
-const FRAME_W = 'calc((100cqh - 3cqh - 6 * 0.8cqh) / 7 * 0.867)' // 写真フレームの幅（7枠が縦に収まる大きさ）
+const FRAME_W = 'calc((100cqh - 3cqh - 6 * 0.8cqh) / 7 * 0.867)' // フィルムの幅（7枠が縦に収まる大きさ）
 
 const st = {
   root: {

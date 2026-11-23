@@ -17,21 +17,21 @@
    植林          4,500   +32%  4時間30分  141pt      7.1%
    間伐          5,200   +40%  6時間      130pt      6.7%  */
 // 並びと名前・説明文は最新ラフ（2026-11 p107）どおり。費用・回復・時間はこれまでの数字のまま
-// labor（労力）はトレーニング1回ぶん（+6〜23）より少なめ。毎日ゴミ拾いをしても体力が減りすぎないようにした
+// labor（労力）は一問一答 2026-10 #5 どおり（ゴミ拾い1 〜 間伐8）
 export const ACTIVITIES = [
-  { id: 'patrol', name: 'パトロール', icon: 'binoculars', cost: 1600, restore: 9, duration: 60, labor: 3,
+  { id: 'patrol', name: 'パトロール', icon: 'binoculars', cost: 1600, restore: 9, duration: 60, labor: 2,
     desc: '山に異常はないかな？困ってる人や悪いことをしてる人はいないかな？\n早期発見、未然防止を目指そう！' },
-  { id: 'trash', name: 'ゴミ拾い', icon: 'trashbag', cost: 1000, restore: 5, duration: 30, labor: 2,
+  { id: 'trash', name: 'ゴミ拾い', icon: 'trashbag', cost: 1000, restore: 5, duration: 30, labor: 1,
     desc: '人のゴミや落とし物は土に還らないしとてもやっかい！\n山に悪影響が出る前に回収してね！' },
-  { id: 'grass', name: '刈払い', icon: 'brushcutter', cost: 2200, restore: 13, duration: 90, labor: 4,
+  { id: 'grass', name: '刈払い', icon: 'brushcutter', cost: 2200, restore: 13, duration: 90, labor: 3,
     desc: '伸び放題な草や灌木はこまめに刈り取って！\nこれで小さな幼樹にも日差しが届くね！' },
-  { id: 'branch', name: '枝打ち', icon: 'pruningsaw', cost: 2600, restore: 16, duration: 120, labor: 5,
+  { id: 'branch', name: '枝打ち', icon: 'pruningsaw', cost: 2600, restore: 16, duration: 120, labor: 4,
     desc: '木の栄養が分散し過ぎないように枝を少し落とすよ！\n枯れた枝も切っておくと安全だね！' },
-  { id: 'thinning', name: '間伐', icon: 'chainsaw', cost: 5200, restore: 40, duration: 360, labor: 10,
+  { id: 'thinning', name: '間伐', icon: 'chainsaw', cost: 5200, restore: 40, duration: 360, labor: 8,
     desc: '密な森林は少し伐採して栄養バランスを整えよう！\n日光も入って下層植生と強い土壌が育つよ！' },
-  { id: 'planting', name: '植林', icon: 'sapling', cost: 4500, restore: 32, duration: 270, labor: 8,
+  { id: 'planting', name: '植林', icon: 'sapling', cost: 4500, restore: 32, duration: 270, labor: 6,
     desc: 'その山に合った苗木や種をバランスよく植えるよ！\nそこを間違えると必ず歪みが生まれるからね。' },
-  { id: 'trail', name: '登山道整備', icon: 'pickaxe', cost: 3500, restore: 23, duration: 180, labor: 7,
+  { id: 'trail', name: '登山道整備', icon: 'pickaxe', cost: 3500, restore: 23, duration: 180, labor: 5,
     desc: '自然相手には定期的な整備が必要だ！\nたくさんの人が歩く登山道は山にとっても負荷大！メンテナンスしてね' },
 ]
 

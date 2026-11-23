@@ -93,9 +93,14 @@ export default function Explore() {
               <span key={i} style={{ ...st.sparkle, ...p, animationDelay: `${i * 0.25}s` }}>✦</span>
             ))}
             <span className="icon-label" style={st.ribbonText}>
-              {result.ok ? '探索成功！' : result.reason === 'tray' ? 'フレームがいっぱい…' : '時間切れ…'}
+              {result.ok ? '探索成功！' : '惜しかった…！'}
             </span>
           </div>
+          {!result.ok && (
+            <div className="icon-label" style={st.subtitle}>
+              またチャレンジしよう！（{result.reason === 'tray' ? 'フィルムがいっぱいになった' : '時間切れ'}）
+            </div>
+          )}
           <div className="icon-label" style={st.subtitle}>
             {result.rows.length > 0 ? `今回の探索で${a.verb}山の仲間たち！` : '今回は山の仲間をそろえられなかった…'}
           </div>

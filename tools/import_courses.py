@@ -64,7 +64,9 @@ ICONS = {
 }
 
 # 何回の登山で消耗するか（一問一答 #11 をカテゴリに当てはめた。null は消耗しない）
-USES_BY_CATEGORY = {'ウエア': 10, '小物1': 10, '小物2': 20, '専門道具': 10, '快適用品': 5, '食料': 1, '救急品': 1, 'その他': 10}
+# 消耗する回数（一問一答 2026-10 #11 どおり：食料・救急＝1回、ウェア・小物など＝10回、靴・バックパック＝20回）
+USES_BY_CATEGORY = {'ウエア': 10, '小物1': 10, '小物2': 10, '専門道具': 10, '快適用品': 10, '食料': 1, '救急品': 1, 'その他': 10}
+LONG_LIFE = {'トレッキングシューズ', '冬用トレッキングシューズ', 'ハイキングシューズ', 'バックパック', 'リュックサック'}
 NEVER_WORN = {'登山計画書', '健康保険証、身分証', '常備薬とお薬手帳', '山岳保険'}
 
 # 先輩のアドバイス。今のアプリにある20種は今の文を使い、ほかはこちらで書いた（あとで差し替え可）
@@ -235,7 +237,7 @@ def main(course_xlsx, equip_xlsx, out_dir):
         iid = OLD_IDS.get(name) or f'eq{r - 2:02d}'
         old = old_items.get(iid)
         advice = old['advice'] if old else NEW_ADVICE.get(name, '')
-        uses = None if name in NEVER_WORN else USES_BY_CATEGORY[cat]
+        uses = None if name in NEVER_WORN else 20 if name in LONG_LIFE else USES_BY_CATEGORY[cat]
         items.append({'id': iid, 'name': name, 'price': price, 'category': cat,
                       'icon': ICONS.get(name, old['icon'] if old else ICON_BY_CATEGORY[cat]),
                       'uses': uses, 'advice': advice})

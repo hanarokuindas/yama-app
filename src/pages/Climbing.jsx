@@ -44,7 +44,10 @@ const JapanMap = lazy(() => import('../components/JapanMap'))
 
 const ONSEN_COST = 300
 const ONSEN_RATE = 0.7        // 温泉で戻るのは、登山で失った分の7割まで（議事録 2026-10-11）
-const EVENT_CHANCE = 0.08     // ステージの合間に出来事が起きる割合
+const EVENT_CHANCE = 0.08     // ステージの合間に出来事（災害）が起きる割合
+const BOON_CHANCE = 0.06      // ステージの合間に、よい出来事「ご利益」が起きる割合（修正指示 2026-10）
+const BOON_POINTS = 300       // よい出来事でもらえるポイント
+const BOON_UP = 1             // よい出来事で上がる体力（体幹・脚力・腕力それぞれ）
 const HINT_AFTER = 5          // 続けて脱落したらヒントを出す回数
 const MAP_MS = 3000           // 山の紹介を出しておく時間
 const ROUTE_MS = 2000         // ルート図を出しておく時間
@@ -89,7 +92,10 @@ const EVENTS = [
 
 // ステージの合間に出来事が起きるか（起きたらその出来事）
 function rollEvent() {
-  return Math.random() < EVENT_CHANCE ? EVENTS[Math.floor(Math.random() * EVENTS.length)] : null
+  const r = Math.random()
+  if (r < EVENT_CHANCE) return EVENTS[Math.floor(Math.random() * EVENTS.length)]
+  if (r < EVENT_CHANCE + BOON_CHANCE) return { id: 'boon' }
+  return null
 }
 
 const AREA_BG = { rock: BG.stage.rocky, trail: BG.stage.trail, meadow: BG.stage.meadow }
@@ -182,6 +188,15 @@ export default function Climbing() {
     if (k > 1 && totalOf(p) < need) return failClimb('stamina', idx)
     if (k === N && N > 1 && balanceBad(p, course)) return failClimb('balance', idx)
     const ev = k > 1 ? rollEvent() : null
+    if (ev?.id === 'boon') {
+      sfx.fanfare()
+      store().addPoints(BOON_POINTS)
+      store().recover(BOON_UP)
+      setStageIdx(idx)
+      setInterlude({ kind: 'boon' })
+      setPhase('between')
+      return
+    }
     if (ev) {
       if (store().blessing) {
         store().consumeBlessing()
@@ -252,7 +267,11 @@ export default function Climbing() {
     if (unlockedMaintenance) s.unlockMaintenance()
     s.applyFatigue(Math.ceil(reqBase * 0.1))
     s.recordClimbResult(true)
-    setSummit({ firstSummit, unlockedAR, unlockedMaintenance })
+    const allDone = coursesData.filter((c) => c.mountainId === mountain.id)
+      .every((c) => c.id === course.id || s.mountains[mountain.id]?.summitedCourses?.includes(c.id))
+    const wasAll = coursesData.filter((c) => c.mountainId === mountain.id)
+      .every((c) => s.mountains[mountain.id]?.summitedCourses?.includes(c.id))
+    setSummit({ firstSummit, unlockedAR, unlockedMaintenance, godVisit: !mountain.test && allDone && !wasAll && god?.name ? god.name : null })
     setPhase('summit')
   }
 
@@ -645,7 +664,7 @@ function Interlude({ course, stageIdx, kind, event, onNext }) {
   const done = useRef(false)
   const next = () => { if (done.current) return; done.current = true; onNext() }
   useEffect(() => {
-    const t = setTimeout(next, kind === 'guard' ? ROUTE_MS + 1500 : ROUTE_MS)
+    const t = setTimeout(next, kind === 'guard' || kind === 'boon' ? ROUTE_MS + 1500 : ROUTE_MS)
     return () => clearTimeout(t)
   })
   const N = course.stages.length
@@ -661,7 +680,13 @@ function Interlude({ course, stageIdx, kind, event, onNext }) {
             </span>
           ))}
         </div>
-        {kind === 'guard' ? (
+        {kind === 'boon' ? (
+          <div style={st.routeCard}>
+            <GameIcon name="event_blessing" size={72} />
+            <div style={st.cardTitle}>山神のご利益…！</div>
+            <p style={st.cardText}>山の恵みで元気が出た！ {BOON_POINTS}pt と体力 +{BOON_UP} をもらったよ{'\n'}このまま進もう</p>
+          </div>
+        ) : kind === 'guard' ? (
           <div style={st.routeCard}>
             <GameIcon name="event_blessing" size={72} />
             <div style={st.cardTitle}>{event.title.replace(/…！.*$/, '')}…！</div>
@@ -755,6 +780,7 @@ function SummitScreen({ course, mountain, god, found, info, worn, total, discove
           )}
           {info?.unlockedMaintenance && <div style={st.unlockText}>山整備が解放されたよ！</div>}
           {info?.unlockedAR && <div style={st.unlockText}>AR撮影が解放されたよ！</div>}
+          {info?.godVisit && <div style={st.unlockText}>全コース登頂！ {info.godVisit}が会いに来てくれるよ。AR撮影で一緒に写真を撮ろう！</div>}
           {worn.length > 0 && <div style={st.wornText}>{worn.map((w) => w.name).join('・')}が消耗しました！</div>}
         </div>
         <div style={st.btnRow}>

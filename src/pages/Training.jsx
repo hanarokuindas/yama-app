@@ -3,7 +3,6 @@ import GameIcon from '../components/GameIcon'
 import { useGameStore } from '../stores/gameStore'
 import { Confetti } from '../components/Celebration'
 import { HomeButton } from '../components/PlankButton'
-import PlankButton from '../components/PlankButton'
 import { PointPlank, Plank } from '../components/ui'
 import { ui, FS } from '../components/uiStyles'
 import { sfx } from '../utils/sound'
@@ -29,7 +28,7 @@ const MENUS = [
 
 const SIDE_LABEL = { lr: '左右', alt: '左右交互' }
 const DEMO_MIN_SEC = 4 // 準備画面のお手本は1回を最低4秒かけて見せる
-const TIP_SEC = 10     // 実施中の先輩コメントの切り替え間隔
+const TIP_SEC = 5      // 実施中の先輩コメントの切り替え間隔（修正指示：約5秒ごと）
 const FLIP_MS = 700    // 先輩ミニのパラパラの間隔
 
 const INTRO = [
@@ -123,27 +122,32 @@ export default function Training() {
   const [now, setNow] = useState(0)
   const [introIdx, setIntroIdx] = useState(0)
   const [listPose] = useState(() => (Math.random() < 0.5 ? senpaiFull.pointing : senpaiFull.cheering))
+  const [pausedMs, setPausedMs] = useState(0)     // 一時停止していた合計
+  const [pauseAt, setPauseAt] = useState(null)    // 一時停止した時刻（停止中だけ）
+  const [lastResult, setLastResult] = useState(null) // 一覧に戻ったときの先輩のコメント { kind: 'done'|'quit', gains, pts }
+  const settings = useGameStore((s) => s.settings)
+  const setSettings = useGameStore((s) => s.setSettings)
 
   const shownMenu = tutorialPick ? 'core' : menu
-  const elapsed = (now - startAt) / 1000
+  const elapsed = (now - startAt - pausedMs) / 1000
   const cur = selected && screen === 'doing' ? locate(selected, elapsed) : null
   const reps = cur?.p.reps ? Math.min(cur.p.reps, Math.floor(cur.inPhase / (cur.p.sec / cur.p.reps))) : 0
   const total = Math.floor((player.core + player.legs + player.arms) / 3)
   const level = Math.floor(total / 50) + 1
 
   useEffect(() => {
-    if (screen !== 'doing') return
+    if (screen !== 'doing' || pauseAt) return
     const id = setInterval(() => {
       const t = Date.now()
       setNow(t)
-      if ((t - startAt) / 1000 >= selected.total) {
+      if ((t - startAt - pausedMs) / 1000 >= selected.total) {
         clearInterval(id)
         sfx.clear()
         setScreen('done')
       }
     }, 100)
     return () => clearInterval(id)
-  }, [screen, startAt, selected])
+  }, [screen, startAt, selected, pauseAt, pausedMs])
 
   // 1回ごとに小さく鳴らす。区間が変わったら合図
   useEffect(() => {
@@ -161,6 +165,9 @@ export default function Training() {
     const t = Date.now()
     setStartAt(t)
     setNow(t)
+    setPausedMs(0)
+    setPauseAt(null)
+    setLastResult(null)
     setScreen('doing')
   }
 
@@ -171,15 +178,31 @@ export default function Training() {
       else if (g.stat === 'legs') addLegs(g.value)
       else addArms(g.value)
     }
-    addPoints(gains.reduce((s, g) => s + g.value, 0) * 10)
+    const pts = gains.reduce((s, g) => s + g.value, 0) * 10
+    addPoints(pts)
     recordMission('train')
     tutorialEvent('trained')
     sfx.coin()
+    setLastResult({ kind: 'done', gains, pts })
     setScreen('list')
     setSelected(null)
   }
 
   const backToList = () => { sfx.cancel(); setScreen('list'); setSelected(null) }
+  const quit = () => { sfx.cancel(); setPauseAt(null); setLastResult({ kind: 'quit' }); setScreen('list'); setSelected(null) }
+  const pause = () => { if (!pauseAt) { sfx.tap(); setPauseAt(Date.now()) } }
+  const resume = () => {
+    sfx.confirm()
+    const t = Date.now()
+    setPausedMs((ms) => ms + (t - pauseAt))
+    setPauseAt(null)
+    setNow(t)
+  }
+
+  // 最後までやったとき・終わってから完了の処理をする（ポイントと体力は一覧に戻る前に入る）
+  useEffect(() => {
+    if (screen === 'done') complete() // eslint-disable-line react-hooks/set-state-in-effect -- 終わった瞬間に1回だけ反映して一覧に戻す
+  }, [screen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ───────── 初回：先輩のあいさつ（チュートリアル中は案内が同じことを言うので出さない） ───────── */
   if (!introSeen && !tutorialActive) {
@@ -221,7 +244,41 @@ export default function Training() {
           <HomeButton />
         </div>
 
-        <img src={listPose} alt="先輩" style={st.listChara} draggable={false} />
+        {/* 3つの割合バー（修正指示） */}
+        <div style={st.ratioWrap}>
+          <div style={st.ratioBar}>
+            {MENUS.map((m) => {
+              const sum = player.core + player.legs + player.arms
+              const pct = sum > 0 ? (player[m.stat] / sum) * 100 : 100 / 3
+              return <span key={m.stat} style={{ ...st.ratioSeg, width: `${pct}%`, background: STAT[m.stat].color }}>{Math.round(pct)}%</span>
+            })}
+          </div>
+        </div>
+
+        {/* 先輩：ふだんは全身①②。終わった直後は ⑤⑦（最後まで）／⑧⑩（途中でやめた）をパラパラ */}
+        {lastResult?.kind === 'done'
+          ? <Flip a={senpaiMini.armsCrossed} b={senpaiMini.armsCrossedSmile} style={st.listMini} />
+          : lastResult?.kind === 'quit'
+            ? <Flip a={senpaiMini.winkCheer} b={senpaiMini.surprised} style={st.listMini} />
+            : <img src={listPose} alt="先輩" style={st.listChara} draggable={false} />}
+        {lastResult?.kind === 'done' && <Confetti count={30} />}
+        <div style={st.listBubble}>
+          {lastResult?.kind === 'done' ? (
+            <>
+              <p style={st.listBubbleText}>最後までよくがんばったね！</p>
+              <div style={st.badges}>
+                {lastResult.gains.map((g) => (
+                  <span key={g.stat} style={{ ...st.statBadge, background: STAT[g.stat].color }}>{STAT[g.stat].label} +{g.value}</span>
+                ))}
+                <span style={{ ...st.statBadge, background: '#e0a000' }}>+{lastResult.pts}pt</span>
+              </div>
+            </>
+          ) : lastResult?.kind === 'quit' ? (
+            <p style={st.listBubbleText}>途中でやめちゃったね…{'\n'}次は最後までがんばってみよう！</p>
+          ) : (
+            <p style={st.listBubbleText}>鍛えたいトレーニングを選んだら、{'\n'}モーションに合わせてやってみよう！</p>
+          )}
+        </div>
 
         <div style={st.listPanel}>
           <div style={st.tabs}>
@@ -230,7 +287,7 @@ export default function Training() {
               return (
                 <button key={m.stat}
                   style={{ ...st.tab, ...(on ? { background: STAT[m.stat].color, color: '#fff', border: `2px solid ${STAT[m.stat].color}` } : null) }}
-                  onClick={() => { sfx.tap(); setMenu(m.stat) }}>
+                  onClick={() => { sfx.tap(); setMenu(m.stat); setLastResult(null) }}>
                   <GameIcon name={m.icon} size={22} /> {m.label}
                 </button>
               )
@@ -363,7 +420,7 @@ export default function Training() {
                 <span style={st.counterUnit}>/ {p.reps}回</span>
               </div>
             ) : null}
-            <TimerRing pct={(inPhase / p.sec) * 100} left={p.sec - inPhase} color={color} />
+            <TimerRing pct={(inPhase / p.sec) * 100} left={p.sec - inPhase} color={color} big />
           </div>
           {tip && (
             <div style={st.liveTip}>
@@ -371,47 +428,30 @@ export default function Training() {
               <span>{tip}</span>
             </div>
           )}
-          <button style={st.subBtn} onClick={() => { sfx.cancel(); setScreen('failed') }}>やめる</button>
-        </div>
-      </div>
-    )
-  }
-
-  /* ───────── 完了 ───────── */
-  if (screen === 'done') {
-    const gains = gainsOf(t)
-    const pts = gains.reduce((s, g) => s + g.value, 0) * 10
-    return (
-      <div style={st.root}>
-        <div style={st.bg} />
-        <Confetti count={36} />
-        <Flip a={senpaiMini.armsCrossed} b={senpaiMini.armsCrossedSmile} style={st.resultChara} />
-        <div style={st.resultCard}>
-          <div style={st.resultTitle}>完了！ よくがんばったね！</div>
-          <div style={st.resultGains}>
-            {gains.map((g) => (
-              <span key={g.stat} style={{ ...st.gainChip, background: STAT[g.stat].color }}>{STAT[g.stat].label} +{g.value}</span>
-            ))}
-            <span style={st.gainPt}><GameIcon name="pcoin" size={24} /> +{pts}pt</span>
+          <div style={st.sysRow}>
+            <button style={st.roundBtn} aria-label={settings.sfxOn ? '音オン' : '音オフ'} onClick={() => setSettings({ sfxOn: !settings.sfxOn })}>
+              <GameIcon name="speaker" size={26} style={{ opacity: settings.sfxOn ? 1 : 0.35 }} />
+            </button>
+            <button style={st.roundBtn} aria-label="一時停止" onClick={pause}><span style={st.glyph}>❚❚</span></button>
+            <button style={st.roundBtn} aria-label="やめる" onClick={quit}><span style={st.glyph}>×</span></button>
           </div>
-          <button style={st.mainBtn} onClick={complete}>OK</button>
         </div>
+        {pauseAt && (
+          <div style={st.pauseOverlay}>
+            <div style={st.pauseCard}>
+              <div style={st.resultTitle}>一時停止中</div>
+              <div style={st.btnRow}>
+                <button style={st.subBtn} onClick={quit}>やめる</button>
+                <button style={st.mainBtn} onClick={resume}>つづける</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
 
-  /* ───────── 中断 ───────── */
-  return (
-    <div style={st.root}>
-      <div style={st.bg} />
-      <Flip a={senpaiMini.winkCheer} b={senpaiMini.surprised} style={st.resultChara} />
-      <div style={st.resultCard}>
-        <div style={st.resultTitle}>途中でやめちゃった…</div>
-        <p style={st.resultText}>次は最後までがんばってみよう！</p>
-        <PlankButton label="メニューにもどる" onClick={backToList} />
-      </div>
-    </div>
-  )
+  return null
 }
 
 // お手本アニメの画像がまだない種目
@@ -429,9 +469,9 @@ function NoMotion({ icon, color, size }) {
 }
 
 // 区間の残り時間の円グラフ
-function TimerRing({ pct, left, color }) {
-  const sz = 96
-  const r = 40
+function TimerRing({ pct, left, color, big = false }) {
+  const sz = big ? 150 : 96
+  const r = big ? 62 : 40
   return (
     <div style={{ position: 'relative', width: sz, height: sz }}>
       <svg width={sz} height={sz} style={{ transform: 'rotate(-90deg)' }}>
@@ -442,7 +482,7 @@ function TimerRing({ pct, left, color }) {
           strokeDashoffset={`${2 * Math.PI * r * (1 - Math.min(100, pct) / 100)}`}
         />
       </svg>
-      <span style={st.ringLabel}>{formatSec(left)}</span>
+      <span style={{ ...st.ringLabel, ...(big ? { fontSize: 34 } : null) }}>{formatSec(left)}</span>
     </div>
   )
 }
@@ -577,9 +617,24 @@ const st = {
   restLabel: { fontSize: FS(5, 16, 26), fontWeight: 800 },
   restCount: { color: '#e0a000', fontSize: FS(18, 48, 110), fontWeight: 800, lineHeight: 1 },
   restNext: { fontSize: FS(3.4, 12, 18), fontWeight: 800, color: '#8a6a45' },
+  ratioWrap: { position: 'absolute', top: 'calc(2cqh + clamp(34px, 10.5cqh, 66px) + 6px)', left: '1.5cqw', width: 'min(46cqw, 520px)', zIndex: 20 },
+  ratioBar: { display: 'flex', height: 'clamp(16px, 4.4cqh, 26px)', borderRadius: 99, overflow: 'hidden', border: '2px solid #fff', boxShadow: '0 2px 4px rgba(60,40,20,0.3)' },
+  ratioSeg: { color: '#fff', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', whiteSpace: 'nowrap', transition: 'width 0.4s' },
+  listMini: { position: 'absolute', left: '2cqw', bottom: '2cqh', height: '40cqh', maxWidth: '22cqw', objectFit: 'contain', pointerEvents: 'none' },
+  listBubble: { ...ui.bubble, position: 'absolute', left: '1cqw', top: '24cqh', width: '23cqw', padding: '1.6cqh 1cqw', zIndex: 3 },
+  listBubbleText: { fontSize: FS(3.1, 11, 16), lineHeight: 1.6, whiteSpace: 'pre-wrap', color: 'var(--brown-text)', fontWeight: 800, marginBottom: 4 },
+  sysRow: { display: 'flex', gap: 12 },
+  roundBtn: {
+    width: 'clamp(44px, 13cqh, 64px)', height: 'clamp(44px, 13cqh, 64px)', borderRadius: '50%', cursor: 'pointer',
+    background: '#fff', border: '3px solid var(--beige-edge)', boxShadow: '0 3px 0 var(--beige-edge)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brown-text)',
+  },
+  glyph: { fontSize: 22, fontWeight: 800 },
+  pauseOverlay: { position: 'absolute', inset: 0, zIndex: 50, background: 'rgba(40,28,14,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  pauseCard: { ...panel, padding: '4cqh 4cqw', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3cqh' },
   liveTip: {
     ...ui.bubble, display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-    padding: '1.4cqh 1.2cqw', fontSize: FS(3.6, 13, 19), fontWeight: 800, lineHeight: 1.5, color: 'var(--brown-text)',
+    padding: '1.4cqh 1.2cqw', fontSize: FS(5, 16, 28), fontWeight: 800, lineHeight: 1.5, color: 'var(--brown-text)',
   },
   noMotion: {
     position: 'relative', borderRadius: 24, border: '1.5px solid',

@@ -8,10 +8,10 @@ import CountUp from '../components/CountUp'
 import { Celebration, Confetti } from '../components/Celebration'
 import { BG } from '../assets/backgrounds'
 import { UI } from '../assets/ui'
-import { senpaiPose, senpaiMini } from '../assets/characters/senpai'
-import { takaoPose } from '../assets/characters/takao'
-import { yatsugatakePose } from '../assets/characters/yatsugatake'
-import { hakonePose } from '../assets/characters/hakone'
+import { senpaiMini } from '../assets/characters/senpai'
+import { takaoMini } from '../assets/characters/takao'
+import { yatsugatakeMini } from '../assets/characters/yatsugatake'
+import { hakoneMini } from '../assets/characters/hakone'
 import { sfx } from '../utils/sound'
 import IntroStory from '../components/IntroStory'
 import MissionWindow from '../components/MissionWindow'
@@ -119,7 +119,14 @@ function LogIcon({ label, icon, locked, badge, onClick, tut, small = false }) {
 
 /* ─────────────────────── ホームメイン ─────────────────────── */
 // ホームに出るキャラ。山神は、その山に初めて行ったあとから出る
-const HOME_POSES = { senpai: senpaiPose.home, takao: takaoPose.home, yatsugatake: yatsugatakePose.home, hakone: hakonePose.home }
+// 最新ラフ：先輩ミニ⑥⑧・八ヶ岳ミニ①・高尾ミニ③・箱根ミニ④
+const HOME_POSES = {
+  senpai: [senpaiMini.armsCrossedLaugh, senpaiMini.winkCheer],
+  yatsugatake: [yatsugatakeMini.laugh],
+  takao: [takaoMini.eyesClosed],
+  hakone: [hakoneMini.wink],
+}
+const SENPAI_RATE = 0.5 // 山神が出るようになってからも先輩は少し多め（山神1柱あたりより多い）
 
 export default function Home() {
   const navigate = useNavigate()
@@ -142,10 +149,9 @@ export default function Home() {
   const [loginBonus, setLoginBonus] = useState(null)
 
   const [{ callName, greeting, homePose }] = useState(() => {
-    const ids = Object.keys(HOME_POSES).filter(
-      (id) => id === 'senpai' || mountains[id]?.firstAccessed
-    )
-    const id = ids[Math.floor(Math.random() * ids.length)]
+    // 登山が解禁されて山神に会うまでは先輩だけ。会ったあとは山神に先輩も混ざる
+    const gods = flags.climbingUnlocked ? ['yatsugatake', 'takao', 'hakone'].filter((g) => mountains[g]?.firstAccessed) : []
+    const id = !gods.length || Math.random() < SENPAI_RATE ? 'senpai' : gods[Math.floor(Math.random() * gods.length)]
     const poseSet = HOME_POSES[id]
     const pose = poseSet[Math.floor(Math.random() * poseSet.length)]
     // 吹き出しの名前は山神だけ（カタカナの呼び名）。先輩は名前を出さない

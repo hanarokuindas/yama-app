@@ -2,10 +2,29 @@ import { useState, useRef, useEffect } from 'react'
 import { BG } from '../assets/backgrounds'
 import GameIcon from '../components/GameIcon'
 import { useGameStore } from '../stores/gameStore'
+import coursesData from '../data/courses.json'
+import { yatsugatakeAR } from '../assets/characters/yatsugatake'
+import { takaoAR } from '../assets/characters/takao'
+import { hakoneAR } from '../assets/characters/hakone'
+
+/* AR撮影（最新ラフ p3・p104）：はじめての登頂で解放（風景と登頂スタンプ）。
+   その山の全コースを登頂すると、山神が会いに来てくれて一緒に写真を撮れる */
+const GODS = [
+  { id: 'yatsugatake', name: 'ヤツガタケ', img: yatsugatakeAR.plain },
+  { id: 'takao', name: 'タカオ', img: takaoAR.sheer },
+  { id: 'hakone', name: 'ハコネ', img: hakoneAR.plain },
+]
+const COURSE_COUNT = Object.fromEntries(GODS.map((g) => [g.id, coursesData.filter((c) => c.mountainId === g.id).length]))
+
+function godUnlocked(mountains, id) {
+  return (mountains[id]?.summitedCourses?.length || 0) >= COURSE_COUNT[id]
+}
 
 export default function AR() {
   const flags = useGameStore((s) => s.flags)
   const album = useGameStore((s) => s.album)
+  const mountains = useGameStore((s) => s.mountains)
+  const [god, setGod] = useState(null) // 一緒に撮る山神
   const [active, setActive] = useState(false)
   const [photo, setPhoto] = useState(null)
   const [error, setError] = useState('')
@@ -45,6 +64,13 @@ export default function AR() {
     canvas.height = video.videoHeight
     const ctx = canvas.getContext('2d')
     ctx.drawImage(video, 0, 0)
+    const g = GODS.find((x) => x.id === god)
+    const godImg = g && document.getElementById('ar-god')
+    if (godImg?.naturalWidth) {
+      const h = canvas.height * 0.85
+      const w = h * (godImg.naturalWidth / godImg.naturalHeight)
+      ctx.drawImage(godImg, canvas.width - w - canvas.width * 0.04, canvas.height - h, w, h)
+    }
     // ARオーバーレイ（登頂した山の名前スタンプ）
     ctx.font = 'bold 28px sans-serif'
     ctx.fillStyle = 'rgba(255,255,0,0.9)'
@@ -65,7 +91,7 @@ export default function AR() {
           <GameIcon name="lock" size={60} />
           <h3 style={styles.title}>AR撮影</h3>
           <p style={{ color: '#ccc', fontSize: 14, textAlign: 'center', lineHeight: 1.7 }}>
-            最初の登頂成功後に解禁されます！{'\n'}山を登って解禁しよう！
+            はじめて登頂すると解放されるよ！{'\n'}山を登ってみよう！
           </p>
         </div>
       </div>
@@ -81,8 +107,21 @@ export default function AR() {
           <GameIcon name="camera" size={60} />
           <h3 style={styles.title}>山で写真を撮ろう！</h3>
           <p style={{ color: '#ccc', fontSize: 13, textAlign: 'center', lineHeight: 1.7 }}>
-            カメラを起動して登頂スタンプ付きの写真を撮ろう。
+            カメラを起動して登頂スタンプ付きの写真を撮ろう。{'\n'}その山の全コースを登頂すると、山神が会いに来てくれるよ！
           </p>
+          <div style={styles.godRow}>
+            {GODS.map((g) => {
+              const ok = godUnlocked(mountains, g.id)
+              const left = COURSE_COUNT[g.id] - (mountains[g.id]?.summitedCourses?.length || 0)
+              return (
+                <button key={g.id} disabled={!ok} onClick={() => setGod(god === g.id ? null : g.id)}
+                  style={{ ...styles.godChip, ...(god === g.id ? styles.godOn : null), ...(ok ? null : styles.godLocked) }}>
+                  <img src={g.img} alt="" style={{ height: 64, filter: ok ? 'none' : 'brightness(0) opacity(0.35)' }} draggable={false} />
+                  <span>{ok ? g.name : `あと${left}コース`}</span>
+                </button>
+              )
+            })}
+          </div>
           {error && <p style={{ color: '#ff8a80', fontSize: 12.5, lineHeight: 1.6, margin: 0 }}>{error}</p>}
           <button style={styles.primaryBtn} onClick={startCamera}>カメラを起動</button>
         </div>
@@ -96,6 +135,7 @@ export default function AR() {
             playsInline
             style={{ width: '100%', borderRadius: 12, display: 'block' }}
           />
+          {god && <img id="ar-god" src={GODS.find((g) => g.id === god).img} alt="" style={styles.godOverlay} draggable={false} />}
           {/* ARオーバーレイ */}
           <div style={styles.arOverlay}>
             {album.length > 0 && (
@@ -170,6 +210,15 @@ const styles = {
     maxWidth: 400,
     marginTop: 16,
   },
+  godRow: { display: 'flex', gap: 8, justifyContent: 'center' },
+  godChip: {
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: 92, padding: 6,
+    background: 'rgba(255,255,255,0.1)', border: '2px solid rgba(255,255,255,0.2)', borderRadius: 12,
+    color: '#fff', fontSize: 12, fontWeight: 800, cursor: 'pointer',
+  },
+  godOn: { border: '2px solid #f5c842', background: 'rgba(245,200,66,0.25)' },
+  godLocked: { cursor: 'default', color: '#aab' },
+  godOverlay: { position: 'absolute', right: '4%', bottom: 0, height: '85%', pointerEvents: 'none' },
   arOverlay: {
     position: 'absolute',
     bottom: 80,
