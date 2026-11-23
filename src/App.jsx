@@ -60,9 +60,9 @@ function Inner() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/explore" element={<Explore />} />
-              <Route path="/training" element={<Gate flag="trainingUnlocked" text="トレーニングは、山探索を1回クリアすると解放されるよ"><Legacy><Training /></Legacy></Gate>} />
+              <Route path="/training" element={<Gate flag="trainingUnlocked" text="トレーニングは、山探索を1回クリアすると解放されるよ"><Training /></Gate>} />
               <Route path="/climbing" element={<Climbing />} />
-              <Route path="/maintenance" element={<Gate flag="maintenanceUnlocked" text="山整備は、はじめて登頂すると解放されるよ"><Legacy><Maintenance /></Legacy></Gate>} />
+              <Route path="/maintenance" element={<Gate flag="maintenanceUnlocked" text="山整備は、はじめて登頂すると解放されるよ"><Maintenance /></Gate>} />
               <Route path="/album" element={<Album />} />
               <Route path="/shop" element={<Shop />} />
               <Route path="/guide" element={<Guide />} />

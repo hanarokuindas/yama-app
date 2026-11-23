@@ -2,8 +2,12 @@ import { useState, useEffect } from 'react'
 import GameIcon from '../components/GameIcon'
 import { useGameStore } from '../stores/gameStore'
 import { Confetti } from '../components/Celebration'
+import { HomeButton } from '../components/PlankButton'
+import PlankButton from '../components/PlankButton'
+import { PointPlank, Plank } from '../components/ui'
+import { ui, FS } from '../components/uiStyles'
 import { sfx } from '../utils/sound'
-import { senpaiPose, senpaiMini } from '../assets/characters/senpai'
+import { senpaiFull, senpaiMini } from '../assets/characters/senpai'
 import { BG } from '../assets/backgrounds'
 import MotionPlayer, { MotionStrip } from '../components/MotionPlayer'
 import { HOWTO } from '../data/howto'
@@ -12,23 +16,27 @@ import { TUTORIALS } from '../data/tutorial'
 import TRAININGS from '../data/trainings.json'
 import { STAT } from '../data/stats'
 
-/* 種目は「手本動画」表から作った src/data/trainings.json（tools/import_trainings.py）。
-   回数／時間・左右の切り替え・セット・先輩コメントは表のとおりに進める。 */
+/* トレーニング（横画面・最新ラフ p28〜35）
+   体幹・脚力・腕力の3メニュー。振り分けは「手本動画」表の 脚／腕／体 の〇（2つにまたがる種目は両方に出る）。
+   初回は先輩のあいさつ。実施中は先輩ミニ①②、最後までやったら⑤⑦、途中でやめたら⑧⑩をパラパラ切り替える。
+   回数／時間・左右の切り替え・セット・先輩コメントは表のとおりに進める（tools/import_trainings.py）。 */
 
-const GROUPS = [
-  { id: '脚力', icon: 'leg' },
-  { id: 'ヒップ', icon: 'lift' },
-  { id: '腕・胸筋', icon: 'muscle' },
-  { id: '腹筋', icon: 'fire' },
-  { id: '背筋', icon: 'breath' },
-  { id: '体幹', icon: 'yoga' },
-  { id: 'ストレッチ', icon: 'stretch' },
+const MENUS = [
+  { stat: 'core', label: '体幹メニュー', icon: 'yoga' },
+  { stat: 'legs', label: '脚力メニュー', icon: 'leg' },
+  { stat: 'arms', label: '腕力メニュー', icon: 'muscle' },
 ]
-const GROUP_ICON = Object.fromEntries(GROUPS.map((g) => [g.id, g.icon]))
 
 const SIDE_LABEL = { lr: '左右', alt: '左右交互' }
 const DEMO_MIN_SEC = 4 // 準備画面のお手本は1回を最低4秒かけて見せる
 const TIP_SEC = 10     // 実施中の先輩コメントの切り替え間隔
+const FLIP_MS = 700    // 先輩ミニのパラパラの間隔
+
+const INTRO = [
+  'はじめましてだよね！\nボクは一応、キミたちの先輩かな\nよろしくね！',
+  'ここでは体づくりをしていくよ！\n自分のペースでいいからね',
+  '鍛えたいトレーニングを選んだら、\nモーションに合わせて実際にやってみよう！',
+]
 
 // 上がる能力値。筋トレは4秒で1、ストレッチは8秒で1を、表で印のついた能力に分ける
 function gainsOf(t) {
@@ -64,9 +72,31 @@ function cycleOf(t, p) {
   return MOTIONS[t.id]?.cycle ?? 3
 }
 
-// 時間はすべて秒で表示する（例：90秒、45秒）。表の「30回（90秒）」と単位をそろえる
-function formatSec(sec) {
-  return `${Math.max(0, Math.ceil(sec))}秒`
+const formatSec = (sec) => `${Math.max(0, Math.ceil(sec))}秒`
+
+// お手本の大きさ（画面の高さに合わせる）
+function useStageH() {
+  const get = () => {
+    const el = document.querySelector('.app-stage')
+    return el ? el.clientHeight : window.innerHeight
+  }
+  const [h, setH] = useState(get)
+  useEffect(() => {
+    const on = () => setH(get())
+    window.addEventListener('resize', on)
+    return () => window.removeEventListener('resize', on)
+  }, [])
+  return h
+}
+
+// 2枚の絵を交互に出す（パラパラ）
+function Flip({ a, b, style, alt = '先輩' }) {
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    const id = setInterval(() => setOn((v) => !v), FLIP_MS)
+    return () => clearInterval(id)
+  }, [])
+  return <img src={on ? b : a} alt={alt} style={style} draggable={false} />
 }
 
 export default function Training() {
@@ -77,21 +107,29 @@ export default function Training() {
   const addPoints = useGameStore((s) => s.addPoints)
   const recordMission = useGameStore((s) => s.recordMission)
   const tutorialEvent = useGameStore((s) => s.tutorialEvent)
+  const tutorialActive = useGameStore((s) => s.tutorial !== null)
+  const introSeen = useGameStore((s) => !!s.tutorialSeen.trainingIntro)
+  const markSeen = useGameStore((s) => s.markSeen)
   // チュートリアルでプランクを選ぶ場面では、プランクのある「体幹」を開いておく
   const tutorialPick = useGameStore((s) => (
     s.tutorial?.id === 'start' && TUTORIALS.start.steps[s.tutorial.step]?.id === 'pickTraining'
   ))
+  const stageH = useStageH()
 
   const [screen, setScreen] = useState('list') // list / ready / doing / done / failed
-  const [group, setGroup] = useState('脚力')
+  const [menu, setMenu] = useState('core')
   const [selected, setSelected] = useState(null)
   const [startAt, setStartAt] = useState(0)
   const [now, setNow] = useState(0)
+  const [introIdx, setIntroIdx] = useState(0)
+  const [listPose] = useState(() => (Math.random() < 0.5 ? senpaiFull.pointing : senpaiFull.cheering))
 
-  const shownGroup = tutorialPick ? '体幹' : group
+  const shownMenu = tutorialPick ? 'core' : menu
   const elapsed = (now - startAt) / 1000
   const cur = selected && screen === 'doing' ? locate(selected, elapsed) : null
   const reps = cur?.p.reps ? Math.min(cur.p.reps, Math.floor(cur.inPhase / (cur.p.sec / cur.p.reps))) : 0
+  const total = Math.floor((player.core + player.legs + player.arms) / 3)
+  const level = Math.floor(total / 50) + 1
 
   useEffect(() => {
     if (screen !== 'doing') return
@@ -141,61 +179,85 @@ export default function Training() {
     setSelected(null)
   }
 
+  const backToList = () => { sfx.cancel(); setScreen('list'); setSelected(null) }
+
+  /* ───────── 初回：先輩のあいさつ（チュートリアル中は案内が同じことを言うので出さない） ───────── */
+  if (!introSeen && !tutorialActive) {
+    const next = () => {
+      sfx.tap()
+      if (introIdx < INTRO.length - 1) setIntroIdx(introIdx + 1)
+      else markSeen('trainingIntro')
+    }
+    return (
+      <div style={st.root} onClick={next}>
+        <div style={st.bg} />
+        <img src={senpaiFull.pointing} alt="先輩" style={st.introChara} draggable={false} />
+        <div style={st.introBox}>
+          <p style={st.introText}>{INTRO[introIdx]}</p>
+          <span style={st.more}>▼</span>
+        </div>
+      </div>
+    )
+  }
+
   /* ───────── 一覧 ───────── */
   if (screen === 'list') {
-    const items = TRAININGS.filter((t) => t.group === shownGroup)
+    const items = TRAININGS.filter((t) => t.stats.includes(shownMenu))
     return (
-      <div style={styles.container}>
-        <div style={styles.title}>TRAINING</div>
-        <div style={styles.statsRow} data-tut="train-stats">
-          <StatChip label="体幹" value={player.core} color={STAT.core.color} />
-          <StatChip label="脚力" value={player.legs} color={STAT.legs.color} />
-          <StatChip label="腕力" value={player.arms} color={STAT.arms.color} />
-        </div>
-
-        <div style={styles.tabs}>
-          {GROUPS.map((g) => {
-            const on = g.id === shownGroup
-            return (
-              <button key={g.id}
-                style={{
-                  ...styles.tab,
-                  background: on ? 'linear-gradient(135deg,#f5c842,#e0a800)' : 'rgba(255,255,255,0.07)',
-                  color: on ? '#1a0e00' : '#aab',
-                  borderColor: on ? 'transparent' : 'rgba(255,255,255,0.14)',
-                }}
-                onClick={() => { sfx.tap(); setGroup(g.id) }}>
-                <GameIcon name={g.icon} size={16} /> {g.id}
-              </button>
-            )
-          })}
-        </div>
-
-        <div style={styles.menuList}>
-          {items.map((t) => (
-            <button key={t.id} style={styles.menuCard} data-tut={`train-${t.id}`} onClick={() => open(t)}>
-              <GameIcon name={GROUP_ICON[t.group]} size={30} />
-              <div style={styles.menuInfo}>
-                <span style={styles.menuName}>
-                  {t.name}
-                  {hasMotion(t.id) && <span style={styles.animTag}>お手本</span>}
+      <div style={st.root}>
+        <div style={st.bg} />
+        <div style={st.topBar}>
+          <div style={st.topLeft}>
+            <PointPlank points={player.points} />
+            <Plank tut="train-stats">
+              <span style={st.lvChip}>体力Lv.{level}</span>
+              {MENUS.map((m) => (
+                <span key={m.stat} style={{ ...st.statText, background: STAT[m.stat].color }}>
+                  {STAT[m.stat].label} {player[m.stat]}
                 </span>
-                {t.note && <span style={styles.menuNote}>{t.note}</span>}
-                <span style={styles.menuSpec}>
-                  {t.side && <span style={styles.sideTag}>{SIDE_LABEL[t.side]}</span>}
+              ))}
+            </Plank>
+          </div>
+          <HomeButton />
+        </div>
+
+        <img src={listPose} alt="先輩" style={st.listChara} draggable={false} />
+
+        <div style={st.listPanel}>
+          <div style={st.tabs}>
+            {MENUS.map((m) => {
+              const on = m.stat === shownMenu
+              return (
+                <button key={m.stat}
+                  style={{ ...st.tab, ...(on ? { background: STAT[m.stat].color, color: '#fff', border: `2px solid ${STAT[m.stat].color}` } : null) }}
+                  onClick={() => { sfx.tap(); setMenu(m.stat) }}>
+                  <GameIcon name={m.icon} size={22} /> {m.label}
+                </button>
+              )
+            })}
+          </div>
+          <div style={st.grid}>
+            {items.map((t) => (
+              <button key={t.id} style={st.card} data-tut={`train-${t.id}`} onClick={() => open(t)}>
+                <div style={st.cardTop}>
+                  <span style={st.cardName}>{t.name}</span>
+                  {t.group === 'ストレッチ' && <span style={st.stretchTag}>ストレッチ</span>}
+                </div>
+                {t.note && <span style={st.cardNote}>{t.note}</span>}
+                <span style={st.cardSpec}>
+                  {t.side && <span style={st.sideTag}>{SIDE_LABEL[t.side]}</span>}
                   {t.spec}
                 </span>
-              </div>
-              <div style={styles.menuMeta}>
-                {gainsOf(t).map((g) => (
-                  <span key={g.stat} style={{ ...styles.statBadge, background: STAT[g.stat].color }}>
-                    {STAT[g.stat].label} +{g.value}
-                  </span>
-                ))}
-                <span style={styles.duration}>{formatSec(t.total)}</span>
-              </div>
-            </button>
-          ))}
+                <span style={st.badges}>
+                  {gainsOf(t).map((g) => (
+                    <span key={g.stat} style={{ ...st.statBadge, background: STAT[g.stat].color }}>
+                      {STAT[g.stat].label} +{g.value}
+                    </span>
+                  ))}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     )
@@ -204,56 +266,52 @@ export default function Training() {
   const t = selected
   const color = STAT[t.stats[0]].color
   const firstWork = t.phases.find((p) => !p.rest)
+  const motionSize = Math.round(stageH * 0.56)
 
   /* ───────── 準備（お手本） ───────── */
   if (screen === 'ready') {
     return (
-      <div style={styles.container}>
-        <div style={styles.trainingCard}>
-          <h3 style={styles.trainTitle}>{t.name}</h3>
-          {t.note && <p style={styles.trainNote}>{t.note}</p>}
+      <div style={st.root}>
+        <div style={st.bg} />
+        <div style={st.readyLeft}>
+          <div style={st.trainTitle}>{t.name}</div>
           {hasMotion(t.id) ? (
-            <>
-              {/* 形が見えるよう、実際より遅く再生する */}
-              <MotionPlayer id={t.id} cycle={Math.max(cycleOf(t, firstWork) * 1.5, DEMO_MIN_SEC)} color={color} size={210}>
-                <span style={styles.demoTag}>お手本（ゆっくり）</span>
-              </MotionPlayer>
-              <MotionStrip id={t.id} color={color} />
-            </>
-          ) : <NoMotion icon={GROUP_ICON[t.group]} color={color} size={150} />}
-
-          {HOWTO[t.id] && (
-            <div style={styles.howto}>
-              <div style={styles.howtoHead}>やり方</div>
-              <ol style={styles.howtoList}>
-                {HOWTO[t.id].map((line) => <li key={line} style={styles.howtoItem}>{line}</li>)}
-              </ol>
-            </div>
-          )}
-
-          <div style={styles.specBox}>
-            <div style={styles.specMain}>
-              {t.side && <span style={styles.sideTag}>{SIDE_LABEL[t.side]}</span>}
+            <MotionPlayer id={t.id} cycle={Math.max(cycleOf(t, firstWork) * 1.5, DEMO_MIN_SEC)} color={color} size={motionSize}>
+              <span style={st.demoTag}>お手本（ゆっくり）</span>
+            </MotionPlayer>
+          ) : <NoMotion icon={MENUS.find((m) => m.stat === t.stats[0]).icon} color={color} size={motionSize} />}
+        </div>
+        <div style={st.readyRight}>
+          <div style={st.specBox}>
+            <div style={st.specMain}>
+              {t.side && <span style={st.sideTag}>{SIDE_LABEL[t.side]}</span>}
               {t.spec}
             </div>
-            {flowText(t) && <div style={styles.specSub}>{flowText(t)}</div>}
+            {flowText(t) && <div style={st.specSub}>{flowText(t)}</div>}
+            {t.note && <div style={st.specSub}>{t.note}</div>}
           </div>
-
-          {t.tips.length > 0 && (
-            <div style={{ ...styles.tipBox, borderColor: color }}>
-              <div style={styles.tipHead}>
-                <img src={senpaiPose.training[0]} alt="先輩" style={{ height: 48 }} draggable={false} />
-                <span style={{ color, fontWeight: 900, fontSize: 12 }}>先輩より</span>
+          <div style={st.readyScroll}>
+            {hasMotion(t.id) && <MotionStrip id={t.id} color={color} />}
+            {HOWTO[t.id] && (
+              <div style={st.howto}>
+                <div style={st.howtoHead}>やり方</div>
+                <ol style={st.howtoList}>
+                  {HOWTO[t.id].map((line) => <li key={line}>{line}</li>)}
+                </ol>
               </div>
-              <ul style={styles.tipList}>
-                {t.tips.map((tip) => <li key={tip}>{tip}</li>)}
-              </ul>
-            </div>
-          )}
-
-          <div style={styles.stickyActions}>
-            <button style={styles.startBtn} onClick={begin}>スタート！</button>
-            <button style={styles.backBtn} onClick={() => { sfx.cancel(); setScreen('list') }}>戻る</button>
+            )}
+            {t.tips.length > 0 && (
+              <div style={{ ...st.tipBox, borderColor: color }}>
+                <img src={senpaiMini.glassesSmile} alt="先輩" style={{ height: 52, flexShrink: 0 }} draggable={false} />
+                <ul style={st.tipList}>
+                  {t.tips.map((tip) => <li key={tip}>{tip}</li>)}
+                </ul>
+              </div>
+            )}
+          </div>
+          <div style={st.btnRow}>
+            <button style={st.subBtn} onClick={backToList}>もどる</button>
+            <button style={st.mainBtn} onClick={begin}>スタート！</button>
           </div>
         </div>
       </div>
@@ -266,58 +324,54 @@ export default function Training() {
     const next = t.phases[i + 1]
     const works = t.phases.filter((x) => !x.rest)
     const tip = t.tips.length ? t.tips[Math.floor(elapsed / TIP_SEC) % t.tips.length] : ''
-    const ring = <TimerRing pct={(inPhase / p.sec) * 100} left={p.sec - inPhase} color={color} />
-    const counter = p.reps ? (
-      <div style={{ ...styles.reps, borderColor: `${color}aa` }}>
-        <span style={styles.repsNum}>{reps}</span>
-        <span style={styles.repsUnit}>/ {p.reps}回</span>
-      </div>
-    ) : null
-
     return (
-      <div style={styles.container}>
-        <div style={styles.trainingCard}>
-          <div style={styles.progressBg}>
-            <div style={{ ...styles.progressFill, width: `${Math.min(100, (elapsed / t.total) * 100)}%`, background: color }} />
-          </div>
-          <h3 style={styles.trainTitle}>{t.name}</h3>
+      <div style={st.root}>
+        <div style={st.bg} />
+        <div style={st.progressBg}>
+          <div style={{ ...st.progressFill, width: `${Math.min(100, (elapsed / t.total) * 100)}%`, background: color }} />
+        </div>
+        <div style={st.doingLeft}>
+          {p.rest ? (
+            <div style={{ ...st.restCard, width: motionSize, height: motionSize, borderColor: `${color}66` }}>
+              <div style={st.restLabel}>{p.label === '切り替え' ? '反対側に切り替え' : '休憩'}</div>
+              <div style={st.restCount}>{Math.ceil(p.sec - inPhase)}</div>
+              {next && <div style={st.restNext}>次は {next.label}{next.reps ? ` ${next.reps}回` : ` ${formatSec(next.sec)}`}</div>}
+            </div>
+          ) : hasMotion(t.id) ? (
+            <MotionPlayer id={t.id} cycle={cycleOf(t, p)} time={inPhase} mirror={p.label === '右'} color={color} size={motionSize} />
+          ) : (
+            <NoMotion icon={MENUS.find((m) => m.stat === t.stats[0]).icon} color={color} size={motionSize} />
+          )}
+        </div>
+        <div style={st.doingRight}>
+          <div style={st.trainTitle}>{t.name}</div>
           {works.length > 1 && (
-            <div style={styles.phaseRow}>
+            <div style={st.phaseRow}>
               {t.phases.map((x, k) => !x.rest && (
                 <span key={k} style={{
-                  ...styles.phaseChip,
-                  background: k === i ? color : k < i ? `${color}55` : 'rgba(255,255,255,0.08)',
-                  color: k === i ? '#fff' : '#aab',
+                  ...st.phaseChip,
+                  background: k === i ? color : k < i ? `${color}55` : '#fff',
+                  color: k === i ? '#fff' : 'var(--brown-text)',
                 }}>{x.label}</span>
               ))}
             </div>
           )}
-
-          {p.rest ? (
-            <div style={{ ...styles.restCard, borderColor: `${color}66` }}>
-              <div style={styles.restLabel}>{p.label === '切り替え' ? '反対側に切り替え' : '休憩'}</div>
-              <div style={styles.restCount}>{Math.ceil(p.sec - inPhase)}</div>
-              {next && <div style={styles.restNext}>次は {next.label}{next.reps ? ` ${next.reps}回` : ` ${formatSec(next.sec)}`}</div>}
-            </div>
-          ) : hasMotion(t.id) ? (
-            <MotionPlayer id={t.id} cycle={cycleOf(t, p)} time={inPhase} mirror={p.label === '右'} color={color} size={248}>
-              {counter}
-              <div style={styles.ringSlot}>{ring}</div>
-            </MotionPlayer>
-          ) : (
-            <NoMotion icon={GROUP_ICON[t.group]} color={color} size={200}>
-              {counter}
-              <div style={styles.ringSlot}>{ring}</div>
-            </NoMotion>
-          )}
-
+          <div style={st.counterRow}>
+            {p.reps && !p.rest ? (
+              <div style={st.counter}>
+                <span style={{ ...st.counterNum, color }}>{reps}</span>
+                <span style={st.counterUnit}>/ {p.reps}回</span>
+              </div>
+            ) : null}
+            <TimerRing pct={(inPhase / p.sec) * 100} left={p.sec - inPhase} color={color} />
+          </div>
           {tip && (
-            <div style={styles.liveTip}>
-              <img src={senpaiMini.winkCheer} alt="" style={{ height: 40, flexShrink: 0 }} draggable={false} />
+            <div style={st.liveTip}>
+              <Flip a={senpaiMini.megaphone} b={senpaiMini.megaphoneShout} style={{ height: 'clamp(48px, 16cqh, 96px)', flexShrink: 0 }} />
               <span>{tip}</span>
             </div>
           )}
-          <button style={styles.giveupBtn} onClick={() => { sfx.cancel(); setScreen('failed') }}>やめる</button>
+          <button style={st.subBtn} onClick={() => { sfx.cancel(); setScreen('failed') }}>やめる</button>
         </div>
       </div>
     )
@@ -328,23 +382,19 @@ export default function Training() {
     const gains = gainsOf(t)
     const pts = gains.reduce((s, g) => s + g.value, 0) * 10
     return (
-      <div style={styles.container}>
+      <div style={st.root}>
+        <div style={st.bg} />
         <Confetti count={36} />
-        <div style={styles.trainingCard}>
-          <img src={senpaiPose.praise[0]} alt="先輩" style={{ height: 110, animation: 'popIn 0.5s ease' }} draggable={false} />
-          <h3 style={styles.trainTitle}>完了！</h3>
-          <p style={styles.trainDesc}>よくがんばった！</p>
-          <div style={{ ...styles.rewardBox, animation: 'popIn 0.5s 0.15s both' }}>
+        <Flip a={senpaiMini.armsCrossed} b={senpaiMini.armsCrossedSmile} style={st.resultChara} />
+        <div style={st.resultCard}>
+          <div style={st.resultTitle}>完了！ よくがんばったね！</div>
+          <div style={st.resultGains}>
             {gains.map((g) => (
-              <p key={g.stat} style={{ color: STAT[g.stat].color, fontWeight: 900, margin: '2px 0' }}>
-                {STAT[g.stat].label} +{g.value}
-              </p>
+              <span key={g.stat} style={{ ...st.gainChip, background: STAT[g.stat].color }}>{STAT[g.stat].label} +{g.value}</span>
             ))}
-            <p style={{ color: '#f5c842', fontWeight: 900, display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'center', margin: '6px 0 0' }}>
-              <GameIcon name="star" size={18} /> +{pts}pt
-            </p>
+            <span style={st.gainPt}><GameIcon name="pcoin" size={24} /> +{pts}pt</span>
           </div>
-          <button style={styles.startBtn} onClick={complete}>OK</button>
+          <button style={st.mainBtn} onClick={complete}>OK</button>
         </div>
       </div>
     )
@@ -352,206 +402,200 @@ export default function Training() {
 
   /* ───────── 中断 ───────── */
   return (
-    <div style={styles.container}>
-      <div style={styles.trainingCard}>
-        <img src={senpaiPose.think[2]} alt="先輩" style={{ height: 110 }} draggable={false} />
-        <h3 style={styles.trainTitle}>途中でやめちゃった…</h3>
-        <p style={styles.trainDesc}>次は最後まで頑張ってみよう！</p>
-        <button style={styles.backBtn} onClick={() => { setScreen('list'); setSelected(null) }}>
-          メニューに戻る
-        </button>
+    <div style={st.root}>
+      <div style={st.bg} />
+      <Flip a={senpaiMini.winkCheer} b={senpaiMini.surprised} style={st.resultChara} />
+      <div style={st.resultCard}>
+        <div style={st.resultTitle}>途中でやめちゃった…</div>
+        <p style={st.resultText}>次は最後までがんばってみよう！</p>
+        <PlankButton label="メニューにもどる" onClick={backToList} />
       </div>
     </div>
   )
 }
 
 // お手本アニメの画像がまだない種目
-function NoMotion({ icon, color, size, children }) {
+function NoMotion({ icon, color, size }) {
   return (
     <div style={{
-      ...styles.noMotion, width: size, height: size,
-      background: `radial-gradient(circle at 50% 50%, ${color}30 0%, rgba(255,255,255,0.03) 70%)`,
+      ...st.noMotion, width: size, height: size,
+      background: `radial-gradient(circle at 50% 50%, ${color}30 0%, rgba(255,255,255,0.5) 70%)`,
       borderColor: `${color}55`,
     }}>
       <GameIcon name={icon} size={Math.round(size * 0.36)} />
-      <span style={styles.noMotionText}>お手本アニメは準備中</span>
-      {children}
+      <span style={st.noMotionText}>お手本アニメは準備中</span>
     </div>
   )
 }
 
 // 区間の残り時間の円グラフ
 function TimerRing({ pct, left, color }) {
-  const sz = 64
-  const r = 26
+  const sz = 96
+  const r = 40
   return (
     <div style={{ position: 'relative', width: sz, height: sz }}>
       <svg width={sz} height={sz} style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={sz / 2} cy={sz / 2} r={r} fill="rgba(8,10,24,0.72)" stroke="rgba(255,255,255,0.15)" strokeWidth={5} />
+        <circle cx={sz / 2} cy={sz / 2} r={r} fill="#fff" stroke="var(--beige-edge)" strokeWidth={7} />
         <circle
-          cx={sz / 2} cy={sz / 2} r={r} fill="none" stroke={color} strokeWidth={5}
+          cx={sz / 2} cy={sz / 2} r={r} fill="none" stroke={color} strokeWidth={7}
           strokeDasharray={`${2 * Math.PI * r}`}
           strokeDashoffset={`${2 * Math.PI * r * (1 - Math.min(100, pct) / 100)}`}
         />
       </svg>
-      <span style={styles.ringLabel}>{formatSec(left)}</span>
+      <span style={st.ringLabel}>{formatSec(left)}</span>
     </div>
   )
 }
 
-function StatChip({ label, value, color }) {
-  return (
-    <div style={{ textAlign: 'center', flex: 1 }}>
-      <div style={{ color, fontWeight: 900, fontSize: 18 }}>{value}</div>
-      <div style={{ color: '#aab', fontSize: 12 }}>{label}</div>
-    </div>
-  )
+const panel = {
+  background: 'rgba(250,244,232,0.95)',
+  border: '3px solid var(--beige-edge)',
+  borderRadius: 20,
+  boxShadow: '0 8px 28px rgba(40,25,10,0.3)',
+  color: 'var(--brown-text)',
+}
+const btnBase = {
+  border: 'none', borderRadius: 99, cursor: 'pointer', fontWeight: 800,
+  padding: 'clamp(6px, 2cqh, 12px) clamp(16px, 3cqw, 30px)', fontSize: FS(3.8, 14, 20),
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, whiteSpace: 'nowrap',
 }
 
-const styles = {
-  container: {
-    minHeight: '100vh',
-    backgroundImage: `linear-gradient(rgba(8,10,24,0.72), rgba(8,10,24,0.82)), url(${BG.training})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundAttachment: 'fixed',
-    paddingBottom: 80,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
+const st = {
+  root: { position: 'relative', width: '100%', height: '100cqh', overflow: 'hidden', userSelect: 'none' },
+  bg: {
+    position: 'absolute', inset: 0,
+    backgroundImage: `linear-gradient(rgba(239,228,207,0.35), rgba(239,228,207,0.35)), url(${BG.training})`,
+    backgroundSize: 'cover', backgroundPosition: 'center',
   },
-  title: { color: '#f5c842', fontSize: 12, fontWeight: 700, letterSpacing: 3, padding: '18px 0 10px' },
-  statsRow: {
-    display: 'flex', width: 'calc(100% - 32px)', maxWidth: 360,
-    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 14, padding: '12px 0', marginBottom: 12,
+
+  /* はじめのあいさつ */
+  introChara: { position: 'absolute', left: '6cqw', bottom: 0, height: '90cqh', objectFit: 'contain', animation: 'popIn 0.5s ease' },
+  introBox: { ...ui.bubble, position: 'absolute', left: '36cqw', right: '6cqw', bottom: '8cqh', padding: '4cqh 3cqw', cursor: 'pointer' },
+  introText: { fontSize: FS(4.6, 16, 26), lineHeight: 1.7, whiteSpace: 'pre-wrap', color: 'var(--brown-text)', fontWeight: 800 },
+  more: { position: 'absolute', right: 18, bottom: 10, color: '#e0a000', animation: 'blink 1.2s infinite' },
+
+  /* 一覧 */
+  topBar: {
+    position: 'absolute', top: '2cqh', left: '1.5cqw', right: '1.5cqw', zIndex: 20,
+    display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8,
   },
-  tabs: {
-    display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center',
-    width: 'calc(100% - 24px)', maxWidth: 380, marginBottom: 12,
+  topLeft: { display: 'flex', gap: 8, flexWrap: 'wrap' },
+  lvChip: {
+    background: 'linear-gradient(135deg, #f8c537, #e0a000)', color: '#4a2e00', fontWeight: 800,
+    fontSize: FS(3.4, 12, 18), borderRadius: 99, padding: '1px 10px', whiteSpace: 'nowrap',
   },
+  statText: { fontSize: FS(3.2, 11, 17), marginLeft: 4, color: '#fff', fontWeight: 800, borderRadius: 99, padding: '1px 9px', whiteSpace: 'nowrap' },
+  listChara: {
+    position: 'absolute', left: '1cqw', bottom: 0, height: '78cqh', maxWidth: '24cqw',
+    objectFit: 'contain', objectPosition: 'bottom', pointerEvents: 'none',
+  },
+  listPanel: {
+    ...panel, position: 'absolute', left: '25cqw', right: '2cqw', top: '15cqh', bottom: '3cqh',
+    display: 'flex', flexDirection: 'column', padding: '1.6cqh 1.4cqw', gap: '1.4cqh',
+  },
+  tabs: { display: 'flex', gap: 8 },
   tab: {
-    display: 'flex', alignItems: 'center', gap: 4,
-    border: '1px solid', borderRadius: 16, padding: '6px 11px',
-    fontSize: 12, fontWeight: 900, cursor: 'pointer',
+    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+    background: '#fff', color: 'var(--brown-text)', border: '2px solid var(--beige-edge)',
+    borderRadius: 14, padding: 'clamp(4px, 1.6cqh, 10px) 6px', fontSize: FS(3.6, 13, 19), fontWeight: 800,
+    cursor: 'pointer', boxShadow: '0 3px 0 var(--beige-edge)',
   },
-  menuList: { width: 'calc(100% - 32px)', maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 8 },
-  menuCard: {
-    display: 'flex', alignItems: 'center', gap: 12,
-    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 14, padding: '12px 14px', cursor: 'pointer', textAlign: 'left',
+  grid: {
+    flex: 1, overflowY: 'auto', display: 'grid', gap: '1.2cqh 0.9cqw', alignContent: 'start',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(min(190px, 28cqw), 1fr))', paddingBottom: 6,
   },
-  menuInfo: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 },
-  menuName: { color: '#fff', fontSize: 15, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  menuNote: { color: '#aab', fontSize: 11 },
-  menuSpec: { color: '#ccd', fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 },
-  animTag: {
-    background: 'rgba(245,200,66,0.16)', border: '1px solid rgba(245,200,66,0.5)',
-    color: '#f5c842', fontSize: 9.5, fontWeight: 900, borderRadius: 8, padding: '1px 6px',
+  card: {
+    background: 'linear-gradient(180deg, #fffaf0, #f1e6d0)', border: '2px solid var(--beige-edge)',
+    borderRadius: 14, boxShadow: '0 4px 0 #cdb68e', padding: '1.2cqh 0.8cqw', cursor: 'pointer',
+    textAlign: 'left', color: 'var(--brown-text)', display: 'flex', flexDirection: 'column', gap: 3,
   },
-  sideTag: {
-    background: 'rgba(255,255,255,0.12)', color: '#dde', fontSize: 10, fontWeight: 900,
-    borderRadius: 6, padding: '1px 6px',
-  },
-  menuMeta: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 },
-  statBadge: { color: '#fff', fontSize: 10.5, padding: '2px 8px', borderRadius: 10, fontWeight: 700 },
-  duration: { color: '#aab', fontSize: 12 },
+  cardTop: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 },
+  cardName: { fontSize: FS(3.4, 12, 17), fontWeight: 800, lineHeight: 1.3 },
+  cardNote: { fontSize: 11, color: '#8a6a45' },
+  cardSpec: { fontSize: FS(3, 11, 15), display: 'flex', alignItems: 'center', gap: 5, fontWeight: 800 },
+  stretchTag: { fontSize: 10, background: '#9fd3a8', color: '#1a5a2a', borderRadius: 8, padding: '1px 6px', flexShrink: 0 },
+  sideTag: { background: '#efe4cf', fontSize: 10, fontWeight: 800, borderRadius: 6, padding: '1px 6px' },
+  badges: { display: 'flex', gap: 4, flexWrap: 'wrap' },
+  statBadge: { color: '#fff', fontSize: 10.5, padding: '1px 8px', borderRadius: 10, fontWeight: 800 },
 
-  trainingCard: {
-    margin: '24px 16px',
-    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(245,200,66,0.2)',
-    borderRadius: 24, padding: '24px 22px',
-    width: 'calc(100% - 32px)', maxWidth: 360,
-    textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
-    backdropFilter: 'blur(12px)', boxShadow: '0 0 40px rgba(123,92,240,0.15)',
+  /* 準備 */
+  readyLeft: {
+    position: 'absolute', left: '3cqw', top: '4cqh', bottom: '4cqh', width: '44cqw',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2cqh',
   },
-  trainTitle: { color: '#fff', fontSize: 22, fontWeight: 900, margin: 0 },
-  trainNote: { color: '#aab', fontSize: 12, margin: '-6px 0 0' },
-  trainDesc: { color: '#ccd', fontSize: 14, margin: 0 },
+  readyRight: {
+    ...panel, position: 'absolute', left: '50cqw', right: '2.5cqw', top: '4cqh', bottom: '4cqh',
+    display: 'flex', flexDirection: 'column', gap: '1.4cqh', padding: '2cqh 1.6cqw',
+  },
+  readyScroll: { flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.4cqh' },
+  trainTitle: {
+    ...panel, borderRadius: 99, padding: '4px 22px', fontSize: FS(5, 17, 28), fontWeight: 800, textAlign: 'center',
+  },
   demoTag: {
-    position: 'absolute', top: 10, left: 10,
-    background: 'rgba(8,10,24,0.72)', border: '1px solid rgba(255,255,255,0.2)',
-    borderRadius: 10, padding: '2px 9px',
-    color: '#dde', fontSize: 10.5, fontWeight: 900, letterSpacing: 1,
+    position: 'absolute', top: 10, left: 10, background: 'rgba(255,255,255,0.9)', border: '1px solid var(--beige-edge)',
+    borderRadius: 10, padding: '2px 9px', color: 'var(--brown-text)', fontSize: 11, fontWeight: 800,
   },
-  specBox: {
-    width: '100%', background: 'rgba(0,0,0,0.25)', borderRadius: 12, padding: '10px 12px',
-  },
-  specMain: { color: '#fff', fontSize: 17, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  specSub: { color: '#aab', fontSize: 11.5, marginTop: 4 },
+  specBox: { background: '#fff', borderRadius: 12, padding: '1.2cqh 1cqw', border: '2px solid var(--beige-edge)' },
+  specMain: { fontSize: FS(4.4, 15, 24), fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 },
+  specSub: { fontSize: FS(3, 11, 15), color: '#8a6a45', marginTop: 4 },
+  howto: { background: '#fff', borderRadius: 12, padding: '1.2cqh 1cqw' },
+  howtoHead: { color: '#e0a000', fontSize: 13, fontWeight: 800, marginBottom: 4 },
+  howtoList: { margin: 0, paddingLeft: 20, fontSize: FS(3.1, 12, 16), lineHeight: 1.65, fontWeight: 700 },
   tipBox: {
-    background: 'rgba(0,0,0,0.3)', border: '1px solid', borderRadius: 12,
-    padding: '8px 12px 10px', width: '100%', boxSizing: 'border-box', textAlign: 'left',
+    display: 'flex', gap: 8, alignItems: 'flex-start',
+    background: '#fffdf7', border: '2px solid', borderRadius: 12, padding: '1cqh 1cqw',
   },
-  tipHead: { display: 'flex', alignItems: 'center', gap: 8 },
-  tipList: { color: '#eef', fontSize: 12.5, lineHeight: 1.7, margin: '4px 0 0', paddingLeft: 18 },
-  startBtn: {
-    width: '100%', padding: '14px 0',
-    background: 'linear-gradient(135deg, #2ecc71, #1a8a47)', color: '#fff',
-    border: 'none', borderRadius: 30, fontSize: 16, fontWeight: 900, cursor: 'pointer',
-    boxShadow: '0 4px 16px rgba(46,204,113,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
-  },
-  backBtn: {
-    width: '100%', padding: '11px 0',
-    background: 'rgba(255,255,255,0.08)', color: '#aab',
-    border: '1px solid rgba(255,255,255,0.2)', borderRadius: 30,
-    fontSize: 14, fontWeight: 700, cursor: 'pointer',
-  },
-  giveupBtn: {
-    width: '100%', padding: '11px 0',
-    background: 'rgba(231,76,60,0.18)', color: '#e74c3c',
-    border: '1px solid rgba(231,76,60,0.6)', borderRadius: 30,
-    fontSize: 14, fontWeight: 700, cursor: 'pointer',
-  },
+  tipList: { margin: 0, paddingLeft: 18, fontSize: FS(3, 12, 15), lineHeight: 1.65, fontWeight: 700 },
+  btnRow: { display: 'flex', gap: 10, justifyContent: 'flex-end' },
+  mainBtn: { ...btnBase, background: 'linear-gradient(180deg, #f8c537, #e0a000)', color: '#4a2e00', boxShadow: '0 3px 0 #b07800' },
+  subBtn: { ...btnBase, background: '#fff', color: 'var(--brown-text)', border: '2px solid var(--beige-edge)', boxShadow: '0 3px 0 var(--beige-edge)' },
 
-  // 準備画面のボタンは、説明が長くても画面下に出しておく
-  stickyActions: {
-    position: 'sticky', bottom: 'calc(var(--nav-h) + 8px)', zIndex: 5,
-    width: '100%', display: 'flex', flexDirection: 'column', gap: 8,
-    padding: '10px 0 0',
-    background: 'linear-gradient(180deg, rgba(20,22,40,0) 0%, rgba(20,22,40,0.92) 30%)',
+  /* 実施中 */
+  progressBg: { position: 'absolute', top: 0, left: 0, right: 0, height: 6, background: 'rgba(255,255,255,0.5)' },
+  progressFill: { height: '100%', transition: 'width 0.2s linear' },
+  doingLeft: {
+    position: 'absolute', left: '3cqw', top: '4cqh', bottom: '4cqh', width: '50cqw',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
-  progressBg: { width: '100%', height: 5, background: 'rgba(255,255,255,0.1)', borderRadius: 99, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 99, transition: 'width 0.2s linear' },
-  phaseRow: { display: 'flex', gap: 6, justifyContent: 'center', marginTop: -4 },
-  phaseChip: { fontSize: 11.5, fontWeight: 900, borderRadius: 10, padding: '3px 12px' },
-  reps: {
-    position: 'absolute', top: 10, left: 10,
-    display: 'flex', alignItems: 'baseline', gap: 3,
-    background: 'rgba(8,10,24,0.72)', border: '1.5px solid',
-    borderRadius: 14, padding: '3px 10px',
+  doingRight: {
+    position: 'absolute', left: '55cqw', right: '3cqw', top: '6cqh', bottom: '6cqh',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2.4cqh',
   },
-  repsNum: { color: '#fff', fontSize: 22, fontWeight: 900 },
-  repsUnit: { color: '#aab', fontSize: 11, fontWeight: 700 },
-  ringSlot: { position: 'absolute', top: 8, right: 8 },
+  phaseRow: { display: 'flex', gap: 6 },
+  phaseChip: { fontSize: 13, fontWeight: 800, borderRadius: 10, padding: '3px 14px', border: '2px solid var(--beige-edge)' },
+  counterRow: { display: 'flex', alignItems: 'center', gap: '3cqw' },
+  counter: { ...panel, display: 'flex', alignItems: 'baseline', gap: 4, padding: '1cqh 2cqw', borderRadius: 16 },
+  counterNum: { fontSize: FS(12, 36, 72), fontWeight: 800, lineHeight: 1 },
+  counterUnit: { fontSize: FS(3.6, 13, 20), fontWeight: 800 },
   ringLabel: {
     position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: '#fff', fontSize: 12, fontWeight: 900,
+    color: 'var(--brown-text)', fontSize: 18, fontWeight: 800,
   },
   restCard: {
-    width: 248, height: 248, borderRadius: 24, border: '1.5px solid',
-    background: 'rgba(0,0,0,0.3)',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+    ...panel, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
   },
-  restLabel: { color: '#fff', fontSize: 18, fontWeight: 900 },
-  restCount: { color: '#f5c842', fontSize: 64, fontWeight: 900, lineHeight: 1 },
-  restNext: { color: '#aab', fontSize: 13, fontWeight: 700 },
+  restLabel: { fontSize: FS(5, 16, 26), fontWeight: 800 },
+  restCount: { color: '#e0a000', fontSize: FS(18, 48, 110), fontWeight: 800, lineHeight: 1 },
+  restNext: { fontSize: FS(3.4, 12, 18), fontWeight: 800, color: '#8a6a45' },
+  liveTip: {
+    ...ui.bubble, display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+    padding: '1.4cqh 1.2cqw', fontSize: FS(3.6, 13, 19), fontWeight: 800, lineHeight: 1.5, color: 'var(--brown-text)',
+  },
   noMotion: {
     position: 'relative', borderRadius: 24, border: '1.5px solid',
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
-  noMotionText: { color: '#8a90a8', fontSize: 11, fontWeight: 700 },
-  liveTip: {
-    display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-    background: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: '6px 10px',
-    color: '#eef', fontSize: 13, fontWeight: 700, textAlign: 'left', lineHeight: 1.5,
+  noMotionText: { color: '#8a6a45', fontSize: 12, fontWeight: 800 },
+
+  /* 結果 */
+  resultChara: { position: 'absolute', left: '8cqw', bottom: '6cqh', height: '70cqh', objectFit: 'contain' },
+  resultCard: {
+    ...panel, position: 'absolute', left: '42cqw', right: '6cqw', top: '50%', transform: 'translateY(-50%)',
+    padding: '4cqh 3cqw', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3cqh',
   },
-  howto: {
-    width: '100%', background: 'rgba(0,0,0,0.25)', borderRadius: 12,
-    padding: '10px 12px', textAlign: 'left', boxSizing: 'border-box',
-  },
-  howtoHead: { color: '#f5c842', fontSize: 12, fontWeight: 900, letterSpacing: 1, marginBottom: 4 },
-  howtoList: { margin: 0, paddingLeft: 20, color: '#fff' },
-  howtoItem: { fontSize: 13, lineHeight: 1.65, marginBottom: 3 },
-  rewardBox: { background: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: 16, width: '100%', fontSize: 18 },
+  resultTitle: { fontSize: FS(6, 20, 34), fontWeight: 800 },
+  resultText: { fontSize: FS(3.8, 14, 20), fontWeight: 800 },
+  resultGains: { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' },
+  gainChip: { color: '#fff', fontSize: FS(4, 14, 22), fontWeight: 800, borderRadius: 99, padding: '4px 16px' },
+  gainPt: { display: 'inline-flex', alignItems: 'center', gap: 4, color: '#b07800', fontSize: FS(4.4, 15, 24), fontWeight: 800 },
 }

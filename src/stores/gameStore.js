@@ -296,6 +296,11 @@ export const useGameStore = create(
         get().advanceTutorial()
       },
 
+      // 初回だけの説明（トレーニング・山整備のあいさつなど）を見た印
+      markSeen: (key) => set((state) => (
+        state.tutorialSeen[key] ? state : { tutorialSeen: { ...state.tutorialSeen, [key]: true } }
+      )),
+
       // completed=false はスキップ。報酬は最後まで進めた初回だけ
       endTutorial: (completed) => {
         const t = get().tutorial

@@ -10,20 +10,28 @@
 
    作業        ポイント  回復  時間     1%あたり  1時間あたり
    ゴミ拾い      1,000    +5%  30分       200pt     10.0%
-   巡回          1,600    +9%  1時間      178pt      9.0%
-   草刈り        2,200   +13%  1時間30分  169pt      8.7%
-   枝切り        2,600   +16%  2時間      163pt      8.0%
+   パトロール    1,600    +9%  1時間      178pt      9.0%
+   刈払い        2,200   +13%  1時間30分  169pt      8.7%
+   枝打ち        2,600   +16%  2時間      163pt      8.0%
    登山道整備    3,500   +23%  3時間      152pt      7.7%
-   植栽          4,500   +32%  4時間30分  141pt      7.1%
+   植林          4,500   +32%  4時間30分  141pt      7.1%
    間伐          5,200   +40%  6時間      130pt      6.7%  */
+// 並びと名前・説明文は最新ラフ（2026-11 p107）どおり。費用・回復・時間はこれまでの数字のまま
 export const ACTIVITIES = [
-  { id: 'trash', name: 'ゴミ拾い', icon: 'trash', cost: 1000, restore: 5, duration: 30, desc: '山道のゴミを拾って清潔に！' },
-  { id: 'patrol', name: '巡回', icon: 'footsteps', cost: 1600, restore: 9, duration: 60, desc: '山のパトロール！' },
-  { id: 'grass', name: '草刈り', icon: 'grass', cost: 2200, restore: 13, duration: 90, desc: '登山道の草を刈る！' },
-  { id: 'branch', name: '枝切り', icon: 'scissors', cost: 2600, restore: 16, duration: 120, desc: '危険な枝を除去！' },
-  { id: 'trail', name: '登山道整備', icon: 'tools', cost: 3500, restore: 23, duration: 180, desc: '道の補修や整備！' },
-  { id: 'planting', name: '植栽', icon: 'sprout', cost: 4500, restore: 32, duration: 270, desc: '木を植えて緑化！' },
-  { id: 'thinning', name: '間伐', icon: 'log', cost: 5200, restore: 40, duration: 360, desc: '森を健康に保つ！' },
+  { id: 'patrol', name: 'パトロール', icon: 'binoculars', cost: 1600, restore: 9, duration: 60,
+    desc: '山に異常はないかな？困ってる人や悪いことをしてる人はいないかな？\n早期発見、未然防止を目指そう！' },
+  { id: 'trash', name: 'ゴミ拾い', icon: 'trashbag', cost: 1000, restore: 5, duration: 30,
+    desc: '人のゴミや落とし物は土に還らないしとてもやっかい！\n山に悪影響が出る前に回収してね！' },
+  { id: 'grass', name: '刈払い', icon: 'brushcutter', cost: 2200, restore: 13, duration: 90,
+    desc: '伸び放題な草や灌木はこまめに刈り取って！\nこれで小さな幼樹にも日差しが届くね！' },
+  { id: 'branch', name: '枝打ち', icon: 'pruningsaw', cost: 2600, restore: 16, duration: 120,
+    desc: '木の栄養が分散し過ぎないように枝を少し落とすよ！\n枯れた枝も切っておくと安全だね！' },
+  { id: 'thinning', name: '間伐', icon: 'chainsaw', cost: 5200, restore: 40, duration: 360,
+    desc: '密な森林は少し伐採して栄養バランスを整えよう！\n日光も入って下層植生と強い土壌が育つよ！' },
+  { id: 'planting', name: '植林', icon: 'sapling', cost: 4500, restore: 32, duration: 270,
+    desc: 'その山に合った苗木や種をバランスよく植えるよ！\nそこを間違えると必ず歪みが生まれるからね。' },
+  { id: 'trail', name: '登山道整備', icon: 'pickaxe', cost: 3500, restore: 23, duration: 180,
+    desc: '自然相手には定期的な整備が必要だ！\nたくさんの人が歩く登山道は山にとっても負荷大！メンテナンスしてね' },
 ]
 
 /* 整備度の段階。表示・費用・登山の難しさはすべてここで決める
