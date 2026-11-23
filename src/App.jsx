@@ -26,6 +26,19 @@ function Legacy({ children }) {
   )
 }
 
+/* 解放前の画面にメニューやURLから来たときは、条件だけ見せてホームへ戻す */
+function Gate({ flag, text, children }) {
+  const open = useGameStore((s) => s.flags[flag])
+  if (open) return children
+  return (
+    <div style={{ height: '100cqh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, color: 'var(--brown-text)', fontSize: 18 }}>
+      <GameIcon name="lock" size={56} />
+      <p>{text}</p>
+      <HomeButton />
+    </div>
+  )
+}
+
 function Inner() {
   const location = useLocation()
   const scrollRef = useRef(null)
@@ -47,9 +60,9 @@ function Inner() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/explore" element={<Explore />} />
-              <Route path="/training" element={<Legacy><Training /></Legacy>} />
-              <Route path="/climbing" element={<Legacy><Climbing /></Legacy>} />
-              <Route path="/maintenance" element={<Legacy><Maintenance /></Legacy>} />
+              <Route path="/training" element={<Gate flag="trainingUnlocked" text="トレーニングは、山探索を1回クリアすると解放されるよ"><Legacy><Training /></Legacy></Gate>} />
+              <Route path="/climbing" element={<Climbing />} />
+              <Route path="/maintenance" element={<Gate flag="maintenanceUnlocked" text="山整備は、はじめて登頂すると解放されるよ"><Legacy><Maintenance /></Legacy></Gate>} />
               <Route path="/album" element={<Album />} />
               <Route path="/shop" element={<Shop />} />
               <Route path="/guide" element={<Guide />} />

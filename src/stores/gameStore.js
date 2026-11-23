@@ -35,7 +35,7 @@ const DEFAULT_MOUNTAINS = {
     workingUntil: null,
   },
   hakone: {
-    unlocked: false,
+    unlocked: true,
     firstAccessed: false,
     summitedCourses: [],
     maintenanceLevel: 100,
@@ -43,6 +43,21 @@ const DEFAULT_MOUNTAINS = {
     workingActivity: null,
     workingUntil: null,
   },
+}
+
+function migrateFlags(persisted, defaults) {
+  const flags = { ...defaults, ...(persisted?.flags || {}) }
+  if (!persisted?.flags) return flags
+  const p = persisted.player || {}
+  if (persisted.flags.trainingUnlocked === undefined) {
+    flags.trainingUnlocked = (persisted.exploreLevel || 1) > 1 || (p.core || 0) + (p.legs || 0) + (p.arms || 0) > 0
+  }
+  // 以前は山整備が最初から使えた。登頂したことがある人だけ残す
+  if (persisted.flags.maintenanceUnlockedV2 === undefined) {
+    flags.maintenanceUnlocked = Object.values(persisted.mountains || {}).some((m) => m.summitedCourses?.length > 0)
+    flags.maintenanceUnlockedV2 = true
+  }
+  return flags
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -67,8 +82,10 @@ export const useGameStore = create(
         introCompleted: false,
         profileCompleted: false,
         shopUnlocked: false,
-        climbingUnlocked: false,
-        maintenanceUnlocked: false,
+        trainingUnlocked: false,     // 山探索を1回クリアすると解放
+        climbingUnlocked: false,     // 探索Lv3・総合体力20で解放
+        maintenanceUnlocked: false,  // 初めての登頂で解放
+        maintenanceUnlockedV2: true, // 上の条件に変えたあとのデータの印
         arUnlocked: false,
       },
 
@@ -105,8 +122,11 @@ export const useGameStore = create(
       // 直前の登山で失った体力。温泉の回復量の基準に使う
       lastFatigue: 0,
 
-      // ご利益：お土産を山神にお供えすると付く。次の登山1回だけ総合体力を底上げする
-      blessing: null,  // { mountainId, name, pct }
+      // ご利益：お土産を山神にお供えすると、その場で体力が上がり、次の登山1回だけ出来事（災害）をはね返せる
+      blessing: null,  // { mountainId, name }
+
+      // 登山で続けて脱落した回数（5回でヒントを出す）。登頂で0に戻る
+      climbFailStreak: 0,
 
       // チュートリアル。進行中なら { id, step }（data/tutorial.js の章とステップ位置）
       tutorial: null,
@@ -296,6 +316,10 @@ export const useGameStore = create(
         flags: { ...state.flags, shopUnlocked: true }
       })),
 
+      unlockTraining: () => set((state) => (
+        state.flags.trainingUnlocked ? state : { flags: { ...state.flags, trainingUnlocked: true } }
+      )),
+
       unlockClimbing: () => set((state) => ({
         flags: { ...state.flags, climbingUnlocked: true }
       })),
@@ -384,15 +408,23 @@ export const useGameStore = create(
 
       setExploreLevel: (lv) => set({ exploreLevel: lv }),
 
-      // お土産を買うとご利益が付く（既にある場合は強い方を残す）
-      grantBlessing: (mountainId, name, pct) => set((state) => (
-        state.blessing && state.blessing.pct >= pct
-          ? state
-          : { blessing: { mountainId, name, pct } }
-      )),
+      // お土産をお供えするとご利益が付く：体力（3つとも）がその場で上がり、災害よけが次の登山に付く
+      grantBlessing: (mountainId, name, up) => set((state) => ({
+        blessing: { mountainId, name },
+        player: {
+          ...state.player,
+          core: state.player.core + up,
+          legs: state.player.legs + up,
+          arms: state.player.arms + up,
+        },
+      })),
 
-      // 登山に使うと消える
+      // 出来事をはね返したら消える
       consumeBlessing: () => set({ blessing: null }),
+
+      recordClimbResult: (summited) => set((state) => ({
+        climbFailStreak: summited ? 0 : state.climbFailStreak + 1,
+      })),
 
       addAlbumEntry: (entry) => set((state) => ({
         album: [...state.album, { ...entry, date: new Date().toISOString() }]
@@ -482,10 +514,15 @@ export const useGameStore = create(
       name: 'yama-app-storage',
       // 保存データの山の一覧は丸ごと置き換わるので、あとから増えた山（ふもとの里山など）を足す
       // 以前の保存データの装備には消耗の回数が無いので、買ったばかりとして数えはじめる
+      // 解放フラグは後から増えたので、以前のデータは遊んだ様子から決める
       merge: (persisted, current) => ({
         ...current,
         ...persisted,
-        mountains: { ...current.mountains, ...(persisted?.mountains || {}) },
+        flags: migrateFlags(persisted, current.flags),
+        blessing: persisted?.blessing && persisted.blessing.pct !== undefined ? null : (persisted?.blessing ?? null),
+        // 箱根は以前カギがかかっていた。いまは3座とも最初から登れる
+        mountains: Object.fromEntries(Object.entries({ ...current.mountains, ...(persisted?.mountains || {}) })
+          .map(([id, m]) => [id, { ...m, unlocked: true }])),
         settings: { ...current.settings, ...(persisted?.settings || {}) },
         inventory: (persisted?.inventory || current.inventory).map((it) => (
           it.usesLeft === undefined ? { ...it, usesLeft: itemUses(it) } : it

@@ -1,20 +1,15 @@
-/* 装備が何回の登山で消耗するか（一問一答 #11。仮の数字で、表が届いたら置き換える）。
+/* 装備が何回の登山で消耗するか。items.json の uses（tools/import_courses.py でカテゴリから決めた仮の数字）。
    登山の回数は、登頂しても脱落しても1回と数える。null は消耗しない */
-const USES_BY_CATEGORY = {
-  食料: 1,
-  救急: 1,
-  ウェア: 10,
-  小物: 10,
-  道具: 10,
-  シューズ: 20,
-  バッグ: 20,
-}
-const USES_BY_ITEM = {
-  insurance: null, // 健康保険証・身分証は消えない
-  coins: 10,
+export function itemUses(item) {
+  return item.uses === undefined ? 10 : item.uses
 }
 
-export function itemUses(item) {
-  if (item.id in USES_BY_ITEM) return USES_BY_ITEM[item.id]
-  return USES_BY_CATEGORY[item.category] ?? 10
+/* 冬（12〜3月）は、装備表で灰色（季節によって必要）の装備も必要になる */
+export function isWinter(date = new Date()) {
+  const m = date.getMonth() + 1
+  return m === 12 || m <= 3
+}
+
+export function requiredItemsFor(course, date = new Date()) {
+  return [...(course.requiredItems || []), ...(isWinter(date) ? course.seasonalItems || [] : [])]
 }

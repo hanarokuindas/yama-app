@@ -3,6 +3,12 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useGameStore } from '../stores/gameStore'
 import { TUTORIALS } from '../data/tutorial'
 import { senpaiMini } from '../assets/characters/senpai'
+import { yatsugatakeMini } from '../assets/characters/yatsugatake'
+
+// 説明する人。speaker が無いステップは先輩（名前は出さない）
+const SPEAKERS = {
+  yatsugatake: { mini: yatsugatakeMini, fallback: 'laugh', name: 'ヤツガタケ' },
+}
 import { Celebration } from './Celebration'
 import GameIcon from './GameIcon'
 import { sfx } from '../utils/sound'
@@ -56,6 +62,7 @@ export default function TutorialOverlay() {
 
   const chapter = tutorial ? TUTORIALS[tutorial.id] : null
   const step = chapter ? chapter.steps[tutorial.step] : null
+  const speaker = step?.speaker ? SPEAKERS[step.speaker] : null
   const ready = flags.introCompleted && flags.profileCompleted
   const onRoute = !!step && (!step.route || step.route === location.pathname)
   const rect = useTargetRect(ready && onRoute ? step?.target : null)
@@ -193,10 +200,13 @@ export default function TutorialOverlay() {
 
       {/* 先輩の吹き出し */}
       <div style={{ ...st.bubbleWrap, ...bubblePos }}>
-        <img src={senpaiMini[step.pose] || senpaiMini.smileCheer} alt="先輩" style={st.face} draggable={false} />
+        {speaker
+          ? <img src={speaker.mini[step.pose] || speaker.mini[speaker.fallback]} alt={speaker.name} style={st.face} draggable={false} />
+          : <img src={senpaiMini[step.pose] || senpaiMini.smileCheer} alt="先輩" style={st.face} draggable={false} />}
         <div style={st.bubble}>
           {/* 先輩は名前を出さない（修正指示） */}
           <div style={st.bubbleHead}>
+            {speaker && <span style={st.speakerName}>{speaker.name}</span>}
             <span style={st.chapter}>{chapter.title}</span>
           </div>
           {confirmSkip ? (
@@ -237,6 +247,7 @@ function Pill({ text, onClick, top = false }) {
 }
 
 const st = {
+  speakerName: { color: '#5b4b43', fontWeight: 800, fontSize: 13, marginRight: 8 },
   root: {
     position: 'fixed', inset: 0, zIndex: 180,
     animation: 'overlayFade 0.3s ease',

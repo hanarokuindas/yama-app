@@ -20,7 +20,15 @@ export const ALBUM_MOUNTAINS = [
 export const FUJI = { lat: 35.3606, lon: 138.7274 }
 
 export const exploreSpecies = (areaId) => encyclopedia.filter((e) => e.area === areaId && !e.mountain)
-export const limitedSpecies = (mountainId) => encyclopedia.filter((e) => e.mountain === mountainId)
+// 山の恵み（12種）は、登山の限定アイテムとして産地に合わせて各山に振り分けた（一問一答 2026-11-23。あとで直せる）
+export const BOUNTY_MOUNTAIN = {
+  D8: 'yatsugatake', D12: 'yatsugatake', D2: 'yatsugatake', D10: 'yatsugatake', // ヤマグリ・天然水・コシアブラ・シカのジビエ
+  D1: 'takao', D3: 'takao', D5: 'takao', D9: 'takao',                             // タラの芽・ワラビ・フキノトウ・アケビ
+  D4: 'hakone', D6: 'hakone', D7: 'hakone', D11: 'hakone',                        // ゼンマイ・ヤマブドウ・サルナシ・イノシシのジビエ
+}
+export const limitedSpecies = (mountainId) => encyclopedia.filter(
+  (e) => e.mountain === mountainId || BOUNTY_MOUNTAIN[e.id] === mountainId
+)
 export const mountainCourses = (mountainId) => courses.filter((c) => c.mountainId === mountainId)
 
 export const ALBUM_SPECIES = [

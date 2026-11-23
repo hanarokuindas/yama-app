@@ -32,6 +32,8 @@ export const ACTIVITIES = [
    荒廃（30%未満）  … 登山の必要体力 +50%、整備の費用10倍・効果半減（企画書p76） */
 const RUINED_BELOW = 30
 const CAUTION_UPTO = 60
+// これより低い山は道が荒れすぎて登れない（一問一答 2026-10）
+export const CLOSED_BELOW = 20
 
 export function maintenanceState(level) {
   if (level > CAUTION_UPTO) return { key: 'good', label: '良好', color: '#27ae60', penalty: 0 }
@@ -39,9 +41,12 @@ export function maintenanceState(level) {
   return { key: 'ruined', label: '荒廃中', color: '#e74c3c', penalty: 0.5 }
 }
 
-/** 登山の必要体力（整備度が低いと道が荒れて脱落しやすくなる） */
+/** 整備度が低すぎて登れない */
+export const isClosed = (maintenanceLevel) => maintenanceLevel < CLOSED_BELOW
+
+/** 登山の必要体力（コース表の総合体力。整備度が低いと道が荒れて脱落しやすくなる） */
 export function requiredStaminaFor(course, maintenanceLevel = 100) {
-  const base = course.requiredStamina * 5
+  const base = course.requiredTotal
   return Math.ceil(base * (1 + maintenanceState(maintenanceLevel).penalty))
 }
 

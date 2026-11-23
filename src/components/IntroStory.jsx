@@ -1,25 +1,23 @@
 import { useEffect, useState } from 'react'
 import { BG } from '../assets/backgrounds'
-import { senpaiFull } from '../assets/characters/senpai'
-import characters from '../data/characters.json'
+import { yatsugatakeFull } from '../assets/characters/yatsugatake'
 import { sfx } from '../utils/sound'
 
-const SENPAI_INTRO = characters.senpai.intro.map((t) => t.replace(' ', '\n'))
 const TYPE_MS = 34
+const Y = 'ヤツガタケ'
 
-// オープニングの台本。who が無い行はナレーション
+// オープニングの台本。who が無い行はナレーション。最初のあいさつは八ヶ岳の山神（2026-11 決定）
 function buildLines(returning) {
   return [
     { bg: 'map', text: 'ここは、山神さまたちが見守る山の世界。' },
     { bg: 'map', text: '山は、登りにくる人と\n手入れをしてくれる人がいてこそ、元気でいられる――' },
-    { who: '先輩', img: senpaiFull.pointing, text: SENPAI_INTRO[0] },
-    { who: '先輩', img: senpaiFull.pointing, text: '山にはそれぞれ山神さまがいて、\n会いに来てくれる人を楽しみに待ってるんだ' },
-    { who: '先輩', img: senpaiFull.pointing, text: 'でも、いきなり登るのはキケン！\n体力が足りないと、途中でへばっちゃうからね' },
-    { who: '先輩', img: senpaiFull.cheering, text: SENPAI_INTRO[1] },
-    { who: '先輩', img: senpaiFull.cheering, text: '鍛えて、探索して、装備をそろえたら、いよいよ山へ。\n登った山の手入れも忘れずにね' },
+    { who: Y, img: yatsugatakeFull.stand1, text: 'はじめまして\n山の世界へようこそ！歓迎するよ' },
+    { who: Y, img: yatsugatakeFull.stand1, text: 'わたしは八ヶ岳（やつがたけ）\nここの山々には、それぞれ山神が住んでいるんだ' },
+    { who: Y, img: yatsugatakeFull.stand2, text: 'まずは山に慣れ親しもう\nレベルクリアで“ポイント”が貯まるよ！' },
+    { who: Y, img: yatsugatakeFull.stand2, text: '登山の装備や山整備、お供えもの、温泉の利用では\nポイントが必要なんだ' },
     returning
-      ? { who: '先輩', img: senpaiFull.pointing, text: 'それじゃあ、さっそく案内するね！' }
-      : { who: '先輩', img: senpaiFull.pointing, text: 'そのまえに……\nキミのこと、教えてくれる？' },
+      ? { who: Y, img: yatsugatakeFull.stand1, text: 'それじゃあ、さっそく案内しよう' }
+      : { who: Y, img: yatsugatakeFull.stand1, text: 'そのまえに……\nきみのこと、教えてくれるかい？' },
   ]
 }
 

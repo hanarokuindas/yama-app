@@ -14,6 +14,7 @@ import { yatsugatakeMini, yatsugatakeFull } from '../assets/characters/yatsugata
 import { takaoMini, takaoFull } from '../assets/characters/takao'
 import { hakoneMini, hakoneFull } from '../assets/characters/hakone'
 import { sfx } from '../utils/sound'
+import { withFurigana } from '../utils/furigana'
 
 /* アルバム（修正指示：本の見開き。目次 → 山探索の3エリア／登った山／マップ → 各アイテムのページ）。
    中の文字は Kaisei Decol。先輩と所持装備は載せない */
@@ -256,6 +257,7 @@ function MountainPage({ view, setView, discovered, mountains, firstClimb, onDeta
 
 /* ───────── 各アイテムのページ（アルバム風の見開き） ───────── */
 function DetailSpread({ detail, onClose }) {
+  const weight = useGameStore((s) => s.player.weight) || 60
   let left, right
   if (detail.type === 'species') {
     const sp = detail.sp
@@ -272,7 +274,7 @@ function DetailSpread({ detail, onClose }) {
         </div>
       </>
     )
-    right = <p style={st.desc}>{sp.desc}</p>
+    right = <p style={st.desc}>{withFurigana(sp.desc)}</p>
   } else if (detail.type === 'course') {
     const c = detail.course
     left = (
@@ -286,12 +288,13 @@ function DetailSpread({ detail, onClose }) {
     )
     right = (
       <div>
-        <div style={st.courseTitle}>{c.name}</div>
-        <InfoRow label="むずかしさ" value={'★'.repeat(c.difficulty) + '☆'.repeat(Math.max(0, 3 - c.difficulty))} />
-        <InfoRow label="きょり" value={`${c.distance}km`} />
-        <InfoRow label="時間" value={c.duration} />
-        <InfoRow label="消費カロリー" value={`約${c.calories}kcal`} />
-        <p style={{ ...st.desc, marginTop: 10 }}>{c.description}</p>
+        <div style={st.courseTitle}>{c.name}{c.altitude ? `（${c.altitude}）` : ''}</div>
+        {c.location && <InfoRow label="所在地" value={c.location} />}
+        {c.startGoal && <InfoRow label="スタート・ゴール" value={c.startGoal.replace(/^スタート⇔ゴール\s*/, '')} />}
+        <InfoRow label="所要時間・距離" value={`${c.duration}・${c.distance}km`} />
+        <InfoRow label="消費カロリー" value={`約${Math.round((c.routeConst || c.calories / 60) * weight).toLocaleString()}kcal（体重${weight}kg）`} />
+        <InfoRow label="道のり・体力面" value={`${'★'.repeat(c.difficulty)}・${'★'.repeat(c.stamina || c.difficulty)}`} />
+        <p style={{ ...st.desc, marginTop: 10 }}>{withFurigana(c.description)}</p>
       </div>
     )
   } else {
@@ -300,9 +303,11 @@ function DetailSpread({ detail, onClose }) {
     right = (
       <div>
         <div style={st.courseTitle}>どんな神様？</div>
-        <div style={st.godName}>{ch.callName}（{ch.name}）</div>
-        <p style={st.desc}>{ch.intro.join('\n')}</p>
-        <p style={st.pending}>くわしい紹介は準備中です</p>
+        <div style={st.godName}>{ch.callName}（{ch.name}・{ch.height}・{ch.pref}）</div>
+        <p style={st.desc}>{(ch.profile || []).map((l) => `✓ ${withFurigana(l)}`).join('\n')}</p>
+        {ch.charm && <p style={{ ...st.desc, marginTop: '2cqh' }}>{withFurigana(ch.charm)}</p>}
+        {ch.offering && <p style={{ ...st.desc, marginTop: '1cqh' }}>好きなお供えものは、{ch.offering}</p>}
+        {ch.illustrator && <p style={st.pending}>イラスト {ch.illustrator}</p>}
       </div>
     )
   }

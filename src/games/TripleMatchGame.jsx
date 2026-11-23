@@ -18,10 +18,18 @@ import { specimenSprite } from '../utils/specimenAssets'
  *   ハズレ   … 1〜2個しかなく、取ると写真フレームをふさいだままになる（Lv3から）
  * 上に別の標本が重なっている標本は取れない。右の写真フレーム（7枠）が埋まるか時間切れで失敗。
  * そろえるたびの説明のポップは出さない（修正指示）。そろえた標本は onMatch で親に知らせる。
+ *
+ * 登山のステージでも使う（コースのゲーム段取り）：
+ *   match   … そろえる数（3〜6）。4以上はフレームの枠も増やす
+ *   short   … 時短（制限時間×0.8）
+ *   many    … アイテム数多（おじゃまを増やす）
+ *   limited … そのコースの限定アイテム（と山の恵み）。たまに1種だけ混ざり、そろえると onMatch(sp, { limited: true })
+ *   label   … 左上の札（「ステージ 2/4」など）。無ければエリア名と探索Lv
  */
 
-const TRAY_SIZE = 7
-const MATCH = 3
+const TRAY_BASE = 7
+const LIMITED_CHANCE = 0.35 // 限定アイテムが混ざる割合（ステージごと）
+const LIMITED_POINT = 500
 const REF_AREA = 640 * 280 // 基準の盤面の面積。盤面が大きい・小さいときは標本も同じ割合で大きく・小さくして、重なり具合（難しさ）をそろえる
 const PIECE_R = 26         // 標本の見た目の半径(px)。scale を掛けて使う
 const PIECE_PX = 56        // 標本の絵の大きさ(px)
@@ -93,10 +101,11 @@ function place(rng) {
 }
 
 /* 盤面の標本を生成。重なりと傾きで「山積み」を作る */
-function buildPieces({ main, decoys, hazure }, stage, rng) {
+function buildPieces({ main, decoys, hazure, extra }, stage, rng, MATCH) {
   const bag = []
   main.forEach((sp) => { for (let i = 0; i < stage.targetSets * MATCH; i++) bag.push({ sp, role: 'main' }) })
   decoys.forEach((sp) => { for (let i = 0; i < MATCH; i++) bag.push({ sp, role: 'decoy' }) })
+  extra.forEach((sp) => { for (let i = 0; i < MATCH; i++) bag.push({ sp, role: 'limited' }) })
   hazure.forEach((sp) => { const n = rng() < 0.5 ? 1 : 2; for (let i = 0; i < n; i++) bag.push({ sp, role: 'hazure' }) })
   return shuffle(bag, rng).map((b, i) => ({ uid: i, ...b, ...place(rng) }))
 }
@@ -118,15 +127,30 @@ function coveredSet(pieces, fieldW, fieldH, k) {
 
 const mmss = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
 
-export default function TripleMatchGame({ area, level, onEnd, onMatch, onQuit }) {
-  const stage = useMemo(() => buildStage(level), [level])
+export default function TripleMatchGame({
+  area, level, onEnd, onMatch, onQuit,
+  match = 3, short = false, many = false, limited = [], label = null, okText = '探索成功！', quitText = '探索をやめる？',
+}) {
+  const MATCH = match
+  const TRAY_SIZE = match <= 3 ? TRAY_BASE : match + 4
+  const stage = useMemo(() => {
+    const base = buildStage(level)
+    return {
+      ...base,
+      time: short ? Math.round(base.time * 0.8) : base.time,
+      freeKinds: base.freeKinds && many ? base.freeKinds + 2 : base.freeKinds,
+      decoyKinds: base.targetKinds && many ? base.decoyKinds + 3 : base.decoyKinds,
+    }
+  }, [level, short, many])
   const freeMode = stage.targetKinds === 0 // お題なし（Lv1）
   const [setup] = useState(() => {
     const rng = makeRng(Math.floor(Math.random() * 1e9))
     const picked = pickSpecies(area, stage, rng)
-    return { main: picked.main, pieces: buildPieces(picked, stage, rng) }
+    const extra = limited.length && rng() < LIMITED_CHANCE ? [limited[Math.floor(rng() * limited.length)]] : []
+    return { main: picked.main, pieces: buildPieces({ ...picked, extra }, stage, rng, MATCH) }
   })
   const mainIds = useMemo(() => new Set(setup.main.map((sp) => sp.id)), [setup])
+  const limitedIds = useMemo(() => new Set(limited.map((sp) => sp.id)), [limited])
 
   const settings = useGameStore((s) => s.settings)
   const setSettings = useGameStore((s) => s.setSettings)
@@ -207,7 +231,11 @@ export default function TripleMatchGame({ area, level, onEnd, onMatch, onQuit })
 
   /* そろった（アルバムの対象ならポイントと記録） */
   const scoreMatch = useCallback((sp) => {
-    if (mainIds.has(sp.id)) {
+    if (limitedIds.has(sp.id) && !mainIds.has(sp.id)) {
+      setScore((s) => s + LIMITED_POINT)
+      cbRef.current.onMatch?.(sp, { limited: true })
+      sfx.fanfare()
+    } else if (mainIds.has(sp.id)) {
       setScore((s) => s + (freeMode ? FREE_POINT : TARGET_POINT))
       setCleared((c) => ({ ...c, [sp.id]: (c[sp.id] || 0) + 1 }))
       setMatched((m) => (m.some((x) => x.id === sp.id) ? m : [...m, sp]))
@@ -217,7 +245,7 @@ export default function TripleMatchGame({ area, level, onEnd, onMatch, onQuit })
       setScore((s) => s + DECOY_POINT)
       sfx.coin()
     }
-  }, [mainIds, freeMode])
+  }, [mainIds, limitedIds, freeMode])
 
   /* ── トレイ判定（3つそろう / 埋まる） ── */
   useEffect(() => {
@@ -242,7 +270,7 @@ export default function TripleMatchGame({ area, level, onEnd, onMatch, onQuit })
       const timer = setTimeout(() => end(false, 'tray', score, matched), 500)
       return () => clearTimeout(timer)
     }
-  }, [tray, scoreMatch, end, score, matched])
+  }, [tray, scoreMatch, end, score, matched, MATCH, TRAY_SIZE])
 
   /* ── クリア判定（残り時間ボーナスは1回だけ） ── */
   useEffect(() => {
@@ -303,7 +331,7 @@ export default function TripleMatchGame({ area, level, onEnd, onMatch, onQuit })
     setPieces((prev) => [...prev, last])
   }
 
-  const endText = result && (result.ok ? '探索成功！' : result.reason === 'tray' ? 'フレームがいっぱい…' : '時間切れ…')
+  const endText = result && (result.ok ? okText : result.reason === 'tray' ? 'フレームがいっぱい…' : '時間切れ…')
 
   return (
     <div style={st.root}>
@@ -311,14 +339,16 @@ export default function TripleMatchGame({ area, level, onEnd, onMatch, onQuit })
 
       {/* 上：探索Lv・ポイント・お題・残り時間 */}
       <div style={st.hud}>
-        <div style={st.hudChip}>{AREA_NAME[area]}<span style={st.hudSub}>探索Lv.{level}</span></div>
+        <div style={st.hudChip}>
+          {label || AREA_NAME[area]}<span style={st.hudSub}>{label ? `${AREA_NAME[area]}・${'★'.repeat(level)}` : `探索Lv.${level}`}</span>
+        </div>
         <div style={st.hudChip}>
           <GameIcon name="pcoin" size={20} />
           <span style={st.hudScore}>+{score.toLocaleString()}</span>
         </div>
         <div style={st.targets}>
           {freeMode ? (
-            <span style={st.freeRule}>同じものを3つそろえて、ぜんぶ消そう！ のこり {pieces.length + tray.length}</span>
+            <span style={st.freeRule}>同じものを{MATCH}つそろえて、ぜんぶ消そう！ のこり {pieces.length + tray.length}</span>
           ) : (
             <>
               <span style={st.targetLabel}>お題</span>
@@ -407,7 +437,7 @@ export default function TripleMatchGame({ area, level, onEnd, onMatch, onQuit })
       {(paused || confirmQuit) && (
         <div style={st.overlay}>
           <div style={st.pauseCard}>
-            <div style={st.pauseTitle}>{confirmQuit ? '探索をやめる？' : '一時停止中'}</div>
+            <div style={st.pauseTitle}>{confirmQuit ? quitText : '一時停止中'}</div>
             {confirmQuit && <p style={st.pauseText}>ここまでのポイントはもらえないよ</p>}
             <div style={st.pauseRow}>
               <button style={st.pauseSub} onClick={() => { sfx.confirm(); setPaused(false); setConfirmQuit(false) }}>つづける</button>

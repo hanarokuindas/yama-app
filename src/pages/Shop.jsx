@@ -10,9 +10,11 @@ import { useGameStore } from '../stores/gameStore'
 import itemsData from '../data/items.json'
 import { itemUses } from '../data/equipment'
 import { sfx } from '../utils/sound'
+import { withFurigana } from '../utils/furigana'
 
 /* 装備：山ショップ／マイアイテムの2ページ。カテゴリは後日の表で変更予定 */
-const CATEGORIES = ['すべて', 'ウェア', 'シューズ', '小物', 'バッグ', '食料', '道具', '救急', '必需品']
+// カテゴリ（抜粋；装備カテゴリ一覧）。小物1＝肌に近い服飾小物、小物2＝装備寄りの服飾小物
+const CATEGORIES = ['すべて', 'ウエア', '小物1', '小物2', '専門道具', '食料', '救急品', '快適用品', 'その他']
 
 function usesText(item) {
   const n = itemUses(item)
@@ -57,7 +59,9 @@ function ShopPage() {
   const have = selected && owned.get(selected.id)
   const after = selected ? points - selected.price : points
 
+  const [confirm, setConfirm] = useState(false)
   const buy = () => {
+    setConfirm(false)
     if (!spendPoints(selected.price)) {
       sfx.miss()
       setMsg(`ポイントが足りないよ（あと ${(selected.price - points).toLocaleString()}pt）`)
@@ -102,7 +106,7 @@ function ShopPage() {
                   <div style={st.adviceCat}>{selected.category} ・ {usesText(selected)}</div>
                 </div>
               </div>
-              <p style={st.adviceText}>{selected.advice}</p>
+              <p style={st.adviceText}>{withFurigana(selected.advice)}</p>
             </>
           ) : (
             <p style={st.adviceText}>気になる装備をタップしてね！{'\n'}選び方のコツを教えるよ</p>
@@ -124,7 +128,7 @@ function ShopPage() {
                     購入後 {after.toLocaleString()}pt
                   </span>
                 </div>
-                <button className="btn-primary" style={st.buyBtn} onClick={buy}>購入する</button>
+                <button className="btn-primary" style={st.buyBtn} onClick={() => { sfx.tap(); setConfirm(true) }}>購入する</button>
               </>
             ))}
             {msg && <p style={st.msg}>{msg}</p>}
@@ -132,6 +136,19 @@ function ShopPage() {
           <img src={selected ? senpaiMini.glassesWink : senpaiMini.glassesSmile} alt="" style={st.senpai} draggable={false} />
         </div>
       </div>
+      {confirm && selected && (
+        <Window title="購入の確認" onClose={() => setConfirm(false)} width={460}>
+          <div style={st.confirm}>
+            <GameIcon name={selected.icon} size={64} />
+            <p style={st.confirmText}>{selected.name}購入でよろしいですか？</p>
+            <p style={st.adviceCat}>{selected.price.toLocaleString()}pt ・ 購入後 {after.toLocaleString()}pt</p>
+            <div style={st.confirmRow}>
+              <button style={st.confirmSub} onClick={() => { sfx.cancel(); setConfirm(false) }}>やめる</button>
+              <button className="btn-primary" style={st.confirmMain} onClick={buy}>購入する</button>
+            </div>
+          </div>
+        </Window>
+      )}
     </div>
   )
 }
@@ -182,7 +199,7 @@ function ItemDetail({ item, have, onClose }) {
         <GameIcon name={item.icon} size={120} style={{ ...st.detailIcon, ...(have ? null : st.grayIcon) }} />
         <div style={{ flex: 1 }}>
           <div style={st.adviceCat}>{item.category} ・ {usesText(item)}</div>
-          <p style={st.detailText}>{item.advice}</p>
+          <p style={st.detailText}>{withFurigana(item.advice)}</p>
           <p style={st.haveText}>
             {have
               ? `持っているよ${have.usesLeft != null ? `（あと${have.usesLeft}回の登山で消耗）` : ''}`
@@ -318,6 +335,14 @@ const st = {
     animation: 'popIn 0.5s ease both',
   },
   detail: { display: 'flex', gap: 16, alignItems: 'center' },
+  confirm: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 },
+  confirmText: { color: 'var(--brown-text)', fontSize: 17, fontWeight: 800, margin: 0, textAlign: 'center' },
+  confirmRow: { display: 'flex', gap: 10, marginTop: 8, width: '100%' },
+  confirmSub: {
+    flex: 1, background: '#fff', border: '2px solid var(--beige-edge)', borderRadius: 99,
+    padding: '9px 0', color: 'var(--brown-text)', fontSize: 15, fontWeight: 800, cursor: 'pointer',
+  },
+  confirmMain: { flex: 1, padding: '9px 0', fontSize: 15 },
   detailIcon: { width: 'clamp(70px, 26cqh, 130px)', height: 'clamp(70px, 26cqh, 130px)', flexShrink: 0 },
   detailText: { color: 'var(--brown-text)', fontSize: 14.5, lineHeight: 1.7, margin: '6px 0' },
 }

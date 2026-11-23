@@ -132,6 +132,8 @@ export default function Home() {
   const checkDailyLogin = useGameStore((st) => st.checkDailyLogin)
   const unlockClimbing = useGameStore((st) => st.unlockClimbing)
   const daily = useGameStore((st) => st.daily)
+  const exploreLevel = useGameStore((st) => st.exploreLevel)
+  const [lockHint, setLockHint] = useState(null)
   const tutorialActive = useGameStore((st) => st.tutorial !== null)
   const climbTutorialSeen = useGameStore((st) => !!st.tutorialSeen.climb)
   const startTutorial = useGameStore((st) => st.startTutorial)
@@ -172,10 +174,11 @@ export default function Home() {
     if (level > prevLevel) setLevelUp(level)
   }
 
-  // 登山解禁: 総合体力20以上で1回限り解禁演出（企画書p25）
+  // 登山解禁: 探索Lv3・総合体力20で1回限り解禁演出（2026-11 決定）
   const CLIMB_UNLOCK_REQ = 20
+  const CLIMB_UNLOCK_EXPLORE = 3
   // 描画中にストアを書き換えると他の画面部品も更新されて React が警告するので、描画後に行う
-  const reachedClimb = !flags.climbingUnlocked && total >= CLIMB_UNLOCK_REQ
+  const reachedClimb = !flags.climbingUnlocked && total >= CLIMB_UNLOCK_REQ && exploreLevel >= CLIMB_UNLOCK_EXPLORE
   const [climbUnlockShow, setClimbUnlockShow] = useState(false)
   useEffect(() => {
     if (!reachedClimb) return
@@ -194,6 +197,9 @@ export default function Home() {
   )
 
   const go = (path) => { sfx.confirm(); navigate(path) }
+  // カギのかかったアイコンをタップしたら、解放の条件を吹き出しで知らせる
+  const locked = (text) => { sfx.miss(); setLockHint(text) }
+  const climbHint = `登山は、山探索Lv.${CLIMB_UNLOCK_EXPLORE}・総合体力${CLIMB_UNLOCK_REQ}で解放されるよ（今：Lv.${exploreLevel}・${total}）`
 
   if (!flags.introCompleted) return <IntroStory returning={flags.profileCompleted} onComplete={completeIntro} />
   if (!flags.profileCompleted) return <ProfileScreen onComplete={completeProfile} />
@@ -227,10 +233,10 @@ export default function Home() {
           <img src={homePose} alt={callName || '先輩'} style={s.charImg} draggable={false} />
         </div>
       </div>
-      {greeting && (
-        <div style={s.bubble}>
-          {callName && <div style={s.bubbleName}>{callName}</div>}
-          <p style={s.bubbleText}>{greeting}</p>
+      {(lockHint || greeting) && (
+        <div style={s.bubble} onClick={() => setLockHint(null)}>
+          {callName && !lockHint && <div style={s.bubbleName}>{callName}</div>}
+          <p style={s.bubbleText}>{lockHint || greeting}</p>
           <div style={s.bubbleTail} />
         </div>
       )}
@@ -238,17 +244,20 @@ export default function Home() {
       {/* ══════════ 右上：AR撮影・メニュー ══════════ */}
       <div style={s.topRight}>
         <LogIcon small label="AR撮影" icon="camera" locked={!flags.arUnlocked}
-          onClick={() => { if (flags.arUnlocked) go('/ar'); else sfx.miss() }} />
+          onClick={() => { if (flags.arUnlocked) go('/ar'); else locked('AR撮影は、はじめて登頂すると解放されるよ') }} />
         <LogIcon small label="メニュー" icon="menu" tut="home-menu" onClick={() => { sfx.confirm(); setMenuOpen(true) }} />
       </div>
 
       {/* ══════════ 右：山探索・トレーニング・登山・山整備 ══════════ */}
       <div style={s.rightColumn}>
         <LogIcon label="山探索" icon="search" tut="spot-explore" onClick={() => go('/explore')} />
-        <LogIcon label="トレーニング" icon="dumbbell" tut="spot-training" onClick={() => go('/training')} />
+        <LogIcon label="トレーニング" icon="dumbbell" tut="spot-training" locked={!flags.trainingUnlocked}
+          onClick={() => { if (flags.trainingUnlocked) go('/training'); else locked('トレーニングは、山探索を1回クリアすると解放されるよ') }} />
         <LogIcon label="登山" icon="hikinggear" tut="spot-climb" locked={!flags.climbingUnlocked}
-          onClick={() => { if (flags.climbingUnlocked) go('/climbing'); else sfx.miss() }} />
-        <LogIcon label="山整備" icon="chainsaw" badge={needsMaintenance} onClick={() => go('/maintenance')} />
+          onClick={() => { if (flags.climbingUnlocked) go('/climbing'); else locked(climbHint) }} />
+        <LogIcon label="山整備" icon="chainsaw" tut="spot-maintenance" locked={!flags.maintenanceUnlocked}
+          badge={flags.maintenanceUnlocked && needsMaintenance}
+          onClick={() => { if (flags.maintenanceUnlocked) go('/maintenance'); else locked('山整備は、はじめて登頂すると解放されるよ') }} />
       </div>
 
       {/* ══════════ 右下：アルバム・装備 ══════════ */}
@@ -268,7 +277,7 @@ export default function Home() {
         <Celebration
           icon={<GameIcon name="mountain" size={80} />}
           title="登山が解禁された！"
-          subtitle="まずは「ふもとの里山」（推奨体力30）で登山に慣れよう！"
+          subtitle="まずは高尾山に登ってみよう！"
           onClose={() => {
             setClimbUnlockShow(false)
             if (!climbTutorialSeen && !tutorialActive) startTutorial('climb')

@@ -30,6 +30,7 @@ export default function Explore() {
   const discovered = useGameStore((s) => s.discovered)
   const exploreLevel = useGameStore((s) => s.exploreLevel)
   const setExploreLevel = useGameStore((s) => s.setExploreLevel)
+  const unlockTraining = useGameStore((s) => s.unlockTraining)
   const tutorialEvent = useGameStore((s) => s.tutorialEvent)
 
   const [phase, setPhase] = useState('idle')   // idle / playing / result
@@ -54,7 +55,7 @@ export default function Explore() {
     const gained = ok ? score + newCount * NEW_BONUS : Math.floor(score / 2)
     addPoints(gained)
     recordMission('explore') // ミッションは「山探索5回」なので、クリアできなくても1回と数える
-    if (ok) setExploreLevel(exploreLevel + 1)
+    if (ok) { setExploreLevel(exploreLevel + 1); unlockTraining() }
     setResult({ ok, reason, gained, rows, newCount, level: exploreLevel, nextLevel: ok ? exploreLevel + 1 : exploreLevel })
     setPopupOpen(newCount > 0)
     setPhase('result')
